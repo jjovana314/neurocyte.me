@@ -1,0 +1,14 @@
+{
+  "roles": [
+    {
+      "role": "support",
+      "description": "Allows access to user's data",
+      "actions": ["create_user", "remove_user"]
+    },
+    {
+      "role": "user",
+      "description": "Allows access to patient's data, AI access, to import and export data",
+      "actions": ["view_patient_data", "create_patient_data", "upload_documents", "download_documents", "use_AI", "access_device_data", "export_patient_data", "import_patient_data"]
+    }
+  ]
+}

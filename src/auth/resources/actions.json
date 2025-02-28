@@ -1,0 +1,48 @@
+{
+  "actions": [
+    {
+      "action": "view_patient_data",
+      "description": "Allows action owner to see patient data"
+    },
+    {
+      "action": "create_patient_data",
+      "description": "Allows action owner to create patient data"
+    },
+    {
+      "action": "remove_patient_data",
+      "description": "Alows action owner to remove patient data"
+    },
+    {
+      "action": "upload_documents",
+      "description": "Allows action owner to upload documents"
+    },
+    {
+      "action": "download_documents",
+      "description": "Allows action owner to downalod documents"
+    },
+    {
+      "action": "use_AI",
+      "description": "Allows action owner to use AI"
+    },
+    {
+      "action": "access_device_data",
+      "description": "Allows action owner to access device data"
+    },
+    {
+      "action": "create_user",
+      "description": "Alows action owner to create new user"
+    },
+    {
+      "action": "remove_user",
+      "description": "Allows action owner to remove user"
+    },
+    {
+      "action": "export_patient_data",
+      "description": "Allows action owner to export patient data"
+    },
+    {
+      "action": "import_patient_data",
+      "description": "Allows action owner to import patient data"
+    }
+  ]
+}
