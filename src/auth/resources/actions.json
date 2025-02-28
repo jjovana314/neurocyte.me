@@ -1,48 +1,68 @@
 {
   "actions": [
     {
-      "action": "view_patient_data",
-      "description": "Allows action owner to see patient data"
+      "action": "create_patient",
+      "description": "Create a new patient record"
     },
     {
-      "action": "create_patient_data",
-      "description": "Allows action owner to create patient data"
+      "action": "delete_patient",
+      "description": "Delete a patient record"
     },
     {
-      "action": "remove_patient_data",
-      "description": "Alows action owner to remove patient data"
+      "action": "view_patient",
+      "description": "View patient data"
     },
     {
-      "action": "upload_documents",
-      "description": "Allows action owner to upload documents"
+      "action": "upload_medical_document",
+      "description": "Upload a medical document (PDF, Word, CSV)"
     },
     {
-      "action": "download_documents",
-      "description": "Allows action owner to downalod documents"
+      "action": "download_medical_document",
+      "description": "Download a medical document"
     },
     {
-      "action": "use_AI",
-      "description": "Allows action owner to use AI"
+      "action": "generate_report",
+      "description": "Generate a PDF report for a patient"
     },
     {
-      "action": "access_device_data",
-      "description": "Allows action owner to access device data"
+      "action": "use_ai_assistance",
+      "description": "Use AI for treatment suggestions and predictions"
+    },
+    {
+      "action": "access_medical_devices",
+      "description": "Access real-time data from connected medical devices (EEG, wearables)"
+    },
+    {
+      "action": "update_own_profile",
+      "description": "Update own profile settings"
     },
     {
       "action": "create_user",
-      "description": "Alows action owner to create new user"
+      "description": "Create a new doctor user"
     },
     {
-      "action": "remove_user",
-      "description": "Allows action owner to remove user"
+      "action": "update_user",
+      "description": "Update an existing user's information"
     },
     {
-      "action": "export_patient_data",
-      "description": "Allows action owner to export patient data"
+      "action": "delete_user",
+      "description": "Delete a doctor user"
     },
     {
-      "action": "import_patient_data",
-      "description": "Allows action owner to import patient data"
+      "action": "assign_roles",
+      "description": "Assign roles to users"
+    },
+    {
+      "action": "manage_api_access",
+      "description": "Manage API keys and external integrations"
+    },
+    {
+      "action": "configure_ai",
+      "description": "Configure AI model parameters"
+    },
+    {
+      "action": "view_system_logs",
+      "description": "View system logs and diagnose issues"
     }
   ]
 }
