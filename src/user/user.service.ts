@@ -3,7 +3,7 @@ import * as bcrypt from 'bcrypt';
 import { Pool } from 'mysql2/promise';
 
 @Injectable()
-export class UsersService {
+export class UserService {
   private pool: Pool;
 
   constructor() {
