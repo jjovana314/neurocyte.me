@@ -19,7 +19,7 @@ export const config = createProfiguration<Config>(
       default: '',
       env: 'DATABASE_USERNAME',
     },
-    DATABASE_PASSOWRD: {
+    DATABASE_PASSWORD: {
       default: '',
       env: 'DATABASE_PASSWORD',
     },

@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import * as bcrypt from 'bcrypt';
 import { Pool } from 'mysql2/promise';
+import { config } from 'src/config/config';
 
 @Injectable()
 export class UserService {
@@ -8,10 +9,10 @@ export class UserService {
 
   constructor() {
     this.pool = require('mysql2/promise').createPool({
-      host: 'localhost',
-      user: 'root',
-      password: 'password',
-      database: 'auth_db'
+      host: config.get().DATABASE_URL,
+      user: config.get().DATABASE_USERNAME,
+      password: config.get().DATABASE_PASSWORD,
+      database: config.get().DATABASE_NAME
     });
   }
 
