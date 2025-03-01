@@ -7,6 +7,22 @@ export const config = createProfiguration<Config>(
       default: '',
       env: 'SECRET_KEY',
     },
+    DATABASE_URL: {
+      default: '',
+      env: 'DATABASE_URL',
+    },
+    DATABASE_NAME: {
+      default: '',
+      env: 'DATABASE_NAME',
+    },
+    DATABASE_USERNAME: {
+      default: '',
+      env: 'DATABASE_USERNAME',
+    },
+    DATABASE_PASSOWRD: {
+      default: '',
+      env: 'DATABASE_PASSWORD',
+    },
   },
   {
     strict: true,
