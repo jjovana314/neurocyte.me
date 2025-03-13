@@ -23,6 +23,10 @@ export const config = createProfiguration<Config>(
       default: '',
       env: 'DATABASE_PASSWORD',
     },
+    DATABASE_PORT: {
+      default: '',
+      env: 'DATABASE_PORT',
+    },
   },
   {
     strict: true,
