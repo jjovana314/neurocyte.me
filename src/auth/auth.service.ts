@@ -29,7 +29,7 @@ export class AuthService {
     };
   }
 
-  async register(email: string, password: string, firstName: string, lastName: string, role: IRole) {
+  async register(email: string, password: string, firstName: string, lastName: string, role: IRole): Promise<UserInfo> {
   const existingUser = await this.usersService.findUserByEmail(email);
     if (existingUser) {
       // todo: throw an error
@@ -41,7 +41,10 @@ export class AuthService {
     user.password = password;
     user.firstName = firstName;
     user.lastName = lastName;
-    user.role = { name: role.name, actions: role.actions };
+
+    // const role = new Roles({ name: role.name, actions: role.actions});
+    // todo: add method to create roles in the database and to fetch role from the database
+    user.role = { name: role.name, actions: role.actions, id: 1};
     await user.hashPassword();
   
     await this.usersService.save(user);

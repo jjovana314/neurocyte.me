@@ -13,7 +13,7 @@ import { config } from 'src/config/config';
     TypeOrmModule.forRoot({
       type: 'mysql',
       host: config.get().DATABASE_URL,
-      port: config.get().DATABASE_PORT,
+      port: Number(config.get().DATABASE_PORT),
       username: config.get().DATABASE_USERNAME,
       password: config.get().DATABASE_PASSWORD,
       database: config.get().DATABASE_NAME,
