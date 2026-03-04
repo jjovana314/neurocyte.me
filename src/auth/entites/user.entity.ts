@@ -19,7 +19,7 @@ export class User {
   @Column()
   password: string;
 
-  @OneToOne(type => Role, role => .id)
+ @OneToOne(type => Role, role => role.id)
   role: Role;
 
   @BeforeInsert()

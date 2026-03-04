@@ -56,8 +56,18 @@ export class AuthService {
     return this.login(user);
   }
   
-  async getRoles(): Promise<IRoles> {
+  async getRoles(name?: string, actions?: string[]): Promise<Role[]> {
+    const query = this.roleRepository.createQueryBuilder('role');
 
+    if (name) {
+      query.where('role.name = :name', { name });
+    }
+
+    if (actions && actions.length > 0) {
+      query.andWhere('role.actions && :actions', { actions });
+    }
+
+    return query.getMany();
   }
   // TODO: expose all roles from json file
 }
