@@ -1,6 +1,6 @@
 import { Entity, PrimaryGeneratedColumn, Column, BeforeInsert, OneToOne } from 'typeorm';
 import * as bcrypt from 'bcrypt';
-import { Roles } from './roles.entity';
+import { Role } from './role.entity';
 
 @Entity()
 export class User {
@@ -19,8 +19,8 @@ export class User {
   @Column()
   password: string;
 
-  @OneToOne(type => Roles, roles => roles.id)
-  role: Roles;
+  @OneToOne(type => Role, role => .id)
+  role: Role;
 
   @BeforeInsert()
   async hashPassword(): Promise<void> {
