@@ -7,6 +7,7 @@ import { IRole, IRoles } from './interfaces/roles.interface';
 import { Role } from './entites/role.entity';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
+import { UserInfo } from './interfaces/user-info.interface';
 
 @Injectable()
 export class AuthService {
@@ -25,10 +26,11 @@ export class AuthService {
     return user;
   }
 
-  async login(user: any) {
+  async login(user: User): Promise<UserInfo> {
     const payload = { email: user.email, role: user.role };
     return {
-      accessToken: this.jwtService.sign(payload),
+     accessToken: this.jwtService.sign(payload, { expiresIn: '1d' }),
+      refreshToken: this.jwtService.sign(payload, { expiresIn: '7d' }),
     };
   }
 
@@ -53,7 +55,7 @@ export class AuthService {
   
     await this.usersService.save(user);
     this.logger.info(`User with id ${user.id} registered successfully`);
-    return this.login(user);
+    return await this.login(user);
   }
   
   async getRoles(name?: string, actions?: string[]): Promise<Role[]> {
