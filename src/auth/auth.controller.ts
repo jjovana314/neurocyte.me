@@ -1,4 +1,12 @@
-import { Body, Controller, Post, Request, UseGuards } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  Post,
+  Request,
+  UseGuards,
+  Query
+} from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { LocalAuthGuard } from 'src/auth/local-auth.guard';
 import { User } from './entites/user.entity';
@@ -24,5 +32,10 @@ export class AuthController {
       lastName,
       role,
     );
+  }
+
+  @Get('roles')
+  async getRoles(@Query('name') name?: string, @Query('actions') actions?: string[]): Promise<any> {
+
   }
 }

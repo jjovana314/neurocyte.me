@@ -71,5 +71,4 @@ export class AuthService {
 
     return query.getMany();
   }
-  // TODO: expose all roles from json file
 }
