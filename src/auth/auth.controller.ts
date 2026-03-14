@@ -36,6 +36,6 @@ export class AuthController {
 
   @Get('roles')
   async getRoles(@Query('name') name?: string, @Query('actions') actions?: string[]): Promise<any> {
-
+    return await this.authService.getRoles(name, actions);
   }
 }

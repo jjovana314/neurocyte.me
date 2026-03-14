@@ -48,8 +48,6 @@ export class AuthService {
     user.firstName = firstName;
     user.lastName = lastName;
 
-    // const role = new Roles({ name: role.name, actions: role.actions});
-    // todo: add method to fetch role from the database
     user.role = { name: role.name, actions: role.actions, id: 1};
     await user.hashPassword();
   
@@ -58,7 +56,7 @@ export class AuthService {
     return await this.login(user);
   }
   
-  async getRoles(name?: string, actions?: string[]): Promise<Role[]> {
+  async getRoles(name?: string, actions?: string[]): Promise<IRoles> {
     const query = this.roleRepository.createQueryBuilder('role');
 
     if (name) {
@@ -68,7 +66,7 @@ export class AuthService {
     if (actions && actions.length > 0) {
       query.andWhere('role.actions && :actions', { actions });
     }
-
-    return query.getMany();
+    const roles = await query.getMany();
+    return { roles };
   }
 }

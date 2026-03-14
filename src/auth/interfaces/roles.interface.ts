@@ -1,5 +1,5 @@
 export interface IRoles { 
-  roles: string[];
+  roles: IRole[];
 }
 
 export interface IRole {
