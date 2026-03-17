@@ -11,6 +11,8 @@ import { AuthService } from './auth.service';
 import { LocalAuthGuard } from 'src/auth/local-auth.guard';
 import { User } from './entites/user.entity';
 
+// todo: update all any parameters and requests
+
 @Controller('auth')
 export class AuthController {
   constructor(private authService: AuthService) {}
