@@ -8,14 +8,16 @@ import { Role } from './entites/role.entity';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { UserInfo } from './interfaces/user-info.interface';
+import { Action } from './entites/action.entity';
 
 @Injectable()
 export class AuthService {
   constructor(
     private usersService: UserService,
     @InjectRepository(Role) private roleRepository: Repository<Role>,
+    @InjectRepository(Action) private actionRepository: Repository<Action>,
     private jwtService: JwtService,
-    private logger: PinoLogger
+    private logger: PinoLogger,
   ) {}
 
   async validateUser(email: string, password: string): Promise<User | null> {
@@ -29,7 +31,7 @@ export class AuthService {
   async login(user: User): Promise<UserInfo> {
     const payload = { email: user.email, role: user.role };
     return {
-     accessToken: this.jwtService.sign(payload, { expiresIn: '1d' }),
+      accessToken: this.jwtService.sign(payload, { expiresIn: '1d' }),
       refreshToken: this.jwtService.sign(payload, { expiresIn: '7d' }),
     };
   }
@@ -47,15 +49,16 @@ export class AuthService {
     user.password = password;
     user.firstName = firstName;
     user.lastName = lastName;
+    const actions = await this.actionRepository.find({ roleName: role.name });
 
-    user.role = { name: role.name, actions: role.actions, id: 1};
+    user.role = { name: role.name, actions, id: 1 };
     await user.hashPassword();
-  
+
     await this.usersService.save(user);
     this.logger.info(`User with id ${user.id} registered successfully`);
     return await this.login(user);
   }
-  
+
   async getRoles(name?: string, actions?: string[]): Promise<IRoles> {
     const query = this.roleRepository.createQueryBuilder('role');
 

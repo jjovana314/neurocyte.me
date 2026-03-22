@@ -7,4 +7,7 @@ export class Action {
 
   @Column()
   name: string;
+
+  @Column()
+  roleName: string;
 }

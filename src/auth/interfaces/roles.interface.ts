@@ -1,4 +1,4 @@
-import { IActions } from './action.interface';
+import { IAction, IActions } from './action.interface';
 
 export interface IRoles {
   roles: IRole[];
@@ -6,5 +6,5 @@ export interface IRoles {
 
 export interface IRole {
   name: string;
-  actions: IActions;
+  actions: IAction[];
 }
