@@ -1,6 +1,6 @@
 export interface IAction {
   name: string;
-  roleName: stirng;
+  roleName: string;
 }
 
 export interface  IActions {

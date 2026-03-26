@@ -49,7 +49,7 @@ export class AuthService {
     user.password = password;
     user.firstName = firstName;
     user.lastName = lastName;
-    const actions = await this.actionRepository.find({ roleName: role.name });
+    const actions = await this.actionRepository.findBy({ roleName: role.name });
 
     user.role = { name: role.name, actions, id: 1 };
     await user.hashPassword();
