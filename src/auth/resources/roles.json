@@ -11,7 +11,6 @@
           "upload_medical_document",
           "download_medical_document",
           "generate_report",
-          "use_ai_assistance",
           "access_medical_devices",
           "update_own_profile"
         ]
@@ -24,7 +23,6 @@
           "delete_user",
           "assign_roles",
           "manage_api_access",
-          "configure_ai",
           "view_system_logs"
         ]
       }
