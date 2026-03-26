@@ -8,7 +8,4 @@ export class Role {
 
   @Column()
   name: string; 
-
-  @Column()
-  actions: Action[];
 }

@@ -9,12 +9,14 @@ import { LocalAuthGuard } from './local-auth.guard';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { User } from './entites/user.entity';
 import { Role } from './entites/role.entity';
+import { Action } from './entites/action.entity';
 
 @Module({
   imports: [
     PassportModule,
     TypeOrmModule.forFeature([User]),
     TypeOrmModule.forFeature([Role]),
+    TypeOrmModule.forFeature([Action]),
     JwtModule.register({
       secret: config.get().SECRET_KEY,
       signOptions: { expiresIn: '1h' },

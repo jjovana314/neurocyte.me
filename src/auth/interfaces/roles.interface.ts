@@ -6,5 +6,4 @@ export interface IRoles {
 
 export interface IRole {
   name: string;
-  actions: IAction[];
 }

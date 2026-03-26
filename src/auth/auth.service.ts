@@ -20,14 +20,6 @@ export class AuthService {
     private logger: PinoLogger,
   ) {}
 
-  async validateUser(email: string, password: string): Promise<User | null> {
-    const user = await this.usersService.validateUser(email, password);
-    if (!user) {
-      throw new UnauthorizedException();
-    }
-    return user;
-  }
-
   async login(user: User): Promise<UserInfo> {
     const payload = { email: user.email, role: user.role };
     return {
@@ -49,9 +41,8 @@ export class AuthService {
     user.password = password;
     user.firstName = firstName;
     user.lastName = lastName;
-    const actions = await this.actionRepository.findBy({ roleName: role.name });
 
-    user.role = { name: role.name, actions, id: 1 };
+    user.role = { name: role.name, id: 1 };
     await user.hashPassword();
 
     await this.usersService.save(user);
