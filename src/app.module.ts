@@ -5,11 +5,13 @@ import { AuthModule } from './auth/auth.module';
 import { UserModule } from './user/user.module';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { config } from 'src/config/config';
+import { PatientsModule } from './patients/patients.module';
 
 @Module({
   imports: [
     AuthModule,
     UserModule,
+    PatientsModule,
     TypeOrmModule.forRoot({
       type: 'mysql',
       host: config.get().DATABASE_URL,
