@@ -14,6 +14,8 @@ import {
 } from '@nestjs/common';
 import { Response } from 'express';
 import { AuthGuard } from '@nestjs/passport';
+import { Roles } from './decorators/roles.decorator';
+import { RolesGuard } from './decorators/roles.guard';
 import { PatientsService } from './patients.service';
 import { CreatePatientDto, CreatePatientHistoryDto, CreateFamilyHistoryDto } from './dtos';
 import { Patient } from './entities/patient.entity';
@@ -54,6 +56,8 @@ export class PatientsController {
    * Only doctors and researchers can export
    */
   @Get('export/csv')
+  @Roles('doctor', 'researcher')
+  @UseGuards(RolesGuard)
   async exportCsv(
     @Request() req,
     @Res() res: Response,

@@ -298,12 +298,6 @@ export class PatientsService {
       throw new NotFoundException(`User with ID ${userId} not found`);
     }
 
-    const allowedRoles = ['doctor', 'researcher'];
-    if (!user.role || !allowedRoles.includes(user.role.name.toLowerCase())) {
-      this.logger.warn(`User ${userId} with role '${user.role?.name ?? 'none'}' attempted to export patient data`);
-      throw new ForbiddenException('Only doctors and researchers can export patient data');
-    }
-
     const patients = await this.patientRepository.find({
       relations: ['medicalHistory', 'familyHistory'],
     });
