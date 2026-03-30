@@ -308,8 +308,8 @@ export class PatientsService {
       relations: ['medicalHistory', 'familyHistory'],
     });
 
-    const csvRows: string[] = [];
-    csvRows.push([
+    const csvHeader: string[] = [];
+    csvHeader.push([
       'Patient Notes',
       'Patient Created At',
       'Patient Updated At',
@@ -351,12 +351,12 @@ export class PatientsService {
           fam ? this.escapeCsvField(fam.notes) : '',
           fam ? fam.recordedAt : '',
         ];
-        csvRows.push(row.join(','));
+        csvHeader.push(row.join(','));
       }
     }
 
     this.logger.info(`Patient data exported to CSV by user ${userId} (role: ${user.role.name})`);
-    return csvRows.join('\n');
+    return [csvHeader.join(','), ...csvHeader].join('\n');
   }
 
   private escapeCsvField(value: string | null | undefined): string {
