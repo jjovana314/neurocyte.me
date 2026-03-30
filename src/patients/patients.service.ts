@@ -331,26 +331,26 @@ export class PatientsService {
       const familyRows = patient.familyHistory ?? [];
       const maxRows = Math.max(medicalRows.length, familyRows.length, 1);
 
-      for (let i = 0; i < maxRows; i++) {
-        const med = medicalRows[i];
-        const fam = familyRows[i];
+      for (let rowIndex = 0; rowIndex < maxRows; rowIndex++) {
+        const medicalRow = medicalRows[rowIndex];
+        const familyRow = familyRows[rowIndex];
 
         const row = [
-          i === 0 ? this.escapeCsvField(patient.notes) : '',
-          i === 0 ? patient.createdAt : '',
-          i === 0 ? patient.updatedAt : '',
-          med ? this.escapeCsvField(med.disorder) : '',
-          med ? this.escapeCsvField(med.description) : '',
-          med ? this.escapeCsvField(med.diagnosisDate) : '',
-          med ? this.escapeCsvField(med.severity) : '',
-          med ? this.escapeCsvField(med.medications) : '',
-          med ? med.recordedAt : '',
-          fam ? this.escapeCsvField(fam.diseaseType) : '',
-          fam ? this.escapeCsvField(fam.relation) : '',
-          fam ? this.escapeCsvField(fam.severity) : '',
-          fam ? this.escapeCsvField(fam.notes) : '',
-          fam ? fam.recordedAt : '',
-        ];
+          rowIndex === 0 ? patient.notes : '',
+          rowIndex === 0 ? patient.createdAt : '',
+          rowIndex === 0 ? patient.updatedAt : '',
+          medicalRow?.disorder ?? '',
+          medicalRow?.description ?? '',
+          medicalRow?.diagnosisDate ?? '',
+          medicalRow?.severity ?? '',
+          medicalRow?.medications ?? '',
+          medicalRow?.recordedAt ?? '',
+          familyRow?.diseaseType ?? '',
+          familyRow?.relation ?? '',
+          medicalRow?.severity ?? '',
+          familyRow?.notes ?? '',
+          medicalRow?.recordedAt ?? '',
+        ].map(v => this.escapeCsvField(v));
         csvHeader.push(row.join(','));
       }
     }
@@ -359,7 +359,7 @@ export class PatientsService {
     return [csvHeader.join(','), ...csvHeader].join('\n');
   }
 
-  private escapeCsvField(value: string | null | undefined): string {
+  private escapeCsvField(value: unknown): string {
     if (value == null) return '';
     const str = String(value);
     if (str.includes(',') || str.includes('"') || str.includes('\n')) {
