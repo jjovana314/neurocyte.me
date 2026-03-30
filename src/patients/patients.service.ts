@@ -283,4 +283,88 @@ export class PatientsService {
 
     this.logger.info(`Patient ${patientId} deleted by doctor ${doctorId}`);
   }
+
+  /**
+   * Export all patient data as a CSV file
+   * Only doctors and researchers are allowed to export
+   * Excludes all ID fields for privacy
+   * @param userId - The ID of the user requesting the export
+   * @returns CSV string with patient data
+   */
+  @errorHandler
+  async exportPatientDataCsv(userId: number): Promise<string> {
+    const user = await this.userRepository.findOne({ where: { id: userId }, relations: ['role'] });
+    if (!user) {
+      throw new NotFoundException(`User with ID ${userId} not found`);
+    }
+
+    const allowedRoles = ['doctor', 'researcher'];
+    if (!user.role || !allowedRoles.includes(user.role.name.toLowerCase())) {
+      this.logger.warn(`User ${userId} with role '${user.role?.name ?? 'none'}' attempted to export patient data`);
+      throw new ForbiddenException('Only doctors and researchers can export patient data');
+    }
+
+    const patients = await this.patientRepository.find({
+      relations: ['medicalHistory', 'familyHistory'],
+    });
+
+    const csvRows: string[] = [];
+    csvRows.push([
+      'Patient Notes',
+      'Patient Created At',
+      'Patient Updated At',
+      'Disorder',
+      'Disorder Description',
+      'Diagnosis Date',
+      'Severity',
+      'Medications',
+      'History Recorded At',
+      'Family Disease Type',
+      'Family Relation',
+      'Family Severity',
+      'Family Notes',
+      'Family Recorded At',
+    ].join(','));
+
+    for (const patient of patients) {
+      const medicalRows = patient.medicalHistory ?? [];
+      const familyRows = patient.familyHistory ?? [];
+      const maxRows = Math.max(medicalRows.length, familyRows.length, 1);
+
+      for (let i = 0; i < maxRows; i++) {
+        const med = medicalRows[i];
+        const fam = familyRows[i];
+
+        const row = [
+          i === 0 ? this.escapeCsvField(patient.notes) : '',
+          i === 0 ? patient.createdAt : '',
+          i === 0 ? patient.updatedAt : '',
+          med ? this.escapeCsvField(med.disorder) : '',
+          med ? this.escapeCsvField(med.description) : '',
+          med ? this.escapeCsvField(med.diagnosisDate) : '',
+          med ? this.escapeCsvField(med.severity) : '',
+          med ? this.escapeCsvField(med.medications) : '',
+          med ? med.recordedAt : '',
+          fam ? this.escapeCsvField(fam.diseaseType) : '',
+          fam ? this.escapeCsvField(fam.relation) : '',
+          fam ? this.escapeCsvField(fam.severity) : '',
+          fam ? this.escapeCsvField(fam.notes) : '',
+          fam ? fam.recordedAt : '',
+        ];
+        csvRows.push(row.join(','));
+      }
+    }
+
+    this.logger.info(`Patient data exported to CSV by user ${userId} (role: ${user.role.name})`);
+    return csvRows.join('\n');
+  }
+
+  private escapeCsvField(value: string | null | undefined): string {
+    if (value == null) return '';
+    const str = String(value);
+    if (str.includes(',') || str.includes('"') || str.includes('\n')) {
+      return `"${str.replace(/"/g, '""')}"`;
+    }
+    return str;
+  }
 }

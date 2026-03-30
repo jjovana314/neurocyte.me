@@ -10,7 +10,9 @@ import {
   Request,
   HttpCode,
   HttpStatus,
+  Res,
 } from '@nestjs/common';
+import { Response } from 'express';
 import { AuthGuard } from '@nestjs/passport';
 import { PatientsService } from './patients.service';
 import { CreatePatientDto, CreatePatientHistoryDto, CreateFamilyHistoryDto } from './dtos';
@@ -44,6 +46,24 @@ export class PatientsController {
   @Get('my-patients')
   async getMyPatients(@Request() req): Promise<Patient[]> {
     return this.patientsService.getDoctorPatients(req.user.id);
+  }
+
+  /**
+   * Export all patient data as a CSV file
+   * GET /patients/export/csv
+   * Only doctors and researchers can export
+   */
+  @Get('export/csv')
+  async exportCsv(
+    @Request() req,
+    @Res() res: Response,
+  ): Promise<void> {
+    const csv = await this.patientsService.exportPatientDataCsv(req.user.id);
+    res.set({
+      'Content-Type': 'text/csv',
+      'Content-Disposition': 'attachment; filename="patient_export.csv"',
+    });
+    res.send(csv);
   }
 
   /**
@@ -139,4 +159,5 @@ export class PatientsController {
   ): Promise<FamilyHistory[]> {
     return this.patientsService.getPatientFamilyHistory(req.user.id, parseInt(patientId, 10));
   }
+
 }
