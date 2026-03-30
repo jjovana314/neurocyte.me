@@ -350,7 +350,7 @@ export class PatientsService {
           medicalRow?.severity ?? '',
           familyRow?.notes ?? '',
           medicalRow?.recordedAt ?? '',
-        ].map(v => this.escapeCsvField(v));
+        ].map(v => this.checkCsvFieldOrEscape(v));
         csvHeader.push(row.join(','));
       }
     }
@@ -359,7 +359,7 @@ export class PatientsService {
     return [csvHeader.join(','), ...csvHeader].join('\n');
   }
 
-  private escapeCsvField(value: unknown): string {
+  private checkCsvFieldOrEscape(value: string | Date): string {
     if (value == null) return '';
     const str = String(value);
     if (str.includes(',') || str.includes('"') || str.includes('\n')) {
