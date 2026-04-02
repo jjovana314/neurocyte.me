@@ -25,7 +25,7 @@ export class AuthController {
 
   @Post('register')
   async register(
-    @Body() { email, password, firstName, lastName, role }: User,
+    @Body() { email, password, firstName, lastName, role }: { email: string; password: string; firstName: string; lastName: string; role: string },
   ): Promise<{ accessToken: string }> {
     return await this.authService.register(
       email,

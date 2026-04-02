@@ -27,6 +27,30 @@ export const config = createProfiguration<Config>(
       default: '',
       env: 'DATABASE_PORT',
     },
+    MAIL_HOST: {
+      default: '',
+      env: 'MAIL_HOST',
+    },
+    MAIL_PORT: {
+      default: '587',
+      env: 'MAIL_PORT',
+    },
+    MAIL_USER: {
+      default: '',
+      env: 'MAIL_USER',
+    },
+    MAIL_PASS: {
+      default: '',
+      env: 'MAIL_PASS',
+    },
+    MAIL_FROM: {
+      default: '',
+      env: 'MAIL_FROM',
+    },
+    APP_URL: {
+      default: 'http://localhost:3000',
+      env: 'APP_URL',
+    },
   },
   {
     strict: true,

@@ -28,7 +28,7 @@ export class AuthService {
     };
   }
 
-  async register(email: string, password: string, firstName: string, lastName: string, role: IRole): Promise<UserInfo> {
+  async register(email: string, password: string, firstName: string, lastName: string, role: string): Promise<UserInfo> {
   // todo crete use info data with access token
   const existingUser = await this.usersService.findUserByEmail(email);
     if (existingUser) {
@@ -42,7 +42,11 @@ export class AuthService {
     user.firstName = firstName;
     user.lastName = lastName;
 
-    user.role = { name: role.name, id: 1 };
+    const foundRole = await this.roleRepository.findOne({ where: { name: role } });
+    if (!foundRole) {
+      throw new UnauthorizedException(`Role "${role}" does not exist`);
+    }
+    user.role = foundRole;
     await user.hashPassword();
 
     await this.usersService.save(user);

@@ -1,4 +1,4 @@
-import { Entity, PrimaryGeneratedColumn, Column, BeforeInsert, OneToOne } from 'typeorm';
+import { Entity, PrimaryGeneratedColumn, Column, BeforeInsert, OneToOne, JoinColumn } from 'typeorm';
 import * as bcrypt from 'bcrypt';
 import { Role } from './role.entity';
 
@@ -19,8 +19,12 @@ export class User {
   @Column()
   password: string;
 
- @OneToOne(type => Role, role => role.id)
+ @OneToOne(() => Role)
+  @JoinColumn()
   role: Role;
+
+  @Column({ nullable: true, default: null })
+  deactivationToken: string | null;
 
   @BeforeInsert()
   async hashPassword(): Promise<void> {
