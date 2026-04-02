@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import * as bcrypt from 'bcrypt';
 import { PinoLogger } from 'nestjs-pino';
@@ -25,5 +25,13 @@ export class UserService {
   async save(user: User): Promise<User> {
     const newUser =  this.userRepository.create(user);
     return await this.userRepository.save(newUser);
+  }
+
+  async remove(id: number): Promise<User> {
+    const user = await this.userRepository.findOne({ where: { id } });
+    if (!user) {
+      throw new NotFoundException(`User with id ${id} not found`);
+    }
+    return this.userRepository.remove(user);
   }
 }
