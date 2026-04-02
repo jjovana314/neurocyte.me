@@ -1,5 +1,9 @@
 # neurocyte.me
 
+<p align="center">
+	<img src="assets/logo.png" alt="neurocyte.me logo" width="200" />
+</p>
+
 neurocyte.me is an advanced neurology patient management platform designed to help neurologists track disease progression, manage medical records, and utilize AI-driven insights for better treatment planning.
 
 ## Features
