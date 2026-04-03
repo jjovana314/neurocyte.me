@@ -19,13 +19,12 @@ export class UserService {
   ) {}
 
   async findUserByEmail(email: string): Promise<User | null> {
-    this.logger.info('test');
     return await this.userRepository.findOne({ where: { email }});
   }
 
   async validateUser(email: string, password: string): Promise<User | null> {
     const user = await this.findUserByEmail(email);
-    if (user && await bcrypt.compare(password, password)) {
+    if (user && await bcrypt.compare(password, user.password)) {
       return user;
     }
     return null;

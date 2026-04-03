@@ -1,4 +1,4 @@
-import { Injectable, UnauthorizedException } from '@nestjs/common';
+import { BadRequestException, Injectable, UnauthorizedException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { UserService } from 'src/user/user.service';
 import { User } from './entites/user.entity';
@@ -18,7 +18,7 @@ export class AuthService {
     @InjectRepository(Action) private actionRepository: Repository<Action>,
     private jwtService: JwtService,
     private logger: PinoLogger,
-  ) {}
+  ) { }
 
   async login(user: User): Promise<UserInfo> {
     const payload = { email: user.email, role: user.role };
@@ -29,12 +29,11 @@ export class AuthService {
   }
 
   async register(email: string, password: string, firstName: string, lastName: string, role: string): Promise<UserInfo> {
-  // todo crete use info data with access token
-  const existingUser = await this.usersService.findUserByEmail(email);
+    // todo crete use info data with access token
+    const existingUser = await this.usersService.findUserByEmail(email);
     if (existingUser) {
-      // todo: throw an error
-      this.logger.error(`User with id ${existingUser.id} already exists`);
-      return;
+      this.logger.error(`User with email ${existingUser.email} already exists`);
+      throw new BadRequestException(`User with email ${email} already exists`);
     }
     const user = new User();
     user.email = email;
@@ -48,6 +47,7 @@ export class AuthService {
     }
     user.role = foundRole;
     await user.hashPassword();
+    this.logger.info('Creating user...');
 
     await this.usersService.save(user);
     this.logger.info(`User with id ${user.id} registered successfully`);

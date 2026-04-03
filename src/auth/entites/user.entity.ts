@@ -1,10 +1,10 @@
-import { Entity, PrimaryGeneratedColumn, Column, BeforeInsert, OneToOne, JoinColumn } from 'typeorm';
+import { Entity, PrimaryGeneratedColumn, Column, BeforeInsert, ManyToOne, JoinColumn } from 'typeorm';
 import * as bcrypt from 'bcrypt';
 import { Role } from './role.entity';
 
 @Entity()
 export class User {
-  @PrimaryGeneratedColumn()
+  @PrimaryGeneratedColumn('increment')
   id: number;
 
   @Column({ unique: true })
@@ -19,7 +19,7 @@ export class User {
   @Column()
   password: string;
 
- @OneToOne(() => Role)
+ @ManyToOne(() => Role)
   @JoinColumn()
   role: Role;
 
