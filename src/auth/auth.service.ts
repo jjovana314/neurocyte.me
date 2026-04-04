@@ -28,6 +28,14 @@ export class AuthService {
     };
   }
 
+  async validateAndLogin(email: string, password: string): Promise<UserInfo> {
+    const user = await this.usersService.validateUser(email, password);
+    if (!user) {
+      throw new UnauthorizedException('Invalid credentials');
+    }
+    return this.login(user);
+  }
+
   async register(email: string, password: string, firstName: string, lastName: string, role: string): Promise<UserInfo> {
     // todo crete use info data with access token
     const existingUser = await this.usersService.findUserByEmail(email);

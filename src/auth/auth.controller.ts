@@ -3,13 +3,11 @@ import {
   Controller,
   Get,
   Post,
-  Request,
-  UseGuards,
   Query
 } from '@nestjs/common';
 import { AuthService } from './auth.service';
-import { LocalAuthGuard } from 'src/auth/local-auth.guard';
-import { User } from './entites/user.entity';
+import { RegisterDto } from './dtos/register.dto';
+import { LoginDto } from './dtos/login.dto';
 
 // todo: update all any parameters and requests
 
@@ -17,15 +15,14 @@ import { User } from './entites/user.entity';
 export class AuthController {
   constructor(private authService: AuthService) {}
 
-  @UseGuards(LocalAuthGuard)
   @Post('login')
-  async login(@Request() req) {
-    return this.authService.login(req.user);
+  async login(@Body() { email, password }: LoginDto) {
+    return this.authService.validateAndLogin(email, password);
   }
 
   @Post('register')
   async register(
-    @Body() { email, password, firstName, lastName, role }: { email: string; password: string; firstName: string; lastName: string; role: string },
+    @Body() { email, password, firstName, lastName, role }: RegisterDto,
   ): Promise<{ accessToken: string }> {
     return await this.authService.register(
       email,

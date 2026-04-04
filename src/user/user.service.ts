@@ -24,9 +24,13 @@ export class UserService {
 
   async validateUser(email: string, password: string): Promise<User | null> {
     const user = await this.findUserByEmail(email);
+    this.logger.info(`User found by email: ${JSON.stringify(user, null, 2)}`);
+    // todo: bcryot compare is not working as expected
     if (user && await bcrypt.compare(password, user.password)) {
+      this.logger.info(`Password matches and user exists`);
       return user;
     }
+    this.logger.error(`Passwords doesn't match or user not found, email ${email} password ${password}`);
     return null;
   }
 
