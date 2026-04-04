@@ -19,14 +19,6 @@ export class PatientsService {
     private readonly logger: PinoLogger,
   ) {}
 
-  /**
-   * Create a new patient record
-   * Only doctors with 'create_patient' permission can create patients
-   * Patient records do not contain patient names for privacy
-   * @param doctorId - The ID of the doctor creating the patient record
-   * @param createPatientDto - Patient creation data
-   * @returns Created patient record
-   */
   @errorHandler
   async createPatient(doctorId: number, createPatientDto: CreatePatientDto): Promise<Patient> {
     // Verify doctor exists and has appropriate role
@@ -52,13 +44,6 @@ export class PatientsService {
     return savedPatient;
   }
 
-  /**
-   * Add medical history entry for a patient
-   * Only the doctor who created the patient can add history
-   * @param doctorId - Doctor ID requesting the action
-   * @param createHistoryDto - History data to add
-   * @returns Created history record
-   */
   @errorHandler
   async addPatientHistory(doctorId: number, createHistoryDto: CreatePatientHistoryDto): Promise<PatientHistory> {
     // Verify patient exists
@@ -92,14 +77,6 @@ export class PatientsService {
     return savedHistory;
   }
 
-  /**
-   * Add family history entry for a patient
-   * Records hereditary neurological and other diseases
-   * Only the doctor who created the patient can add family history
-   * @param doctorId - Doctor ID requesting the action
-   * @param createFamilyHistoryDto - Family history data to add
-   * @returns Created family history record
-   */
   @errorHandler
   async addFamilyHistory(doctorId: number, createFamilyHistoryDto: CreateFamilyHistoryDto): Promise<FamilyHistory> {
     // Verify patient exists
@@ -135,13 +112,6 @@ export class PatientsService {
     return savedFamilyHistory;
   }
 
-  /**
-   * Get patient record with all associated data
-   * Only the doctor who created the patient can view it
-   * @param doctorId - Doctor ID requesting the action
-   * @param patientId - Patient ID to retrieve
-   * @returns Patient record with history and family history
-   */
   @errorHandler
   async getPatient(doctorId: number, patientId: number): Promise<Patient> {
     const patient = await this.patientRepository.findOne({
@@ -162,11 +132,6 @@ export class PatientsService {
     return patient;
   }
 
-  /**
-   * Get all patients created by a specific doctor
-   * @param doctorId - Doctor ID
-   * @returns Array of patient records
-   */
   @errorHandler
   async getDoctorPatients(doctorId: number): Promise<Patient[]> {
     const patients = await this.patientRepository.find({
@@ -179,13 +144,6 @@ export class PatientsService {
     return patients;
   }
 
-  /**
-   * Get medical history for a patient
-   * Only the doctor who created the patient can view it
-   * @param doctorId - Doctor ID requesting the action
-   * @param patientId - Patient ID
-   * @returns Array of history records
-   */
   @errorHandler
   async getPatientMedicalHistory(doctorId: number, patientId: number): Promise<PatientHistory[]> {
     // Verify permissions first
@@ -206,13 +164,6 @@ export class PatientsService {
     return history;
   }
 
-  /**
-   * Get family history for a patient
-   * Only the doctor who created the patient can view it
-   * @param doctorId - Doctor ID requesting the action
-   * @param patientId - Patient ID
-   * @returns Array of family history records
-   */
   @errorHandler
   async getPatientFamilyHistory(doctorId: number, patientId: number): Promise<FamilyHistory[]> {
     // Verify permissions first
@@ -233,14 +184,6 @@ export class PatientsService {
     return familyHistory;
   }
 
-  /**
-   * Update patient notes
-   * Only the doctor who created the patient can update it
-   * @param doctorId - Doctor ID requesting the action
-   * @param patientId - Patient ID to update
-   * @param notes - Updated notes
-   * @returns Updated patient record
-   */
   @errorHandler
   async updatePatientNotes(doctorId: number, patientId: number, notes: string): Promise<Patient> {
     const patient = await this.patientRepository.findOne({ where: { id: patientId } });
@@ -259,12 +202,6 @@ export class PatientsService {
     return updatedPatient;
   }
 
-  /**
-   * Delete a patient record and all associated data
-   * Only the doctor who created the patient can delete it
-   * @param doctorId - Doctor ID requesting the action
-   * @param patientId - Patient ID to delete
-   */
   @errorHandler
   async deletePatient(doctorId: number, patientId: number): Promise<void> {
     const patient = await this.patientRepository.findOne({ where: { id: patientId } });
@@ -284,13 +221,6 @@ export class PatientsService {
     this.logger.info(`Patient ${patientId} deleted by doctor ${doctorId}`);
   }
 
-  /**
-   * Export all patient data as a CSV file
-   * Only doctors and researchers are allowed to export
-   * Excludes all ID fields for privacy
-   * @param userId - The ID of the user requesting the export
-   * @returns CSV string with patient data
-   */
   @errorHandler
   async exportPatientDataCsv(userId: number): Promise<string> {
     const user = await this.userRepository.findOne({ where: { id: userId }, relations: ['role'] });
