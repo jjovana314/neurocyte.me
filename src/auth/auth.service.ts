@@ -54,7 +54,6 @@ export class AuthService {
       throw new UnauthorizedException(`Role "${role}" does not exist`);
     }
     user.role = foundRole;
-    await user.hashPassword();
     this.logger.info('Creating user...');
 
     await this.usersService.save(user);
