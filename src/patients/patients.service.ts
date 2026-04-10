@@ -1,4 +1,9 @@
-import { Injectable, ForbiddenException, NotFoundException, BadRequestException } from '@nestjs/common';
+import {
+  Injectable,
+  ForbiddenException,
+  NotFoundException,
+  BadRequestException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { PinoLogger } from 'nestjs-pino';
@@ -7,29 +12,42 @@ import { Patient } from './entities/patient.entity';
 import { PatientHistory } from './entities/patient-history.entity';
 import { FamilyHistory } from './entities/family-history.entity';
 import { User } from 'src/auth/entites/user.entity';
-import { CreatePatientDto, CreatePatientHistoryDto, CreateFamilyHistoryDto } from './dtos';
+import {
+  CreatePatientDto,
+  CreatePatientHistoryDto,
+  CreateFamilyHistoryDto,
+} from './dtos';
 
 @Injectable()
 export class PatientsService {
   constructor(
     @InjectRepository(Patient) private patientRepository: Repository<Patient>,
-    @InjectRepository(PatientHistory) private patientHistoryRepository: Repository<PatientHistory>,
-    @InjectRepository(FamilyHistory) private familyHistoryRepository: Repository<FamilyHistory>,
+    @InjectRepository(PatientHistory)
+    private patientHistoryRepository: Repository<PatientHistory>,
+    @InjectRepository(FamilyHistory)
+    private familyHistoryRepository: Repository<FamilyHistory>,
     @InjectRepository(User) private userRepository: Repository<User>,
     private readonly logger: PinoLogger,
   ) {}
 
   @errorHandler
-  async createPatient(doctorId: number, createPatientDto: CreatePatientDto): Promise<Patient> {
+  async createPatient(
+    doctorId: number,
+    createPatientDto: CreatePatientDto,
+  ): Promise<Patient> {
     // Verify doctor exists and has appropriate role
-    const doctor = await this.userRepository.findOne({ where: { id: doctorId } });
+    const doctor = await this.userRepository.findOne({
+      where: { id: doctorId },
+    });
     if (!doctor) {
       throw new NotFoundException(`Doctor with ID ${doctorId} not found`);
     }
 
     // Check if user is a doctor (role check)
     if (!doctor.role || doctor.role.name !== 'doctor') {
-      this.logger.warn(`User ${doctorId} attempted to create patient without doctor role`);
+      this.logger.warn(
+        `User ${doctorId} attempted to create patient without doctor role`,
+      );
       throw new ForbiddenException('Only doctors can create patient records');
     }
 
@@ -39,23 +57,36 @@ export class PatientsService {
     patient.notes = createPatientDto.notes || '';
 
     const savedPatient = await this.patientRepository.save(patient);
-    this.logger.info(`Patient record ${savedPatient.id} created by doctor ${doctorId}`);
+    this.logger.info(
+      `Patient record ${savedPatient.id} created by doctor ${doctorId}`,
+    );
 
     return savedPatient;
   }
 
   @errorHandler
-  async addPatientHistory(doctorId: number, createHistoryDto: CreatePatientHistoryDto): Promise<PatientHistory> {
+  async addPatientHistory(
+    doctorId: number,
+    createHistoryDto: CreatePatientHistoryDto,
+  ): Promise<PatientHistory> {
     // Verify patient exists
-    const patient = await this.patientRepository.findOne({ where: { id: createHistoryDto.patientId } });
+    const patient = await this.patientRepository.findOne({
+      where: { id: createHistoryDto.patientId },
+    });
     if (!patient) {
-      throw new NotFoundException(`Patient with ID ${createHistoryDto.patientId} not found`);
+      throw new NotFoundException(
+        `Patient with ID ${createHistoryDto.patientId} not found`,
+      );
     }
 
     // Verify that the requester is the doctor who created this patient
     if (patient.doctorId !== doctorId) {
-      this.logger.warn(`Doctor ${doctorId} attempted to access patient ${createHistoryDto.patientId} created by doctor ${patient.doctorId}`);
-      throw new ForbiddenException('You can only add history to patients you created');
+      this.logger.warn(
+        `Doctor ${doctorId} attempted to access patient ${createHistoryDto.patientId} created by doctor ${patient.doctorId}`,
+      );
+      throw new ForbiddenException(
+        'You can only add history to patients you created',
+      );
     }
 
     // errorHandler required fields
@@ -72,23 +103,36 @@ export class PatientsService {
     history.medications = createHistoryDto.medications || '';
 
     const savedHistory = await this.patientHistoryRepository.save(history);
-    this.logger.info(`History record added to patient ${createHistoryDto.patientId}: ${createHistoryDto.disorder}`);
+    this.logger.info(
+      `History record added to patient ${createHistoryDto.patientId}: ${createHistoryDto.disorder}`,
+    );
 
     return savedHistory;
   }
 
   @errorHandler
-  async addFamilyHistory(doctorId: number, createFamilyHistoryDto: CreateFamilyHistoryDto): Promise<FamilyHistory> {
+  async addFamilyHistory(
+    doctorId: number,
+    createFamilyHistoryDto: CreateFamilyHistoryDto,
+  ): Promise<FamilyHistory> {
     // Verify patient exists
-    const patient = await this.patientRepository.findOne({ where: { id: createFamilyHistoryDto.patientId } });
+    const patient = await this.patientRepository.findOne({
+      where: { id: createFamilyHistoryDto.patientId },
+    });
     if (!patient) {
-      throw new NotFoundException(`Patient with ID ${createFamilyHistoryDto.patientId} not found`);
+      throw new NotFoundException(
+        `Patient with ID ${createFamilyHistoryDto.patientId} not found`,
+      );
     }
 
     // Verify that the requester is the doctor who created this patient
     if (patient.doctorId !== doctorId) {
-      this.logger.warn(`Doctor ${doctorId} attempted to access patient ${createFamilyHistoryDto.patientId}`);
-      throw new ForbiddenException('You can only add family history to patients you created');
+      this.logger.warn(
+        `Doctor ${doctorId} attempted to access patient ${createFamilyHistoryDto.patientId}`,
+      );
+      throw new ForbiddenException(
+        'You can only add family history to patients you created',
+      );
     }
 
     // errorHandler required fields
@@ -96,7 +140,9 @@ export class PatientsService {
       throw new BadRequestException('Disease type is required');
     }
     if (!createFamilyHistoryDto.relation) {
-      throw new BadRequestException('Relation is required (e.g., Mother, Father, Sibling)');
+      throw new BadRequestException(
+        'Relation is required (e.g., Mother, Father, Sibling)',
+      );
     }
 
     const familyHistory = new FamilyHistory();
@@ -106,8 +152,11 @@ export class PatientsService {
     familyHistory.severity = createFamilyHistoryDto.severity || 'moderate';
     familyHistory.notes = createFamilyHistoryDto.notes || '';
 
-    const savedFamilyHistory = await this.familyHistoryRepository.save(familyHistory);
-    this.logger.info(`Family history added to patient ${createFamilyHistoryDto.patientId}: ${createFamilyHistoryDto.diseaseType}`);
+    const savedFamilyHistory =
+      await this.familyHistoryRepository.save(familyHistory);
+    this.logger.info(
+      `Family history added to patient ${createFamilyHistoryDto.patientId}: ${createFamilyHistoryDto.diseaseType}`,
+    );
 
     return savedFamilyHistory;
   }
@@ -125,7 +174,9 @@ export class PatientsService {
 
     // Verify that the requester is the doctor who created this patient
     if (patient.doctorId !== doctorId) {
-      this.logger.warn(`Doctor ${doctorId} attempted to access patient ${patientId} created by doctor ${patient.doctorId}`);
+      this.logger.warn(
+        `Doctor ${doctorId} attempted to access patient ${patientId} created by doctor ${patient.doctorId}`,
+      );
       throw new ForbiddenException('You can only view patients you created');
     }
 
@@ -140,20 +191,29 @@ export class PatientsService {
       order: { createdAt: 'DESC' },
     });
 
-    this.logger.info(`Retrieved ${patients.length} patients for doctor ${doctorId}`);
+    this.logger.info(
+      `Retrieved ${patients.length} patients for doctor ${doctorId}`,
+    );
     return patients;
   }
 
   @errorHandler
-  async getPatientMedicalHistory(doctorId: number, patientId: number): Promise<PatientHistory[]> {
+  async getPatientMedicalHistory(
+    doctorId: number,
+    patientId: number,
+  ): Promise<PatientHistory[]> {
     // Verify permissions first
-    const patient = await this.patientRepository.findOne({ where: { id: patientId } });
+    const patient = await this.patientRepository.findOne({
+      where: { id: patientId },
+    });
     if (!patient) {
       throw new NotFoundException(`Patient with ID ${patientId} not found`);
     }
 
     if (patient.doctorId !== doctorId) {
-      throw new ForbiddenException('You can only view history for patients you created');
+      throw new ForbiddenException(
+        'You can only view history for patients you created',
+      );
     }
 
     const history = await this.patientHistoryRepository.find({
@@ -165,15 +225,22 @@ export class PatientsService {
   }
 
   @errorHandler
-  async getPatientFamilyHistory(doctorId: number, patientId: number): Promise<FamilyHistory[]> {
+  async getPatientFamilyHistory(
+    doctorId: number,
+    patientId: number,
+  ): Promise<FamilyHistory[]> {
     // Verify permissions first
-    const patient = await this.patientRepository.findOne({ where: { id: patientId } });
+    const patient = await this.patientRepository.findOne({
+      where: { id: patientId },
+    });
     if (!patient) {
       throw new NotFoundException(`Patient with ID ${patientId} not found`);
     }
 
     if (patient.doctorId !== doctorId) {
-      throw new ForbiddenException('You can only view family history for patients you created');
+      throw new ForbiddenException(
+        'You can only view family history for patients you created',
+      );
     }
 
     const familyHistory = await this.familyHistoryRepository.find({
@@ -185,8 +252,14 @@ export class PatientsService {
   }
 
   @errorHandler
-  async updatePatientNotes(doctorId: number, patientId: number, notes: string): Promise<Patient> {
-    const patient = await this.patientRepository.findOne({ where: { id: patientId } });
+  async updatePatientNotes(
+    doctorId: number,
+    patientId: number,
+    notes: string,
+  ): Promise<Patient> {
+    const patient = await this.patientRepository.findOne({
+      where: { id: patientId },
+    });
     if (!patient) {
       throw new NotFoundException(`Patient with ID ${patientId} not found`);
     }
@@ -197,14 +270,18 @@ export class PatientsService {
 
     patient.notes = notes;
     const updatedPatient = await this.patientRepository.save(patient);
-    this.logger.info(`Patient ${patientId} notes updated by doctor ${doctorId}`);
+    this.logger.info(
+      `Patient ${patientId} notes updated by doctor ${doctorId}`,
+    );
 
     return updatedPatient;
   }
 
   @errorHandler
   async deletePatient(doctorId: number, patientId: number): Promise<void> {
-    const patient = await this.patientRepository.findOne({ where: { id: patientId } });
+    const patient = await this.patientRepository.findOne({
+      where: { id: patientId },
+    });
     if (!patient) {
       throw new NotFoundException(`Patient with ID ${patientId} not found`);
     }
@@ -223,7 +300,10 @@ export class PatientsService {
 
   @errorHandler
   async exportPatientDataCsv(userId: number): Promise<string> {
-    const user = await this.userRepository.findOne({ where: { id: userId }, relations: ['role'] });
+    const user = await this.userRepository.findOne({
+      where: { id: userId },
+      relations: ['role'],
+    });
     if (!user) {
       throw new NotFoundException(`User with ID ${userId} not found`);
     }
@@ -233,22 +313,24 @@ export class PatientsService {
     });
 
     const csvHeader: string[] = [];
-    csvHeader.push([
-      'Patient Notes',
-      'Patient Created At',
-      'Patient Updated At',
-      'Disorder',
-      'Disorder Description',
-      'Diagnosis Date',
-      'Severity',
-      'Medications',
-      'History Recorded At',
-      'Family Disease Type',
-      'Family Relation',
-      'Family Severity',
-      'Family Notes',
-      'Family Recorded At',
-    ].join(','));
+    csvHeader.push(
+      [
+        'Patient Notes',
+        'Patient Created At',
+        'Patient Updated At',
+        'Disorder',
+        'Disorder Description',
+        'Diagnosis Date',
+        'Severity',
+        'Medications',
+        'History Recorded At',
+        'Family Disease Type',
+        'Family Relation',
+        'Family Severity',
+        'Family Notes',
+        'Family Recorded At',
+      ].join(','),
+    );
 
     for (const patient of patients) {
       const medicalRows = patient.medicalHistory ?? [];
@@ -274,12 +356,14 @@ export class PatientsService {
           medicalRow?.severity ?? '',
           familyRow?.notes ?? '',
           medicalRow?.recordedAt ?? '',
-        ].map(v => this.checkCsvFieldOrEscape(v));
+        ].map((v) => this.checkCsvFieldOrEscape(v));
         csvHeader.push(row.join(','));
       }
     }
 
-    this.logger.info(`Patient data exported to CSV by user ${userId} (role: ${user.role.name})`);
+    this.logger.info(
+      `Patient data exported to CSV by user ${userId} (role: ${user.role.name})`,
+    );
     return [csvHeader.join(','), ...csvHeader].join('\n');
   }
 

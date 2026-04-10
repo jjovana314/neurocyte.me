@@ -1,5 +1,4 @@
-import { Column, Entity, PrimaryGeneratedColumn } from "typeorm";
-import { Action } from './action.entity';
+import { Column, Entity, PrimaryGeneratedColumn } from 'typeorm';
 
 @Entity()
 export class Role {
@@ -7,5 +6,5 @@ export class Role {
   id: number;
 
   @Column()
-  name: string; 
+  name: string;
 }

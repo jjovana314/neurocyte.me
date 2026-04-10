@@ -1,4 +1,12 @@
-import { Controller, Delete, Get, Param, ParseIntPipe, Post, UseGuards } from '@nestjs/common';
+import {
+  Controller,
+  Delete,
+  Get,
+  Param,
+  ParseIntPipe,
+  Post,
+  UseGuards,
+} from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
 import { User } from 'src/auth/entites/user.entity';
 import { Roles } from 'src/patients/decorators/roles.decorator';
@@ -18,7 +26,9 @@ export class UserController {
 
   @Post(':id/request-deactivation')
   @UseGuards(AuthGuard('jwt'))
-  async requestDeactivation(@Param('id', ParseIntPipe) id: number): Promise<void> {
+  async requestDeactivation(
+    @Param('id', ParseIntPipe) id: number,
+  ): Promise<void> {
     return this.userService.requestDeactivation(id);
   }
 

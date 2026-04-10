@@ -46,9 +46,18 @@ describe('PatientsService', () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         PatientsService,
-        { provide: getRepositoryToken(Patient), useValue: mockPatientRepository },
-        { provide: getRepositoryToken(PatientHistory), useValue: mockPatientHistoryRepository },
-        { provide: getRepositoryToken(FamilyHistory), useValue: mockFamilyHistoryRepository },
+        {
+          provide: getRepositoryToken(Patient),
+          useValue: mockPatientRepository,
+        },
+        {
+          provide: getRepositoryToken(PatientHistory),
+          useValue: mockPatientHistoryRepository,
+        },
+        {
+          provide: getRepositoryToken(FamilyHistory),
+          useValue: mockFamilyHistoryRepository,
+        },
         { provide: getRepositoryToken(User), useValue: mockUserRepository },
         { provide: PinoLogger, useValue: mockLogger },
       ],

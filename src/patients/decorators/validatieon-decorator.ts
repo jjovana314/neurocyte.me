@@ -1,4 +1,8 @@
-export function errorHandler(target: any, propertyKey: string, descriptor: PropertyDescriptor) {
+export function errorHandler(
+  target: any,
+  propertyKey: string,
+  descriptor: PropertyDescriptor,
+) {
   const originalMethod = descriptor.value;
 
   descriptor.value = async function (...args: any[]) {

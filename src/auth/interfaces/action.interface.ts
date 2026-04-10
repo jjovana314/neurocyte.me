@@ -3,6 +3,6 @@ export interface IAction {
   roleName: string;
 }
 
-export interface  IActions {
-  actions: IAction[]
+export interface IActions {
+  actions: IAction[];
 }

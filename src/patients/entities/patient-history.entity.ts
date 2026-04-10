@@ -1,4 +1,11 @@
-import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, CreateDateColumn, JoinColumn } from 'typeorm';
+import {
+  Entity,
+  PrimaryGeneratedColumn,
+  Column,
+  ManyToOne,
+  CreateDateColumn,
+  JoinColumn,
+} from 'typeorm';
 import { Patient } from './patient.entity';
 
 @Entity()
@@ -9,7 +16,9 @@ export class PatientHistory {
   @Column()
   patientId: number;
 
-  @ManyToOne(() => Patient, (patient) => patient.medicalHistory, { onDelete: 'CASCADE' })
+  @ManyToOne(() => Patient, (patient) => patient.medicalHistory, {
+    onDelete: 'CASCADE',
+  })
   @JoinColumn({ name: 'patientId' })
   patient: Patient;
 

@@ -19,31 +19,31 @@ export class UserService {
   ) {}
 
   async findUserByEmail(email: string): Promise<User | null> {
-    return await this.userRepository.findOne({ where: { email }});
+    return await this.userRepository.findOne({ where: { email } });
   }
 
   async validateUser(email: string, password: string): Promise<User | null> {
     const user = await this.findUserByEmail(email);
-    
+
     if (!user) {
       this.logger.error(`User not found with email: ${email}`);
       return null;
     }
-    
+
     const isMatch = await bcrypt.compare(password, user.password);
     this.logger.info(`Password validation result for ${email}: ${isMatch}`);
-    
+
     if (isMatch) {
       this.logger.info(`User ${email} authenticated successfully`);
       return user;
     }
-    
+
     this.logger.error(`Invalid password for user: ${email}`);
     return null;
   }
 
   async save(user: User): Promise<User> {
-    const newUser =  this.userRepository.create(user);
+    const newUser = this.userRepository.create(user);
     return await this.userRepository.save(newUser);
   }
 
@@ -56,7 +56,10 @@ export class UserService {
   }
 
   async requestDeactivation(userId: number): Promise<void> {
-    const user = await this.userRepository.findOne({ where: { id: userId }, relations: ['role'] });
+    const user = await this.userRepository.findOne({
+      where: { id: userId },
+      relations: ['role'],
+    });
     if (!user) {
       throw new NotFoundException(`User with id ${userId} not found`);
     }
@@ -65,17 +68,26 @@ export class UserService {
     user.deactivationToken = token;
     await this.userRepository.save(user);
 
-    const admins = await this.userRepository.find({ where: { role: { name: 'admin' } }, relations: ['role'] });
+    const admins = await this.userRepository.find({
+      where: { role: { name: 'admin' } },
+      relations: ['role'],
+    });
     const deactivationLink = `${config.get().APP_URL}/user/deactivate/${token}`;
     const userName = `${user.firstName} ${user.lastName}`;
 
     for (const admin of admins) {
-      await this.mailService.sendDeactivationEmail(admin.email, deactivationLink, userName);
+      await this.mailService.sendDeactivationEmail(
+        admin.email,
+        deactivationLink,
+        userName,
+      );
     }
   }
 
   async removeByToken(token: string): Promise<User> {
-    const user = await this.userRepository.findOne({ where: { deactivationToken: token } });
+    const user = await this.userRepository.findOne({
+      where: { deactivationToken: token },
+    });
     if (!user) {
       throw new NotFoundException('Invalid or expired deactivation token');
     }

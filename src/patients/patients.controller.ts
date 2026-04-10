@@ -17,7 +17,11 @@ import { AuthGuard } from '@nestjs/passport';
 import { Roles } from './decorators/roles.decorator';
 import { RolesGuard } from './decorators/roles.guard';
 import { PatientsService } from './patients.service';
-import { CreatePatientDto, CreatePatientHistoryDto, CreateFamilyHistoryDto } from './dtos';
+import {
+  CreatePatientDto,
+  CreatePatientHistoryDto,
+  CreateFamilyHistoryDto,
+} from './dtos';
 import { Patient } from './entities/patient.entity';
 import { PatientHistory } from './entities/patient-history.entity';
 import { FamilyHistory } from './entities/family-history.entity';
@@ -58,10 +62,7 @@ export class PatientsController {
   @Get('export/csv')
   @Roles('doctor', 'researcher')
   @UseGuards(RolesGuard)
-  async exportCsv(
-    @Request() req,
-    @Res() res: Response,
-  ): Promise<void> {
+  async exportCsv(@Request() req, @Res() res: Response): Promise<void> {
     const csv = await this.patientsService.exportPatientDataCsv(req.user.id);
     res.set({
       'Content-Type': 'text/csv',
@@ -80,7 +81,10 @@ export class PatientsController {
     @Request() req,
     @Param('id') patientId: string,
   ): Promise<Patient> {
-    return this.patientsService.getPatient(req.user.id, parseInt(patientId, 10));
+    return this.patientsService.getPatient(
+      req.user.id,
+      parseInt(patientId, 10),
+    );
   }
 
   /**
@@ -93,7 +97,11 @@ export class PatientsController {
     @Param('id') patientId: string,
     @Body() body: { notes: string },
   ): Promise<Patient> {
-    return this.patientsService.updatePatientNotes(req.user.id, parseInt(patientId, 10), body.notes);
+    return this.patientsService.updatePatientNotes(
+      req.user.id,
+      parseInt(patientId, 10),
+      body.notes,
+    );
   }
 
   /**
@@ -106,7 +114,10 @@ export class PatientsController {
     @Request() req,
     @Param('id') patientId: string,
   ): Promise<void> {
-    return this.patientsService.deletePatient(req.user.id, parseInt(patientId, 10));
+    return this.patientsService.deletePatient(
+      req.user.id,
+      parseInt(patientId, 10),
+    );
   }
 
   /**
@@ -121,7 +132,10 @@ export class PatientsController {
     @Body() createHistoryDto: CreatePatientHistoryDto,
   ): Promise<PatientHistory> {
     createHistoryDto.patientId = parseInt(patientId, 10);
-    return this.patientsService.addPatientHistory(req.user.id, createHistoryDto);
+    return this.patientsService.addPatientHistory(
+      req.user.id,
+      createHistoryDto,
+    );
   }
 
   /**
@@ -133,7 +147,10 @@ export class PatientsController {
     @Request() req,
     @Param('id') patientId: string,
   ): Promise<PatientHistory[]> {
-    return this.patientsService.getPatientMedicalHistory(req.user.id, parseInt(patientId, 10));
+    return this.patientsService.getPatientMedicalHistory(
+      req.user.id,
+      parseInt(patientId, 10),
+    );
   }
 
   /**
@@ -149,7 +166,10 @@ export class PatientsController {
     @Body() createFamilyHistoryDto: CreateFamilyHistoryDto,
   ): Promise<FamilyHistory> {
     createFamilyHistoryDto.patientId = parseInt(patientId, 10);
-    return this.patientsService.addFamilyHistory(req.user.id, createFamilyHistoryDto);
+    return this.patientsService.addFamilyHistory(
+      req.user.id,
+      createFamilyHistoryDto,
+    );
   }
 
   /**
@@ -161,7 +181,9 @@ export class PatientsController {
     @Request() req,
     @Param('id') patientId: string,
   ): Promise<FamilyHistory[]> {
-    return this.patientsService.getPatientFamilyHistory(req.user.id, parseInt(patientId, 10));
+    return this.patientsService.getPatientFamilyHistory(
+      req.user.id,
+      parseInt(patientId, 10),
+    );
   }
-
 }

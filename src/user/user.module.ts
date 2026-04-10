@@ -14,9 +14,7 @@ import { LoggerModule } from 'nestjs-pino';
       pinoHttp: {
         useLevel: 'info',
         serializers: {
-          timestamp: () => {
-            `time: ${new Date(Date.now()).toISOString()}`;
-          },
+          timestamp: () => `time: ${new Date(Date.now()).toISOString()}`,
         },
         transport: {
           target: 'pino-pretty',

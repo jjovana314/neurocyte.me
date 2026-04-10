@@ -52,11 +52,17 @@ describe('AuthService (login & register)', () => {
   });
 
   it('login should return accessToken and refreshToken', async () => {
-    const user = { email: 'a@b.com', role: { name: 'user', actions: [] } } as any;
+    const user = {
+      email: 'a@b.com',
+      role: { name: 'user', actions: [] },
+    } as any;
     mockJwtService.sign.mockReturnValue('signed-token');
 
     const result = await service.login(user);
-    expect(result).toEqual({ accessToken: 'signed-token', refreshToken: 'signed-token' });
+    expect(result).toEqual({
+      accessToken: 'signed-token',
+      refreshToken: 'signed-token',
+    });
     expect(mockJwtService.sign).toHaveBeenCalledTimes(2);
   });
 
@@ -73,19 +79,32 @@ describe('AuthService (login & register)', () => {
     mockJwtService.sign.mockReturnValue('reg-token');
 
     // prevent actual hashing by stubbing the prototype method
-    const hashSpy = jest.spyOn(User.prototype, 'hashPassword').mockImplementation(async () => {});
+    const hashSpy = jest
+      .spyOn(User.prototype, 'hashPassword')
+      .mockImplementation(async () => {});
 
     mockUsersService.save.mockImplementation(async (u: any) => {
       u.id = 1;
       return u;
     });
 
-    const result = await service.register(email, password, firstName, lastName, roleName);
+    const result = await service.register(
+      email,
+      password,
+      firstName,
+      lastName,
+      roleName,
+    );
 
     expect(mockUsersService.findUserByEmail).toHaveBeenCalledWith(email);
-    expect(mockRoleRepository.findOne).toHaveBeenCalledWith({ where: { name: roleName } });
+    expect(mockRoleRepository.findOne).toHaveBeenCalledWith({
+      where: { name: roleName },
+    });
     expect(mockUsersService.save).toHaveBeenCalled();
-    expect(result).toEqual({ accessToken: 'reg-token', refreshToken: 'reg-token' });
+    expect(result).toEqual({
+      accessToken: 'reg-token',
+      refreshToken: 'reg-token',
+    });
 
     hashSpy.mockRestore();
   });

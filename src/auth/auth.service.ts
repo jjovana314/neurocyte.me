@@ -1,9 +1,13 @@
-import { BadRequestException, Injectable, UnauthorizedException } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  UnauthorizedException,
+} from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { UserService } from 'src/user/user.service';
 import { User } from './entites/user.entity';
 import { PinoLogger } from 'nestjs-pino';
-import { IRole, IRoles } from './interfaces/roles.interface';
+import { IRoles } from './interfaces/roles.interface';
 import { Role } from './entites/role.entity';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
@@ -18,7 +22,7 @@ export class AuthService {
     @InjectRepository(Action) private actionRepository: Repository<Action>,
     private jwtService: JwtService,
     private logger: PinoLogger,
-  ) { }
+  ) {}
 
   async login(user: User): Promise<UserInfo> {
     const payload = { email: user.email, role: user.role };
@@ -36,7 +40,13 @@ export class AuthService {
     return this.login(user);
   }
 
-  async register(email: string, password: string, firstName: string, lastName: string, role: string): Promise<UserInfo> {
+  async register(
+    email: string,
+    password: string,
+    firstName: string,
+    lastName: string,
+    role: string,
+  ): Promise<UserInfo> {
     // todo crete use info data with access token
     const existingUser = await this.usersService.findUserByEmail(email);
     if (existingUser) {
@@ -49,7 +59,9 @@ export class AuthService {
     user.firstName = firstName;
     user.lastName = lastName;
 
-    const foundRole = await this.roleRepository.findOne({ where: { name: role } });
+    const foundRole = await this.roleRepository.findOne({
+      where: { name: role },
+    });
     if (!foundRole) {
       throw new UnauthorizedException(`Role "${role}" does not exist`);
     }

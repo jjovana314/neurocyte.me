@@ -1,4 +1,11 @@
-import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, CreateDateColumn, JoinColumn } from 'typeorm';
+import {
+  Entity,
+  PrimaryGeneratedColumn,
+  Column,
+  ManyToOne,
+  CreateDateColumn,
+  JoinColumn,
+} from 'typeorm';
 import { Patient } from './patient.entity';
 
 export enum DiseaseType {
@@ -18,7 +25,9 @@ export class FamilyHistory {
   @Column()
   patientId: number;
 
-  @ManyToOne(() => Patient, (patient) => patient.familyHistory, { onDelete: 'CASCADE' })
+  @ManyToOne(() => Patient, (patient) => patient.familyHistory, {
+    onDelete: 'CASCADE',
+  })
   @JoinColumn({ name: 'patientId' })
   patient: Patient;
 

@@ -1,4 +1,11 @@
-import { Entity, PrimaryGeneratedColumn, Column, BeforeInsert, ManyToOne, JoinColumn } from 'typeorm';
+import {
+  Entity,
+  PrimaryGeneratedColumn,
+  Column,
+  BeforeInsert,
+  ManyToOne,
+  JoinColumn,
+} from 'typeorm';
 import * as bcrypt from 'bcrypt';
 import { Role } from './role.entity';
 

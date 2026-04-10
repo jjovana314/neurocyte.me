@@ -21,7 +21,7 @@ import { PatientsModule } from './patients/patients.module';
       database: config.get().DATABASE_NAME,
       entities: [__dirname + '/**/*.entity{.ts,.js}'],
       synchronize: true,
-    })
+    }),
   ],
   controllers: [AppController],
   providers: [AppService],

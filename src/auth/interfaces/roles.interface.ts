@@ -1,5 +1,3 @@
-import { IAction, IActions } from './action.interface';
-
 export interface IRoles {
   roles: IRole[];
 }

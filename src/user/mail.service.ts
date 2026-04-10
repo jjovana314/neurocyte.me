@@ -17,7 +17,11 @@ export class MailService {
     });
   }
 
-  async sendDeactivationEmail(adminEmail: string, deactivationLink: string, userName: string): Promise<void> {
+  async sendDeactivationEmail(
+    adminEmail: string,
+    deactivationLink: string,
+    userName: string,
+  ): Promise<void> {
     await this.transporter.sendMail({
       from: config.get().MAIL_FROM,
       to: adminEmail,

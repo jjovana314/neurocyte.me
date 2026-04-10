@@ -1,10 +1,4 @@
-import {
-  Body,
-  Controller,
-  Get,
-  Post,
-  Query
-} from '@nestjs/common';
+import { Body, Controller, Get, Post, Query } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { RegisterDto } from './dtos/register.dto';
 import { LoginDto } from './dtos/login.dto';
@@ -34,7 +28,10 @@ export class AuthController {
   }
 
   @Get('roles')
-  async getRoles(@Query('name') name?: string, @Query('actions') actions?: string[]): Promise<any> {
+  async getRoles(
+    @Query('name') name?: string,
+    @Query('actions') actions?: string[],
+  ): Promise<any> {
     return await this.authService.getRoles(name, actions);
   }
 }

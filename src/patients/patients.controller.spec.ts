@@ -4,7 +4,6 @@ import { PatientsService } from './patients.service';
 
 describe('PatientsController', () => {
   let controller: PatientsController;
-  let patientsService: PatientsService;
 
   const mockPatientsService = {
     createPatient: jest.fn(),
@@ -21,13 +20,10 @@ describe('PatientsController', () => {
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       controllers: [PatientsController],
-      providers: [
-        { provide: PatientsService, useValue: mockPatientsService },
-      ],
+      providers: [{ provide: PatientsService, useValue: mockPatientsService }],
     }).compile();
 
     controller = module.get<PatientsController>(PatientsController);
-    patientsService = module.get<PatientsService>(PatientsService);
   });
 
   it('should be defined', () => {
@@ -42,6 +38,9 @@ describe('PatientsController', () => {
     mockPatientsService.createPatient.mockResolvedValue(mockPatient);
     await controller.createPatient(req, createPatientDto);
 
-    expect(mockPatientsService.createPatient).toHaveBeenCalledWith(1, createPatientDto);
+    expect(mockPatientsService.createPatient).toHaveBeenCalledWith(
+      1,
+      createPatientDto,
+    );
   });
 });

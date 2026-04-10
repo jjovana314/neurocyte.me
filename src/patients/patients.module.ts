@@ -9,10 +9,10 @@ import { User } from 'src/auth/entites/user.entity';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([Patient, PatientHistory, FamilyHistory, User])
+    TypeOrmModule.forFeature([Patient, PatientHistory, FamilyHistory, User]),
   ],
   controllers: [PatientsController],
   providers: [PatientsService],
-  exports: [PatientsService]
+  exports: [PatientsService],
 })
 export class PatientsModule {}
