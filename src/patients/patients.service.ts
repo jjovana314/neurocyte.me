@@ -10,12 +10,13 @@ import { PinoLogger } from 'nestjs-pino';
 import { errorHandler } from './decorators/validatieon-decorator';
 import { Patient } from './entities/patient.entity';
 import { PatientHistory } from './entities/patient-history.entity';
-import { FamilyHistory } from './entities/family-history.entity';
+import { FamilyHistory, DiseaseType } from './entities/family-history.entity';
 import { User } from 'src/auth/entites/user.entity';
 import {
   CreatePatientDto,
   CreatePatientHistoryDto,
   CreateFamilyHistoryDto,
+  ImportCsvResponseDto,
 } from './dtos';
 
 @Injectable()
@@ -374,5 +375,155 @@ export class PatientsService {
       return `"${str.replace(/"/g, '""')}"`;
     }
     return str;
+  }
+
+  async importCsvData(
+    doctorId: number,
+    fileBuffer: Buffer,
+  ): Promise<ImportCsvResponseDto> {
+    const lines = fileBuffer
+      .toString('utf8')
+      .split('\n')
+      .map((l) => l.trim())
+      .filter((l) => l.length > 0);
+
+    if (lines.length < 2) {
+      return {
+        imported: 0,
+        skipped: 0,
+        errors: [{ row: 0, reason: 'CSV file is empty or has no data rows' }],
+      };
+    }
+
+    // Skip header row
+    const dataRows = lines.slice(1);
+    const result = new ImportCsvResponseDto();
+    result.imported = 0;
+    result.skipped = 0;
+    result.errors = [];
+
+    let currentPatient: Patient | null = null;
+
+    for (let i = 0; i < dataRows.length; i++) {
+      const rowNum = i + 2; // 1-indexed; row 1 is the header
+      const cols = this.parseCsvLine(dataRows[i]);
+
+      const notes = cols[0] ?? '';
+      const disorder = cols[3] ?? '';
+      const description = cols[4] ?? '';
+      const diagnosisDate = cols[5] ?? '';
+      const severity = cols[6] ?? '';
+      const medications = cols[7] ?? '';
+      const familyDisease = cols[9] ?? '';
+      const relation = cols[10] ?? '';
+      const familySeverity = cols[11] ?? '';
+      const familyNotes = cols[12] ?? '';
+
+      // A non-empty notes column signals the start of a new patient record
+      if (notes) {
+        try {
+          const patient = new Patient();
+          patient.doctorId = doctorId;
+          patient.notes = notes;
+          currentPatient = await this.patientRepository.save(patient);
+          result.imported++;
+        } catch (err) {
+          result.skipped++;
+          result.errors.push({
+            row: rowNum,
+            reason: `Failed to create patient: ${(err as Error).message}`,
+          });
+          currentPatient = null;
+        }
+      }
+
+      // Rows with no notes and no active patient cannot be associated
+      if (!currentPatient) {
+        if (!notes) {
+          result.errors.push({
+            row: rowNum,
+            reason:
+              'Row skipped: no active patient context (notes column is empty)',
+          });
+          result.skipped++;
+        }
+        continue;
+      }
+
+      // Import medical history when disorder is present
+      if (disorder) {
+        try {
+          const history = new PatientHistory();
+          history.patientId = currentPatient.id;
+          history.disorder = disorder;
+          history.description = description || '';
+          history.diagnosisDate = diagnosisDate || null;
+          history.severity = severity || 'moderate';
+          history.medications = medications || '';
+          await this.patientHistoryRepository.save(history);
+        } catch (err) {
+          result.errors.push({
+            row: rowNum,
+            reason: `Failed to import medical history (disorder: ${disorder}): ${(err as Error).message}`,
+          });
+        }
+      }
+
+      // Import family history when both required fields are present
+      if (familyDisease && relation) {
+        try {
+          const fh = new FamilyHistory();
+          fh.patientId = currentPatient.id;
+          fh.diseaseType = familyDisease as DiseaseType;
+          fh.relation = relation;
+          fh.severity = familySeverity || 'moderate';
+          fh.notes = familyNotes || '';
+          await this.familyHistoryRepository.save(fh);
+        } catch (err) {
+          result.errors.push({
+            row: rowNum,
+            reason: `Failed to import family history (disease: ${familyDisease}): ${(err as Error).message}`,
+          });
+        }
+      }
+    }
+
+    this.logger.info(
+      `CSV import by doctor ${doctorId}: ${result.imported} patients imported, ${result.skipped} rows skipped, ${result.errors.length} errors`,
+    );
+    return result;
+  }
+
+  private parseCsvLine(line: string): string[] {
+    const fields: string[] = [];
+    let current = '';
+    let inQuotes = false;
+
+    for (let i = 0; i < line.length; i++) {
+      const ch = line[i];
+      if (inQuotes) {
+        if (ch === '"') {
+          if (line[i + 1] === '"') {
+            current += '"';
+            i++; // skip escaped quote
+          } else {
+            inQuotes = false;
+          }
+        } else {
+          current += ch;
+        }
+      } else {
+        if (ch === '"') {
+          inQuotes = true;
+        } else if (ch === ',') {
+          fields.push(current);
+          current = '';
+        } else {
+          current += ch;
+        }
+      }
+    }
+    fields.push(current);
+    return fields;
   }
 }

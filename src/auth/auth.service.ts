@@ -25,7 +25,7 @@ export class AuthService {
   ) {}
 
   async login(user: User): Promise<UserInfo> {
-    const payload = { email: user.email, role: user.role };
+    const payload = { id: user.id, email: user.email, role: user.role };
     return {
       accessToken: this.jwtService.sign(payload, { expiresIn: '1d' }),
       refreshToken: this.jwtService.sign(payload, { expiresIn: '7d' }),

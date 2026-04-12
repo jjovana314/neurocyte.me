@@ -7,12 +7,15 @@ import {
   Body,
   Param,
   UseGuards,
-  Request,
   HttpCode,
   HttpStatus,
-  Res,
+  Header,
+  UploadedFile,
+  UseInterceptors,
+  ParseFilePipe,
+  FileTypeValidator,
 } from '@nestjs/common';
-import { Response } from 'express';
+import { FileInterceptor } from '@nestjs/platform-express';
 import { AuthGuard } from '@nestjs/passport';
 import { Roles } from './decorators/roles.decorator';
 import { RolesGuard } from './decorators/roles.guard';
@@ -21,10 +24,15 @@ import {
   CreatePatientDto,
   CreatePatientHistoryDto,
   CreateFamilyHistoryDto,
+  ImportCsvResponseDto,
+  UpdatePatientNotesDto,
 } from './dtos';
 import { Patient } from './entities/patient.entity';
 import { PatientHistory } from './entities/patient-history.entity';
 import { FamilyHistory } from './entities/family-history.entity';
+import { CurrentUser } from 'src/auth/decorators/current-user.decorator';
+import { JwtUser } from 'src/auth/classes/jwt-user.class';
+import { MultipartFile } from 'src/common/classes/multipart-file.class';
 
 @Controller('patients')
 @UseGuards(AuthGuard('jwt'))
@@ -39,10 +47,10 @@ export class PatientsController {
   @Post()
   @HttpCode(HttpStatus.CREATED)
   async createPatient(
-    @Request() req,
+    @CurrentUser() user: JwtUser,
     @Body() createPatientDto: CreatePatientDto,
   ): Promise<Patient> {
-    return this.patientsService.createPatient(req.user.id, createPatientDto);
+    return this.patientsService.createPatient(user.id, createPatientDto);
   }
 
   /**
@@ -50,8 +58,8 @@ export class PatientsController {
    * GET /patients/my-patients
    */
   @Get('my-patients')
-  async getMyPatients(@Request() req): Promise<Patient[]> {
-    return this.patientsService.getDoctorPatients(req.user.id);
+  async getMyPatients(@CurrentUser() user: JwtUser): Promise<Patient[]> {
+    return this.patientsService.getDoctorPatients(user.id);
   }
 
   /**
@@ -62,13 +70,32 @@ export class PatientsController {
   @Get('export/csv')
   @Roles('doctor', 'researcher')
   @UseGuards(RolesGuard)
-  async exportCsv(@Request() req, @Res() res: Response): Promise<void> {
-    const csv = await this.patientsService.exportPatientDataCsv(req.user.id);
-    res.set({
-      'Content-Type': 'text/csv',
-      'Content-Disposition': 'attachment; filename="patient_export.csv"',
-    });
-    res.send(csv);
+  @Header('Content-Type', 'text/csv')
+  @Header('Content-Disposition', 'attachment; filename="patient_export.csv"')
+  async exportCsv(@CurrentUser() user: JwtUser): Promise<string> {
+    return this.patientsService.exportPatientDataCsv(user.id);
+  }
+
+  /**
+   * Import patient data from a CSV file
+   * POST /patients/import/csv
+   * Only doctors can import
+   */
+  @Post('import/csv')
+  @HttpCode(HttpStatus.OK)
+  @Roles('doctor')
+  @UseGuards(RolesGuard)
+  @UseInterceptors(FileInterceptor('file'))
+  async importCsv(
+    @CurrentUser() user: JwtUser,
+    @UploadedFile(
+      new ParseFilePipe({
+        validators: [new FileTypeValidator({ fileType: 'text/csv' })],
+      }),
+    )
+    file: MultipartFile,
+  ): Promise<ImportCsvResponseDto> {
+    return this.patientsService.importCsvData(user.id, file.buffer);
   }
 
   /**
@@ -78,13 +105,10 @@ export class PatientsController {
    */
   @Get(':id')
   async getPatient(
-    @Request() req,
+    @CurrentUser() user: JwtUser,
     @Param('id') patientId: string,
   ): Promise<Patient> {
-    return this.patientsService.getPatient(
-      req.user.id,
-      parseInt(patientId, 10),
-    );
+    return this.patientsService.getPatient(user.id, parseInt(patientId, 10));
   }
 
   /**
@@ -93,12 +117,12 @@ export class PatientsController {
    */
   @Put(':id')
   async updatePatientNotes(
-    @Request() req,
+    @CurrentUser() user: JwtUser,
     @Param('id') patientId: string,
-    @Body() body: { notes: string },
+    @Body() body: UpdatePatientNotesDto,
   ): Promise<Patient> {
     return this.patientsService.updatePatientNotes(
-      req.user.id,
+      user.id,
       parseInt(patientId, 10),
       body.notes,
     );
@@ -111,13 +135,10 @@ export class PatientsController {
   @Delete(':id')
   @HttpCode(HttpStatus.NO_CONTENT)
   async deletePatient(
-    @Request() req,
+    @CurrentUser() user: JwtUser,
     @Param('id') patientId: string,
   ): Promise<void> {
-    return this.patientsService.deletePatient(
-      req.user.id,
-      parseInt(patientId, 10),
-    );
+    return this.patientsService.deletePatient(user.id, parseInt(patientId, 10));
   }
 
   /**
@@ -127,15 +148,12 @@ export class PatientsController {
   @Post(':id/history')
   @HttpCode(HttpStatus.CREATED)
   async addPatientHistory(
-    @Request() req,
+    @CurrentUser() user: JwtUser,
     @Param('id') patientId: string,
     @Body() createHistoryDto: CreatePatientHistoryDto,
   ): Promise<PatientHistory> {
     createHistoryDto.patientId = parseInt(patientId, 10);
-    return this.patientsService.addPatientHistory(
-      req.user.id,
-      createHistoryDto,
-    );
+    return this.patientsService.addPatientHistory(user.id, createHistoryDto);
   }
 
   /**
@@ -144,11 +162,11 @@ export class PatientsController {
    */
   @Get(':id/history')
   async getPatientHistory(
-    @Request() req,
+    @CurrentUser() user: JwtUser,
     @Param('id') patientId: string,
   ): Promise<PatientHistory[]> {
     return this.patientsService.getPatientMedicalHistory(
-      req.user.id,
+      user.id,
       parseInt(patientId, 10),
     );
   }
@@ -156,18 +174,17 @@ export class PatientsController {
   /**
    * Add family history to a patient
    * POST /patients/:id/family-history
-   * Family history includes neurological diseases like Alzheimer's, Parkinson's, etc.
    */
   @Post(':id/family-history')
   @HttpCode(HttpStatus.CREATED)
   async addFamilyHistory(
-    @Request() req,
+    @CurrentUser() user: JwtUser,
     @Param('id') patientId: string,
     @Body() createFamilyHistoryDto: CreateFamilyHistoryDto,
   ): Promise<FamilyHistory> {
     createFamilyHistoryDto.patientId = parseInt(patientId, 10);
     return this.patientsService.addFamilyHistory(
-      req.user.id,
+      user.id,
       createFamilyHistoryDto,
     );
   }
@@ -178,11 +195,11 @@ export class PatientsController {
    */
   @Get(':id/family-history')
   async getPatientFamilyHistory(
-    @Request() req,
+    @CurrentUser() user: JwtUser,
     @Param('id') patientId: string,
   ): Promise<FamilyHistory[]> {
     return this.patientsService.getPatientFamilyHistory(
-      req.user.id,
+      user.id,
       parseInt(patientId, 10),
     );
   }
