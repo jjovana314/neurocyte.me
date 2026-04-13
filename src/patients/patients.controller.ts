@@ -46,6 +46,8 @@ export class PatientsController {
    * Only doctors can create patients
    */
   @Post()
+  @Roles('doctor')
+  @UseGuards(RolesGuard)
   @HttpCode(HttpStatus.CREATED)
   async createPatient(
     @CurrentUser() user: JwtUser,
