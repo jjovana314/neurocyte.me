@@ -144,9 +144,9 @@ describe('PatientsService', () => {
     it('should throw NotFoundException when doctor does not exist', async () => {
       mockUserRepository.findOne.mockResolvedValue(null);
 
-      await expect(service.exportPatientPdf(doctorId, patientId)).rejects.toThrow(
-        NotFoundException,
-      );
+      await expect(
+        service.exportPatientPdf(doctorId, patientId),
+      ).rejects.toThrow(NotFoundException);
     });
 
     it('should throw ForbiddenException when user is not a doctor', async () => {
@@ -155,18 +155,18 @@ describe('PatientsService', () => {
         role: { name: 'researcher' },
       });
 
-      await expect(service.exportPatientPdf(doctorId, patientId)).rejects.toThrow(
-        ForbiddenException,
-      );
+      await expect(
+        service.exportPatientPdf(doctorId, patientId),
+      ).rejects.toThrow(ForbiddenException);
     });
 
     it('should throw NotFoundException when patient does not exist', async () => {
       mockUserRepository.findOne.mockResolvedValue(mockDoctor);
       mockPatientRepository.findOne.mockResolvedValue(null);
 
-      await expect(service.exportPatientPdf(doctorId, patientId)).rejects.toThrow(
-        NotFoundException,
-      );
+      await expect(
+        service.exportPatientPdf(doctorId, patientId),
+      ).rejects.toThrow(NotFoundException);
     });
 
     it('should throw ForbiddenException when doctor does not own the patient', async () => {
@@ -176,9 +176,9 @@ describe('PatientsService', () => {
         doctorId: 999,
       });
 
-      await expect(service.exportPatientPdf(doctorId, patientId)).rejects.toThrow(
-        ForbiddenException,
-      );
+      await expect(
+        service.exportPatientPdf(doctorId, patientId),
+      ).rejects.toThrow(ForbiddenException);
     });
 
     it('should handle patient with no medical or family history', async () => {

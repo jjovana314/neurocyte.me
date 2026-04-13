@@ -379,10 +379,7 @@ export class PatientsService {
   }
 
   @errorHandler
-  async exportPatientPdf(
-    doctorId: number,
-    patientId: number,
-  ): Promise<Buffer> {
+  async exportPatientPdf(doctorId: number, patientId: number): Promise<Buffer> {
     const doctor = await this.userRepository.findOne({
       where: { id: doctorId },
       relations: ['role'],
@@ -391,7 +388,9 @@ export class PatientsService {
       throw new NotFoundException(`Doctor with ID ${doctorId} not found`);
     }
     if (!doctor.role || doctor.role.name !== 'doctor') {
-      throw new ForbiddenException('Only doctors can export patient PDF reports');
+      throw new ForbiddenException(
+        'Only doctors can export patient PDF reports',
+      );
     }
 
     const patient = await this.patientRepository.findOne({
@@ -405,7 +404,9 @@ export class PatientsService {
       this.logger.warn(
         `Doctor ${doctorId} attempted to export PDF for patient ${patientId} created by doctor ${patient.doctorId}`,
       );
-      throw new ForbiddenException('You can only export records for patients you created');
+      throw new ForbiddenException(
+        'You can only export records for patients you created',
+      );
     }
 
     const doc = new PDFDocument({ margin: 50 });
@@ -430,7 +431,7 @@ export class PatientsService {
         .text(`Generated: ${new Date().toLocaleString()}`, { align: 'center' });
       doc.moveDown(1);
 
-      // ─ Patient Info 
+      // ─ Patient Info
       doc
         .fontSize(14)
         .font('Helvetica-Bold')
@@ -466,10 +467,7 @@ export class PatientsService {
       doc.moveDown(1);
 
       // ─ Medical History
-      doc
-        .fontSize(14)
-        .font('Helvetica-Bold')
-        .text('Medical History');
+      doc.fontSize(14).font('Helvetica-Bold').text('Medical History');
       doc
         .moveTo(50, doc.y)
         .lineTo(doc.page.width - 50, doc.y)
@@ -498,10 +496,7 @@ export class PatientsService {
       doc.moveDown(1);
 
       // ─ Family History
-      doc
-        .fontSize(14)
-        .font('Helvetica-Bold')
-        .text('Family History');
+      doc.fontSize(14).font('Helvetica-Bold').text('Family History');
       doc
         .moveTo(50, doc.y)
         .lineTo(doc.page.width - 50, doc.y)
@@ -530,17 +525,20 @@ export class PatientsService {
       doc
         .fontSize(9)
         .fillColor('#888888')
-        .text('Confidential – For authorized medical personnel only', 50, doc.page.height - 50, {
-          align: 'center',
-          width: doc.page.width - 100,
-        });
+        .text(
+          'Confidential – For authorized medical personnel only',
+          50,
+          doc.page.height - 50,
+          {
+            align: 'center',
+            width: doc.page.width - 100,
+          },
+        );
 
       doc.end();
     });
 
-    this.logger.info(
-      `Patient ${patientId} PDF exported by doctor ${doctorId}`,
-    );
+    this.logger.info(`Patient ${patientId} PDF exported by doctor ${doctorId}`);
     return pdfBuffer;
   }
 
