@@ -12,6 +12,7 @@ import { Patient } from './entities/patient.entity';
 import { PatientHistory } from './entities/patient-history.entity';
 import { FamilyHistory, DiseaseType } from './entities/family-history.entity';
 import { User } from 'src/auth/entites/user.entity';
+import PDFDocument from 'pdfkit';
 import {
   CreatePatientDto,
   CreatePatientHistoryDto,
@@ -52,9 +53,9 @@ export class PatientsService {
       throw new ForbiddenException('Only doctors can create patient records');
     }
 
-    // Create new patient record without storing name
     const patient = new Patient();
     patient.doctorId = doctorId;
+    patient.name = createPatientDto.name || '';
     patient.notes = createPatientDto.notes || '';
 
     const savedPatient = await this.patientRepository.save(patient);
@@ -375,6 +376,172 @@ export class PatientsService {
       return `"${str.replace(/"/g, '""')}"`;
     }
     return str;
+  }
+
+  @errorHandler
+  async exportPatientPdf(
+    doctorId: number,
+    patientId: number,
+  ): Promise<Buffer> {
+    const doctor = await this.userRepository.findOne({
+      where: { id: doctorId },
+      relations: ['role'],
+    });
+    if (!doctor) {
+      throw new NotFoundException(`Doctor with ID ${doctorId} not found`);
+    }
+    if (!doctor.role || doctor.role.name !== 'doctor') {
+      throw new ForbiddenException('Only doctors can export patient PDF reports');
+    }
+
+    const patient = await this.patientRepository.findOne({
+      where: { id: patientId },
+      relations: ['medicalHistory', 'familyHistory', 'doctor'],
+    });
+    if (!patient) {
+      throw new NotFoundException(`Patient with ID ${patientId} not found`);
+    }
+    if (patient.doctorId !== doctorId) {
+      this.logger.warn(
+        `Doctor ${doctorId} attempted to export PDF for patient ${patientId} created by doctor ${patient.doctorId}`,
+      );
+      throw new ForbiddenException('You can only export records for patients you created');
+    }
+
+    const doc = new PDFDocument({ margin: 50 });
+    const buffers: Buffer[] = [];
+
+    doc.on('data', (chunk: Buffer) => buffers.push(chunk));
+
+    const pdfBuffer = await new Promise<Buffer>((resolve, reject) => {
+      doc.on('end', () => resolve(Buffer.concat(buffers)));
+      doc.on('error', reject);
+
+      // ─ Header
+      doc
+        .fontSize(22)
+        .font('Helvetica-Bold')
+        .text('Patient Report', { align: 'center' });
+      doc.moveDown(0.5);
+      doc
+        .fontSize(10)
+        .font('Helvetica')
+        .fillColor('#555555')
+        .text(`Generated: ${new Date().toLocaleString()}`, { align: 'center' });
+      doc.moveDown(1);
+
+      // ─ Patient Info 
+      doc
+        .fontSize(14)
+        .font('Helvetica-Bold')
+        .fillColor('#000000')
+        .text('Patient Information');
+      doc
+        .moveTo(50, doc.y)
+        .lineTo(doc.page.width - 50, doc.y)
+        .strokeColor('#cccccc')
+        .stroke();
+      doc.moveDown(0.5);
+
+      const doctorFullName = `${doctor.firstName} ${doctor.lastName}`;
+      doc.fontSize(11).font('Helvetica');
+
+      const infoRows: [string, string][] = [
+        ['Patient ID', String(patient.id)],
+        ['Patient Name', patient.name || 'N/A'],
+        ['Attending Doctor', doctorFullName],
+        ['Doctor Email', doctor.email],
+        ['Notes', patient.notes || 'None'],
+        ['Created At', patient.createdAt.toLocaleString()],
+        ['Last Updated', patient.updatedAt.toLocaleString()],
+      ];
+
+      for (const [label, value] of infoRows) {
+        doc
+          .font('Helvetica-Bold')
+          .text(`${label}: `, { continued: true })
+          .font('Helvetica')
+          .text(value);
+      }
+      doc.moveDown(1);
+
+      // ─ Medical History
+      doc
+        .fontSize(14)
+        .font('Helvetica-Bold')
+        .text('Medical History');
+      doc
+        .moveTo(50, doc.y)
+        .lineTo(doc.page.width - 50, doc.y)
+        .strokeColor('#cccccc')
+        .stroke();
+      doc.moveDown(0.5);
+
+      const medicalHistory = patient.medicalHistory ?? [];
+      if (medicalHistory.length === 0) {
+        doc.fontSize(11).font('Helvetica').text('No medical history recorded.');
+      } else {
+        for (const [index, record] of medicalHistory.entries()) {
+          doc
+            .fontSize(12)
+            .font('Helvetica-Bold')
+            .text(`${index + 1}. ${record.disorder}`);
+          doc.fontSize(11).font('Helvetica');
+          doc.text(`   Description: ${record.description || 'N/A'}`);
+          doc.text(`   Diagnosis Date: ${record.diagnosisDate || 'N/A'}`);
+          doc.text(`   Severity: ${record.severity || 'N/A'}`);
+          doc.text(`   Medications: ${record.medications || 'N/A'}`);
+          doc.text(`   Recorded At: ${record.recordedAt.toLocaleString()}`);
+          doc.moveDown(0.5);
+        }
+      }
+      doc.moveDown(1);
+
+      // ─ Family History
+      doc
+        .fontSize(14)
+        .font('Helvetica-Bold')
+        .text('Family History');
+      doc
+        .moveTo(50, doc.y)
+        .lineTo(doc.page.width - 50, doc.y)
+        .strokeColor('#cccccc')
+        .stroke();
+      doc.moveDown(0.5);
+
+      const familyHistory = patient.familyHistory ?? [];
+      if (familyHistory.length === 0) {
+        doc.fontSize(11).font('Helvetica').text('No family history recorded.');
+      } else {
+        for (const [index, record] of familyHistory.entries()) {
+          doc
+            .fontSize(12)
+            .font('Helvetica-Bold')
+            .text(`${index + 1}. ${record.diseaseType} (${record.relation})`);
+          doc.fontSize(11).font('Helvetica');
+          doc.text(`   Severity: ${record.severity || 'N/A'}`);
+          doc.text(`   Notes: ${record.notes || 'N/A'}`);
+          doc.text(`   Recorded At: ${record.recordedAt.toLocaleString()}`);
+          doc.moveDown(0.5);
+        }
+      }
+
+      // ─ Footer
+      doc
+        .fontSize(9)
+        .fillColor('#888888')
+        .text('Confidential – For authorized medical personnel only', 50, doc.page.height - 50, {
+          align: 'center',
+          width: doc.page.width - 100,
+        });
+
+      doc.end();
+    });
+
+    this.logger.info(
+      `Patient ${patientId} PDF exported by doctor ${doctorId}`,
+    );
+    return pdfBuffer;
   }
 
   async importCsvData(
