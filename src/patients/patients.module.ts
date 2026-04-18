@@ -6,10 +6,12 @@ import { Patient } from './entities/patient.entity';
 import { PatientHistory } from './entities/patient-history.entity';
 import { FamilyHistory } from './entities/family-history.entity';
 import { User } from 'src/auth/entites/user.entity';
+import { UserModule } from 'src/user/user.module';
 
 @Module({
   imports: [
     TypeOrmModule.forFeature([Patient, PatientHistory, FamilyHistory, User]),
+    UserModule,
   ],
   controllers: [PatientsController],
   providers: [PatientsService],

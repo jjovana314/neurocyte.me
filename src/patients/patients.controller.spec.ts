@@ -1,6 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { PatientsController } from './patients.controller';
 import { PatientsService } from './patients.service';
+import { UserService } from 'src/user/user.service';
 import { JwtUser, JwtUserRole } from 'src/auth/classes/jwt-user.class';
 import { MultipartFile } from 'src/common/classes/multipart-file.class';
 
@@ -22,6 +23,10 @@ describe('PatientsController', () => {
     getPatientFamilyHistory: jest.fn(),
   };
 
+  const mockUserService = {
+    findUserById: jest.fn(),
+  };
+
   const mockUser: JwtUser = Object.assign(new JwtUser(), {
     id: 1,
     email: 'doctor@test.com',
@@ -31,9 +36,18 @@ describe('PatientsController', () => {
   beforeEach(async () => {
     jest.clearAllMocks();
 
+    mockUserService.findUserById.mockResolvedValue({
+      id: 1,
+      email: 'doctor@test.com',
+      role: { id: 1, name: 'doctor' },
+    });
+
     const module: TestingModule = await Test.createTestingModule({
       controllers: [PatientsController],
-      providers: [{ provide: PatientsService, useValue: mockPatientsService }],
+      providers: [
+        { provide: PatientsService, useValue: mockPatientsService },
+        { provide: UserService, useValue: mockUserService },
+      ],
     }).compile();
 
     controller = module.get<PatientsController>(PatientsController);

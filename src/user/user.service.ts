@@ -3,10 +3,10 @@ import { InjectRepository } from '@nestjs/typeorm';
 import * as bcrypt from 'bcrypt';
 import { randomUUID } from 'crypto';
 import { PinoLogger } from 'nestjs-pino';
-import { User } from 'src/auth/entites/user.entity';
-import { Role } from 'src/auth/entites/role.entity';
+import { User } from '../auth/entites/user.entity';
+import { Role } from '../auth/entites/role.entity';
 import { Repository } from 'typeorm';
-import { config } from 'src/config/config';
+import { config } from '../config/config';
 import { MailService } from './mail.service';
 
 @Injectable()
@@ -20,6 +20,10 @@ export class UserService {
 
   async findUserByEmail(email: string): Promise<User | null> {
     return await this.userRepository.findOne({ where: { email } });
+  }
+
+  async findUserById(id: number): Promise<User | null> {
+    return await this.userRepository.findOne({ where: { id } });
   }
 
   async validateUser(email: string, password: string): Promise<User | null> {
