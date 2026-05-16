@@ -17,6 +17,7 @@ import {
   StreamableFile,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
+import { AuthGuard } from '@nestjs/passport';
 import { Roles } from './decorators/roles.decorator';
 import { RolesGuard } from './decorators/roles.guard';
 import { PatientsService } from './patients.service';
@@ -35,7 +36,7 @@ import { JwtUser } from 'src/auth/classes/jwt-user.class';
 import { MultipartFile } from 'src/common/classes/multipart-file.class';
 
 @Controller('patients')
-// @UseGuards(AuthGuard('jwt'))
+@UseGuards(AuthGuard('jwt'))
 export class PatientsController {
   constructor(private readonly patientsService: PatientsService) {}
 
@@ -45,7 +46,6 @@ export class PatientsController {
    * Only doctors can create patients
    */
   @Post()
-  @Roles('doctor')
   @UseGuards(RolesGuard)
   @HttpCode(HttpStatus.CREATED)
   async createPatient(

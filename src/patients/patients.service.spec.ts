@@ -78,7 +78,7 @@ describe('PatientsService', () => {
   it('should create patient when doctor is valid', async () => {
     const doctorId = 1;
     const createPatientDto = { notes: 'Test patient' };
-    const mockDoctor = { id: doctorId, role: { name: 'doctor' } } as any;
+    const mockDoctor = { id: doctorId, role: { id: 1, name: 'doctor' } } as any;
     const mockPatient = { id: 1, doctorId, ...createPatientDto } as any;
 
     mockUserRepository.findOne.mockResolvedValue(mockDoctor);

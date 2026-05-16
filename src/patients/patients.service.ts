@@ -40,13 +40,16 @@ export class PatientsService {
     // Verify doctor exists and has appropriate role
     const doctor = await this.userRepository.findOne({
       where: { id: doctorId },
+      relations: ['role'],
     });
+    this.logger.info(`Doctor: ${JSON.stringify(doctor)}`);
     if (!doctor) {
       throw new NotFoundException(`Doctor with ID ${doctorId} not found`);
     }
 
     // Check if user is a doctor (role check)
-    if (!doctor.role || doctor.role.name !== 'doctor') {
+    if (!doctor.role || doctor.role.id !== 1) {
+      // this is not good approach, we need to check role based on ID, not name
       this.logger.warn(
         `User ${doctorId} attempted to create patient without doctor role`,
       );

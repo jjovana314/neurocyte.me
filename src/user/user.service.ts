@@ -27,7 +27,10 @@ export class UserService {
   }
 
   async validateUser(email: string, password: string): Promise<User | null> {
-    const user = await this.findUserByEmail(email);
+    const user = await this.userRepository.findOne({
+      where: { email },
+      relations: ['role'],
+    });
 
     if (!user) {
       this.logger.error(`User not found with email: ${email}`);
