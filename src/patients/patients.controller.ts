@@ -18,7 +18,6 @@ import {
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { AuthGuard } from '@nestjs/passport';
-import { Roles } from './decorators/roles.decorator';
 import { RolesGuard } from './decorators/roles.guard';
 import { PatientsService } from './patients.service';
 import {
@@ -83,7 +82,6 @@ export class PatientsController {
    * Only doctors can export
    */
   @Get(':id/export/pdf')
-  @Roles('doctor')
   @UseGuards(RolesGuard)
   @Header('Content-Type', 'application/pdf')
   @Header('Content-Disposition', 'attachment; filename="patient-report.pdf"')
@@ -105,7 +103,6 @@ export class PatientsController {
    */
   @Post('import/csv')
   @HttpCode(HttpStatus.OK)
-  @Roles('doctor')
   @UseGuards(RolesGuard)
   @UseInterceptors(FileInterceptor('file'))
   async importCsv(
