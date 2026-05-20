@@ -70,7 +70,6 @@ export class PatientsController {
    * Only doctors and researchers can export
    */
   @Get('export/csv')
-  @Roles('doctor', 'researcher')
   @UseGuards(RolesGuard)
   @Header('Content-Type', 'text/csv')
   @Header('Content-Disposition', 'attachment; filename="patient_export.csv"')
