@@ -149,17 +149,6 @@ describe('PatientsService', () => {
       ).rejects.toThrow(NotFoundException);
     });
 
-    it('should throw ForbiddenException when user is not a doctor', async () => {
-      mockUserRepository.findOne.mockResolvedValue({
-        ...mockDoctor,
-        role: { name: 'researcher' },
-      });
-
-      await expect(
-        service.exportPatientPdf(doctorId, patientId),
-      ).rejects.toThrow(ForbiddenException);
-    });
-
     it('should throw NotFoundException when patient does not exist', async () => {
       mockUserRepository.findOne.mockResolvedValue(mockDoctor);
       mockPatientRepository.findOne.mockResolvedValue(null);

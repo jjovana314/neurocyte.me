@@ -390,11 +390,6 @@ export class PatientsService {
     if (!doctor) {
       throw new NotFoundException(`Doctor with ID ${doctorId} not found`);
     }
-    if (!doctor.role || doctor.role.name !== 'doctor') {
-      throw new ForbiddenException(
-        'Only doctors can export patient PDF reports',
-      );
-    }
 
     const patient = await this.patientRepository.findOne({
       where: { id: patientId },
