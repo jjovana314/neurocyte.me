@@ -73,7 +73,7 @@ export class PatientsController {
   @Header('Content-Type', 'text/csv')
   @Header('Content-Disposition', 'attachment; filename="patient_export.csv"')
   async exportCsv(@CurrentUser() user: JwtUser): Promise<string> {
-    return this.patientsService.exportPatientDataCsv(user.id);
+    return this.patientsService.exportPatientDataCsv(user.id, user.role.name);
   }
 
   /**

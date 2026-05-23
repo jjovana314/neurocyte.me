@@ -304,19 +304,19 @@ export class PatientsService {
   }
 
   @errorHandler
-  async exportPatientDataCsv(userId: number): Promise<string> {
-    const user = await this.userRepository.findOne({
-      where: { id: userId },
-      relations: ['role'],
-    });
-    if (!user) {
-      throw new NotFoundException(`User with ID ${userId} not found`);
+  async exportPatientDataCsv(
+    userId: number,
+    roleName: string,
+  ): Promise<string> {
+    const qb = this.patientRepository
+      .createQueryBuilder('patient')
+      .leftJoinAndSelect('patient.medicalHistory', 'medicalHistory')
+      .leftJoinAndSelect('patient.familyHistory', 'familyHistory');
+
+    if (roleName === 'Doctor') {
+      qb.where('patient.doctorId = :userId', { userId });
     }
-
-    const patients = await this.patientRepository.find({
-      relations: ['medicalHistory', 'familyHistory'],
-    });
-
+    const patients = await qb.getMany();
     const csvHeader: string[] = [];
     csvHeader.push(
       [
@@ -366,10 +366,9 @@ export class PatientsService {
       }
     }
 
-    this.logger.info(
-      `Patient data exported to CSV by user ${userId} (role: ${user.role.name})`,
-    );
-    return [csvHeader.join(','), ...csvHeader].join('\n');
+    const result = [csvHeader.join(','), ...csvHeader].join('\n');
+    this.logger.info(`CSV exported by user ${userId} (role: ${roleName})`);
+    return result;
   }
 
   private checkCsvFieldOrEscape(value: string | Date): string {

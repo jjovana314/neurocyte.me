@@ -83,12 +83,15 @@ describe('PatientsController', () => {
   });
 
   describe('exportCsv', () => {
-    it('should call patientsService.exportPatientDataCsv with user id', async () => {
+    it('should call patientsService.exportPatientDataCsv with user id and role name', async () => {
       mockPatientsService.exportPatientDataCsv.mockResolvedValue('csv-content');
 
       const result = await controller.exportCsv(mockUser);
 
-      expect(mockPatientsService.exportPatientDataCsv).toHaveBeenCalledWith(1);
+      expect(mockPatientsService.exportPatientDataCsv).toHaveBeenCalledWith(
+        1,
+        'doctor',
+      );
       expect(result).toBe('csv-content');
     });
   });

@@ -20,7 +20,7 @@ import { PatientsModule } from './patients/patients.module';
       password: config.get().DATABASE_PASSWORD,
       database: config.get().DATABASE_NAME,
       entities: [__dirname + '/**/*.entity{.ts,.js}'],
-      synchronize: true,
+      synchronize: false,
     }),
   ],
   controllers: [AppController],
