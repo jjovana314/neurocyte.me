@@ -71,8 +71,8 @@ describe('AuthService (login & register)', () => {
     const password = 'password';
     const firstName = 'First';
     const lastName = 'Last';
-    const roleName = 'doctor';
-    const mockRole = { id: 1, name: 'doctor' } as any;
+    const roleName = 'Doctor';
+    const mockRole = { id: 1, name: 'Doctor' } as any;
 
     mockUsersService.findUserByEmail.mockResolvedValue(null);
     mockRoleRepository.findOne.mockResolvedValue(mockRole);

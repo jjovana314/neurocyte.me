@@ -30,7 +30,7 @@ describe('PatientsController', () => {
   const mockUser: JwtUser = Object.assign(new JwtUser(), {
     id: 1,
     email: 'doctor@test.com',
-    role: Object.assign(new JwtUserRole(), { id: 1, name: 'doctor' }),
+    role: Object.assign(new JwtUserRole(), { id: 1, name: 'Doctor' }),
   });
 
   beforeEach(async () => {
@@ -39,7 +39,7 @@ describe('PatientsController', () => {
     mockUserService.findUserById.mockResolvedValue({
       id: 1,
       email: 'doctor@test.com',
-      role: { id: 1, name: 'doctor' },
+      role: { id: 1, name: 'Doctor' },
     });
 
     const module: TestingModule = await Test.createTestingModule({
@@ -90,7 +90,7 @@ describe('PatientsController', () => {
 
       expect(mockPatientsService.exportPatientDataCsv).toHaveBeenCalledWith(
         1,
-        'doctor',
+        'Doctor',
       );
       expect(result).toBe('csv-content');
     });
