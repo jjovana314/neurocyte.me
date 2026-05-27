@@ -566,87 +566,31 @@ export class PatientsService {
 
     let currentPatient: Patient | null = null;
 
-    for (let i = 0; i < dataRows.length; i++) {
-      const rowNum = i + 2; // 1-indexed; row 1 is the header
-      const cols = this.parseCsvLine(dataRows[i]);
+    for (const [i, row] of dataRows.entries()) {
+      const rowNum = i + 2;
+      const fields = this.parseCsvRow(row);
 
-      const notes = cols[0] ?? '';
-      const disorder = cols[3] ?? '';
-      const description = cols[4] ?? '';
-      const diagnosisDate = cols[5] ?? '';
-      const severity = cols[6] ?? '';
-      const medications = cols[7] ?? '';
-      const familyDisease = cols[9] ?? '';
-      const relation = cols[10] ?? '';
-      const familySeverity = cols[11] ?? '';
-      const familyNotes = cols[12] ?? '';
-
-      // A non-empty notes column signals the start of a new patient record
-      if (notes) {
-        try {
-          const patient = new Patient();
-          patient.doctorId = doctorId;
-          patient.notes = notes;
-          currentPatient = await this.patientRepository.save(patient);
-          result.imported++;
-        } catch (err) {
-          result.skipped++;
-          result.errors.push({
-            row: rowNum,
-            reason: `Failed to create patient: ${(err as Error).message}`,
-          });
-          currentPatient = null;
-        }
+      if (fields.notes) {
+        currentPatient = await this.savePatientFromRow(doctorId, rowNum, fields, result);
       }
 
-      // Rows with no notes and no active patient cannot be associated
       if (!currentPatient) {
-        if (!notes) {
+        if (!fields.notes) {
           result.errors.push({
             row: rowNum,
-            reason:
-              'Row skipped: no active patient context (notes column is empty)',
+            reason: 'Row skipped: no active patient context (notes column is empty)',
           });
           result.skipped++;
         }
         continue;
       }
 
-      // Import medical history when disorder is present
-      if (disorder) {
-        try {
-          const history = new PatientHistory();
-          history.patientId = currentPatient.id;
-          history.disorder = disorder;
-          history.description = description || '';
-          history.diagnosisDate = diagnosisDate || null;
-          history.severity = severity || 'moderate';
-          history.medications = medications || '';
-          await this.patientHistoryRepository.save(history);
-        } catch (err) {
-          result.errors.push({
-            row: rowNum,
-            reason: `Failed to import medical history (disorder: ${disorder}): ${(err as Error).message}`,
-          });
-        }
+      if (fields.disorder) {
+        await this.saveMedicalHistoryFromRow(currentPatient.id, rowNum, fields, result);
       }
 
-      // Import family history when both required fields are present
-      if (familyDisease && relation) {
-        try {
-          const fh = new FamilyHistory();
-          fh.patientId = currentPatient.id;
-          fh.diseaseType = familyDisease as DiseaseType;
-          fh.relation = relation;
-          fh.severity = familySeverity || 'moderate';
-          fh.notes = familyNotes || '';
-          await this.familyHistoryRepository.save(fh);
-        } catch (err) {
-          result.errors.push({
-            row: rowNum,
-            reason: `Failed to import family history (disease: ${familyDisease}): ${(err as Error).message}`,
-          });
-        }
+      if (fields.familyDisease && fields.relation) {
+        await this.saveFamilyHistoryFromRow(currentPatient.id, rowNum, fields, result);
       }
     }
 
@@ -654,6 +598,90 @@ export class PatientsService {
       `CSV import by doctor ${doctorId}: ${result.imported} patients imported, ${result.skipped} rows skipped, ${result.errors.length} errors`,
     );
     return result;
+  }
+
+  private parseCsvRow(line: string) {
+    const cols = this.parseCsvLine(line);
+    return {
+      notes: cols[0] ?? '',
+      disorder: cols[3] ?? '',
+      description: cols[4] ?? '',
+      diagnosisDate: cols[5] ?? '',
+      severity: cols[6] ?? '',
+      medications: cols[7] ?? '',
+      familyDisease: cols[9] ?? '',
+      relation: cols[10] ?? '',
+      familySeverity: cols[11] ?? '',
+      familyNotes: cols[12] ?? '',
+    };
+  }
+
+  private async savePatientFromRow(
+    doctorId: number,
+    rowNum: number,
+    fields: ReturnType<PatientsService['parseCsvRow']>,
+    result: ImportCsvResponseDto,
+  ): Promise<Patient | null> {
+    try {
+      const patient = new Patient();
+      patient.doctorId = doctorId;
+      patient.notes = fields.notes;
+      const saved = await this.patientRepository.save(patient);
+      result.imported++;
+      return saved;
+    } catch (err) {
+      result.skipped++;
+      result.errors.push({
+        row: rowNum,
+        reason: `Failed to create patient: ${(err as Error).message}`,
+      });
+      return null; // todo throw an error
+    }
+  }
+
+  private async saveMedicalHistoryFromRow(
+    patientId: number,
+    rowNum: number,
+    fields: ReturnType<PatientsService['parseCsvRow']>,
+    result: ImportCsvResponseDto,
+  ): Promise<void> {
+    try {
+      const history = new PatientHistory();
+      history.patientId = patientId;
+      history.disorder = fields.disorder;
+      history.description = fields.description || '';
+      history.diagnosisDate = fields.diagnosisDate || null;
+      history.severity = fields.severity || 'moderate';
+      history.medications = fields.medications || '';
+      await this.patientHistoryRepository.save(history);
+    } catch (err) {
+      result.errors.push({
+        row: rowNum,
+        reason: `Failed to import medical history (disorder: ${fields.disorder}): ${(err as Error).message}`,
+      });
+    }
+  }
+
+  private async saveFamilyHistoryFromRow(
+    patientId: number,
+    rowNum: number,
+    fields: ReturnType<PatientsService['parseCsvRow']>,
+    result: ImportCsvResponseDto,
+  ): Promise<void> {
+    try {
+      const fh = new FamilyHistory();
+      fh.patientId = patientId;
+      fh.diseaseType = fields.familyDisease as DiseaseType;
+      fh.relation = fields.relation;
+      fh.severity = fields.familySeverity || 'moderate';
+      fh.notes = fields.familyNotes || '';
+      await this.familyHistoryRepository.save(fh);
+    } catch (err) {
+      result.errors.push({
+        row: rowNum,
+        reason: `Failed to import family history (disease: ${fields.familyDisease}): ${(err as Error).message}`,
+      });
+    }
   }
 
   private parseCsvLine(line: string): string[] {
