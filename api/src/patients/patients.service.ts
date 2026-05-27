@@ -571,14 +571,20 @@ export class PatientsService {
       const fields = this.parseCsvRow(row);
 
       if (fields.notes) {
-        currentPatient = await this.savePatientFromRow(doctorId, rowNum, fields, result);
+        currentPatient = await this.savePatientFromRow(
+          doctorId,
+          rowNum,
+          fields,
+          result,
+        );
       }
 
       if (!currentPatient) {
         if (!fields.notes) {
           result.errors.push({
             row: rowNum,
-            reason: 'Row skipped: no active patient context (notes column is empty)',
+            reason:
+              'Row skipped: no active patient context (notes column is empty)',
           });
           result.skipped++;
         }
@@ -586,11 +592,21 @@ export class PatientsService {
       }
 
       if (fields.disorder) {
-        await this.saveMedicalHistoryFromRow(currentPatient.id, rowNum, fields, result);
+        await this.saveMedicalHistoryFromRow(
+          currentPatient.id,
+          rowNum,
+          fields,
+          result,
+        );
       }
 
       if (fields.familyDisease && fields.relation) {
-        await this.saveFamilyHistoryFromRow(currentPatient.id, rowNum, fields, result);
+        await this.saveFamilyHistoryFromRow(
+          currentPatient.id,
+          rowNum,
+          fields,
+          result,
+        );
       }
     }
 
