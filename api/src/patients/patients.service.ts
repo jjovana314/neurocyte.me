@@ -38,7 +38,7 @@ export class PatientsService {
     createPatientDto: CreatePatientDto,
   ): Promise<Patient> {
     // Verify doctor exists and has appropriate role
-    
+
     const doctor = await this.findUserById(doctorId);
     // Check if user is a doctor (role check)
     if (!doctor.role || doctor.role.id !== 1) {
