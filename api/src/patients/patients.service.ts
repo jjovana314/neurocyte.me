@@ -38,15 +38,8 @@ export class PatientsService {
     createPatientDto: CreatePatientDto,
   ): Promise<Patient> {
     // Verify doctor exists and has appropriate role
-    const doctor = await this.userRepository.findOne({
-      where: { id: doctorId },
-      relations: ['role'],
-    });
-    this.logger.info(`Doctor: ${JSON.stringify(doctor)}`);
-    if (!doctor) {
-      throw new NotFoundException(`Doctor with ID ${doctorId} not found`);
-    }
-
+    
+    const doctor = await this.findUserById(doctorId);
     // Check if user is a doctor (role check)
     if (!doctor.role || doctor.role.id !== 1) {
       // this is not good approach, we need to check role based on ID, not name
@@ -57,7 +50,7 @@ export class PatientsService {
     }
 
     const patient = new Patient();
-    patient.doctorId = doctorId;
+    patient.doctor = doctor;
     patient.name = createPatientDto.name || '';
     patient.notes = createPatientDto.notes || '';
 
@@ -67,6 +60,18 @@ export class PatientsService {
     );
 
     return savedPatient;
+  }
+
+  async findUserById(userId: number): Promise<User> {
+    const user = await this.userRepository.findOne({
+      where: { id: userId },
+      relations: ['role'],
+    });
+    this.logger.info(`User: ${JSON.stringify(user)}`);
+    if (!user) {
+      throw new NotFoundException(`User with ID ${userId} not found`);
+    }
+    return user;
   }
 
   @errorHandler
@@ -557,6 +562,8 @@ export class PatientsService {
       };
     }
 
+    const doctor = await this.findUserById(doctorId);
+
     // Skip header row
     const dataRows = lines.slice(1);
     const result = new ImportCsvResponseDto();
@@ -572,7 +579,7 @@ export class PatientsService {
 
       if (fields.notes) {
         currentPatient = await this.savePatientFromRow(
-          doctorId,
+          doctor,
           rowNum,
           fields,
           result,
@@ -633,14 +640,14 @@ export class PatientsService {
   }
 
   private async savePatientFromRow(
-    doctorId: number,
+    doctor: User,
     rowNum: number,
     fields: ReturnType<PatientsService['parseCsvRow']>,
     result: ImportCsvResponseDto,
   ): Promise<Patient | null> {
     try {
       const patient = new Patient();
-      patient.doctorId = doctorId;
+      patient.doctor = doctor;
       patient.notes = fields.notes;
       const saved = await this.patientRepository.save(patient);
       result.imported++;
