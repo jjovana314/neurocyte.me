@@ -32,7 +32,9 @@ export class AuthController {
 
   @Post('forgot-password')
   @HttpCode(200)
-  async forgotPassword(@Body() { email }: ForgotPasswordDto): Promise<MessageResponseDto> {
+  async forgotPassword(
+    @Body() { email }: ForgotPasswordDto,
+  ): Promise<MessageResponseDto> {
     await this.authService.forgotPassword(email);
     return { message: 'If that email exists, a reset link has been sent.' };
   }

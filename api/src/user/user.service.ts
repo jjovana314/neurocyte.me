@@ -1,4 +1,8 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import * as bcrypt from 'bcrypt';
 import { randomUUID } from 'crypto';
@@ -123,7 +127,11 @@ export class UserService {
     const user = await this.userRepository.findOne({
       where: { resetPasswordToken: token },
     });
-    if (!user || !user.resetPasswordExpires || user.resetPasswordExpires < Date.now()) {
+    if (
+      !user ||
+      !user.resetPasswordExpires ||
+      user.resetPasswordExpires < Date.now()
+    ) {
       throw new BadRequestException('Invalid or expired password reset token');
     }
 
