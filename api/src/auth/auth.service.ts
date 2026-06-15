@@ -13,6 +13,8 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { UserInfo } from './interfaces/user-info.interface';
 import { Action } from './entites/action.entity';
+import { config } from '../config/config';
+import type { StringValue } from 'ms';
 
 @Injectable()
 export class AuthService {
@@ -27,8 +29,8 @@ export class AuthService {
   async login(user: User): Promise<UserInfo> {
     const payload = { id: user.id, email: user.email, role: user.role };
     return {
-      accessToken: this.jwtService.sign(payload, { expiresIn: '1d' }),
-      refreshToken: this.jwtService.sign(payload, { expiresIn: '7d' }),
+      accessToken: this.jwtService.sign(payload, { expiresIn: config.get().ACCESS_TOKEN_TIME as StringValue }),
+      refreshToken: this.jwtService.sign(payload, { expiresIn: config.get().REFRESH_TOKEN_TIME as StringValue }),
     };
   }
 

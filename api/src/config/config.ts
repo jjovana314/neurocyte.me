@@ -55,6 +55,14 @@ export const config = createProfiguration<Config>(
       default: '',
       env: 'FRONTEND_URL',
     },
+    ACCESS_TOKEN_TIME: {
+      default: '',
+      env: 'ACCESS_TOKEN_TIME'
+    },
+    REFRESH_TOKEN_TIME: {
+      default: '',
+      env: 'REFRESH_TOKEN_TIME'
+    }
   },
   {
     strict: true,

@@ -12,4 +12,6 @@ export interface Config {
   MAIL_FROM: string;
   APP_URL: string;
   FRONTEND_URL: string;
+  ACCESS_TOKEN_TIME: string;
+  REFRESH_TOKEN_TIME:  string;
 }
