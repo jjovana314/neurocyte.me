@@ -8,10 +8,9 @@ export class MailService {
 
   constructor() {
     this.transporter = nodemailer.createTransport({
-      host: config.get().MAIL_HOST,
-      port: Number(config.get().MAIL_PORT),
+      // host: config.get().MAIL_HOST,
       auth: {
-        user: config.get().MAIL_USER,
+        user: config.get().MAIL_FROM,
         pass: config.get().MAIL_PASS,
       },
     });

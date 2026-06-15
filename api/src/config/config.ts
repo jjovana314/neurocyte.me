@@ -32,7 +32,7 @@ export const config = createProfiguration<Config>(
       env: 'MAIL_HOST',
     },
     MAIL_PORT: {
-      default: '587',
+      default: '',
       env: 'MAIL_PORT',
     },
     MAIL_USER: {
