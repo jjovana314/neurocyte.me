@@ -1,7 +1,10 @@
-import { Body, Controller, Get, Post, Query } from '@nestjs/common';
+import { Body, Controller, Get, HttpCode, Post, Query } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { RegisterDto } from './dtos/register.dto';
 import { LoginDto } from './dtos/login.dto';
+import { ForgotPasswordDto } from './dtos/forgot-password.dto';
+import { ResetPasswordDto } from './dtos/reset-password.dto';
+import { MessageResponseDto } from './dtos/message-response.dto';
 
 // todo: update all any parameters and requests
 
@@ -25,6 +28,22 @@ export class AuthController {
       lastName,
       role,
     );
+  }
+
+  @Post('forgot-password')
+  @HttpCode(200)
+  async forgotPassword(@Body() { email }: ForgotPasswordDto): Promise<MessageResponseDto> {
+    await this.authService.forgotPassword(email);
+    return { message: 'If that email exists, a reset link has been sent.' };
+  }
+
+  @Post('reset-password')
+  @HttpCode(200)
+  async resetPassword(
+    @Body() { token, newPassword }: ResetPasswordDto,
+  ): Promise<MessageResponseDto> {
+    await this.authService.resetPassword(token, newPassword);
+    return { message: 'Password reset successfully.' };
   }
 
   @Get('roles')

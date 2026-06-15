@@ -33,6 +33,12 @@ export class User {
   @Column({ nullable: true, default: null })
   deactivationToken: string | null;
 
+  @Column({ nullable: true, default: null })
+  resetPasswordToken: string | null;
+
+  @Column({ nullable: true, default: null, type: 'bigint' })
+  resetPasswordExpires: number | null;
+
   @BeforeInsert()
   async hashPassword(): Promise<void> {
     const salt = await bcrypt.genSalt();

@@ -11,4 +11,5 @@ export interface Config {
   MAIL_PASS: string;
   MAIL_FROM: string;
   APP_URL: string;
+  FRONTEND_URL: string;
 }

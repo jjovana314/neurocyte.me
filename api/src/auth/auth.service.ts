@@ -73,6 +73,14 @@ export class AuthService {
     return await this.login(user);
   }
 
+  async forgotPassword(email: string): Promise<void> {
+    await this.usersService.sendPasswordReset(email);
+  }
+
+  async resetPassword(token: string, newPassword: string): Promise<void> {
+    await this.usersService.resetPassword(token, newPassword);
+  }
+
   async getRoles(name?: string, actions?: string[]): Promise<IRoles> {
     const query = this.roleRepository.createQueryBuilder('role');
 

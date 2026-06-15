@@ -48,8 +48,12 @@ export const config = createProfiguration<Config>(
       env: 'MAIL_FROM',
     },
     APP_URL: {
-      default: 'http://localhost:3000',
+      default: '',
       env: 'APP_URL',
+    },
+    FRONTEND_URL: {
+      default: '',
+      env: 'FRONTEND_URL',
     },
   },
   {

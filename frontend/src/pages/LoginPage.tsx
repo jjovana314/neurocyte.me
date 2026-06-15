@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { login, register } from '../api/auth';
 import { useAuth } from '../context/AuthContext';
 
@@ -141,6 +141,12 @@ export default function LoginPage() {
             <button className="btn btn-primary btn-block" type="submit" disabled={loading}>
               {loading ? '…' : mode === 'login' ? 'Sign in' : 'Create account'}
             </button>
+
+            {mode === 'login' && (
+              <p style={{ marginTop: '0.75rem', fontSize: '0.875rem', textAlign: 'center' }}>
+                <Link to="/forgot-password">Forgot password?</Link>
+              </p>
+            )}
           </form>
         </div>
       </div>

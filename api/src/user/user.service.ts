@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import * as bcrypt from 'bcrypt';
 import { randomUUID } from 'crypto';
@@ -99,5 +99,38 @@ export class UserService {
       throw new NotFoundException('Invalid or expired deactivation token');
     }
     return this.userRepository.remove(user);
+  }
+
+  async sendPasswordReset(email: string): Promise<void> {
+    const user = await this.userRepository.findOne({ where: { email } });
+    // Always return silently to avoid revealing whether the email exists
+    if (!user) return;
+
+    const token = randomUUID();
+    user.resetPasswordToken = token;
+    user.resetPasswordExpires = Date.now() + 60 * 60 * 1000; // 1 hour
+    await this.userRepository.save(user);
+
+    const resetLink = `${config.get().FRONTEND_URL}/reset-password?token=${token}`;
+    await this.mailService.sendPasswordResetEmail(
+      user.email,
+      resetLink,
+      `${user.firstName} ${user.lastName}`,
+    );
+  }
+
+  async resetPassword(token: string, newPassword: string): Promise<void> {
+    const user = await this.userRepository.findOne({
+      where: { resetPasswordToken: token },
+    });
+    if (!user || !user.resetPasswordExpires || user.resetPasswordExpires < Date.now()) {
+      throw new BadRequestException('Invalid or expired password reset token');
+    }
+
+    const salt = await bcrypt.genSalt();
+    user.password = await bcrypt.hash(newPassword, salt);
+    user.resetPasswordToken = null;
+    user.resetPasswordExpires = null;
+    await this.userRepository.save(user);
   }
 }
