@@ -57,12 +57,12 @@ export const config = createProfiguration<Config>(
     },
     ACCESS_TOKEN_TIME: {
       default: '',
-      env: 'ACCESS_TOKEN_TIME'
+      env: 'ACCESS_TOKEN_TIME',
     },
     REFRESH_TOKEN_TIME: {
       default: '',
-      env: 'REFRESH_TOKEN_TIME'
-    }
+      env: 'REFRESH_TOKEN_TIME',
+    },
   },
   {
     strict: true,

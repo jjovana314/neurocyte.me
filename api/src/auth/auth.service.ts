@@ -29,8 +29,12 @@ export class AuthService {
   async login(user: User): Promise<UserInfo> {
     const payload = { id: user.id, email: user.email, role: user.role };
     return {
-      accessToken: this.jwtService.sign(payload, { expiresIn: config.get().ACCESS_TOKEN_TIME as StringValue }),
-      refreshToken: this.jwtService.sign(payload, { expiresIn: config.get().REFRESH_TOKEN_TIME as StringValue }),
+      accessToken: this.jwtService.sign(payload, {
+        expiresIn: config.get().ACCESS_TOKEN_TIME as StringValue,
+      }),
+      refreshToken: this.jwtService.sign(payload, {
+        expiresIn: config.get().REFRESH_TOKEN_TIME as StringValue,
+      }),
     };
   }
 
