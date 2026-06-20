@@ -30,7 +30,7 @@ export class PatientsService {
     private familyHistoryRepository: Repository<FamilyHistory>,
     @InjectRepository(User) private userRepository: Repository<User>,
     private readonly logger: PinoLogger,
-  ) {}
+  ) { }
 
   @errorHandler
   async createPatient(
@@ -350,28 +350,35 @@ export class PatientsService {
       for (let rowIndex = 0; rowIndex < maxRows; rowIndex++) {
         const medicalRow = medicalRows[rowIndex];
         const familyRow = familyRows[rowIndex];
+        const isFirstRow = rowIndex === 0;
 
-        const row = [
-          rowIndex === 0 ? patient.notes : '',
-          rowIndex === 0 ? patient.createdAt : '',
-          rowIndex === 0 ? patient.updatedAt : '',
-          medicalRow?.disorder ?? '',
-          medicalRow?.description ?? '',
-          medicalRow?.diagnosisDate ?? '',
-          medicalRow?.severity ?? '',
-          medicalRow?.medications ?? '',
-          medicalRow?.recordedAt ?? '',
-          familyRow?.diseaseType ?? '',
-          familyRow?.relation ?? '',
-          medicalRow?.severity ?? '',
-          familyRow?.notes ?? '',
-          medicalRow?.recordedAt ?? '',
-        ].map((v) => this.checkCsvFieldOrEscape(v));
+        const dataMap = {
+          notes: isFirstRow ? patient.notes : '',
+          createdAt: isFirstRow ? patient.createdAt : '',
+          updatedAt: isFirstRow ? patient.updatedAt : '',
+          disorder: medicalRow?.disorder,
+          description: medicalRow?.description,
+          diagnosisDate: medicalRow?.diagnosisDate,
+          medSeverity: medicalRow?.severity,
+          medications: medicalRow?.medications,
+          medRecordedAt: medicalRow?.recordedAt,
+          familyDiseaseType: familyRow?.diseaseType,
+          familyRelation: familyRow?.relation,
+          familySeverity: familyRow?.severity,
+          familyNotes: familyRow?.notes,
+          familyRecordedAt: familyRow?.recordedAt,
+        };
+
+        const row = Object.values(dataMap).map((v) =>
+          this.checkCsvFieldOrEscape(v ?? '')
+        );
+
         csvHeader.push(row.join(','));
       }
     }
 
-    const result = [csvHeader.join(','), ...csvHeader].join('\n');
+    const result = csvHeader.join('\n');
+
     this.logger.info(`CSV exported by user ${userId} (role: ${roleName})`);
     return result;
   }
