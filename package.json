@@ -7,6 +7,7 @@
   "license": "UNLICENSED",
   "scripts": {
     "start": "npm run --prefix api start:dev & npm run --prefix frontend dev",
+    "build": "npm run --prefix api build & npm run --prefix frontend build",
     "test": "npm run test:backend",
     "test:backend": "npm test --prefix api",
     "debug:frontend": "npm run --prefix frontend dev -- --debug",
