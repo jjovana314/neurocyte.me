@@ -30,7 +30,7 @@ export class PatientsService {
     private familyHistoryRepository: Repository<FamilyHistory>,
     @InjectRepository(User) private userRepository: Repository<User>,
     private readonly logger: PinoLogger,
-  ) { }
+  ) {}
 
   @errorHandler
   async createPatient(
@@ -370,7 +370,7 @@ export class PatientsService {
         };
 
         const row = Object.values(dataMap).map((v) =>
-          this.checkCsvFieldOrEscape(v ?? '')
+          this.checkCsvFieldOrEscape(v ?? ''),
         );
 
         csvHeader.push(row.join(','));
