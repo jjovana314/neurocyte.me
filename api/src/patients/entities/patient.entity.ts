@@ -27,6 +27,18 @@ export class Patient {
   name: string;
 
   @Column({ nullable: true })
+  dateOfBirth: string;
+
+  @Column({ nullable: true })
+  gender: string;
+
+  @Column({ nullable: true })
+  phone: string;
+
+  @Column({ nullable: true })
+  email: string;
+
+  @Column({ nullable: true })
   notes: string;
 
   @CreateDateColumn()

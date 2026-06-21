@@ -41,6 +41,10 @@ export interface Patient {
   id: number;
   doctorId: number;
   name: string;
+  dateOfBirth: string | null;
+  gender: string | null;
+  phone: string | null;
+  email: string | null;
   notes: string;
   createdAt: string;
   updatedAt: string;
@@ -50,6 +54,10 @@ export interface Patient {
 
 export interface CreatePatientDto {
   name: string;
+  dateOfBirth?: string;
+  gender?: string;
+  phone?: string;
+  email?: string;
   notes?: string;
 }
 

@@ -1,13 +1,32 @@
 import { useState } from 'react';
+import axios from 'axios';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { deletePatient, exportCsv, exportPatientPdf, getMyPatients } from '../api/patients';
 import ExpandedRow from './ExpandedRow';
+
+async function parseExportError(err: unknown): Promise<string> {
+  if (axios.isAxiosError(err)) {
+    const data = err.response?.data;
+    if (data instanceof Blob) {
+      try {
+        const json = JSON.parse(await data.text());
+        return typeof json.message === 'string' ? json.message : 'Export failed';
+      } catch {
+        return 'Export failed';
+      }
+    }
+    if (typeof data?.message === 'string') return data.message;
+  }
+  return 'Export failed';
+}
 
 export default function PatientTable() {
   const queryClient = useQueryClient();
   const [expandedId, setExpandedId] = useState<number | null>(null);
   const [exportingPdf, setExportingPdf] = useState<number | null>(null);
   const [exportingCsv, setExportingCsv] = useState(false);
+  const [csvExportError, setCsvExportError] = useState<string | null>(null);
+  const [pdfExportError, setPdfExportError] = useState<string | null>(null);
 
   const { data: patients, isLoading, error } = useQuery({
     queryKey: ['patients'],
@@ -20,18 +39,24 @@ export default function PatientTable() {
   });
 
   async function handleExportCsv() {
+    setCsvExportError(null);
     setExportingCsv(true);
     try {
       await exportCsv();
+    } catch (err) {
+      setCsvExportError(await parseExportError(err));
     } finally {
       setExportingCsv(false);
     }
   }
 
   async function handleExportPdf(patientId: number) {
+    setPdfExportError(null);
     setExportingPdf(patientId);
     try {
       await exportPatientPdf(patientId);
+    } catch (err) {
+      setPdfExportError(await parseExportError(err));
     } finally {
       setExportingPdf(null);
     }
@@ -57,13 +82,16 @@ export default function PatientTable() {
     <div>
       <div className="table-toolbar">
         <span className="patient-count">{list.length} patient{list.length !== 1 ? 's' : ''}</span>
-        <button
-          className="btn btn-secondary"
-          onClick={handleExportCsv}
-          disabled={exportingCsv || list.length === 0}
-        >
-          {exportingCsv ? 'Exporting…' : 'Export all CSV'}
-        </button>
+        <div className="export-csv-wrap">
+          <button
+            className="btn btn-secondary"
+            onClick={handleExportCsv}
+            disabled={exportingCsv || list.length === 0}
+          >
+            {exportingCsv ? 'Exporting…' : 'Export all CSV'}
+          </button>
+          {csvExportError && <p className="status-msg error">{csvExportError}</p>}
+        </div>
       </div>
 
       {list.length === 0 ? (
@@ -139,6 +167,7 @@ export default function PatientTable() {
           </tbody>
         </table>
       )}
+      {pdfExportError && <p className="status-msg error">{pdfExportError}</p>}
     </div>
   );
 }

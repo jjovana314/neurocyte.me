@@ -52,6 +52,10 @@ export class PatientsService {
     const patient = new Patient();
     patient.doctor = doctor;
     patient.name = createPatientDto.name || '';
+    patient.dateOfBirth = createPatientDto.dateOfBirth || null;
+    patient.gender = createPatientDto.gender || null;
+    patient.phone = createPatientDto.phone || null;
+    patient.email = createPatientDto.email || null;
     patient.notes = createPatientDto.notes || '';
 
     const savedPatient = await this.patientRepository.save(patient);
@@ -459,6 +463,10 @@ export class PatientsService {
       const infoRows: [string, string][] = [
         ['Patient ID', String(patient.id)],
         ['Patient Name', patient.name || 'N/A'],
+        ['Date of Birth', patient.dateOfBirth || 'N/A'],
+        ['Gender', patient.gender || 'N/A'],
+        ['Phone', patient.phone || 'N/A'],
+        ['Email', patient.email || 'N/A'],
         ['Attending Doctor', doctorFullName],
         ['Doctor Email', doctor.email],
         ['Notes', patient.notes || 'None'],

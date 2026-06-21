@@ -8,8 +8,41 @@ export default function ExpandedRow({ patient }: Props) {
   const medical = patient.medicalHistory ?? [];
   const family = patient.familyHistory ?? [];
 
+  const hasDemographics = patient.dateOfBirth || patient.gender || patient.phone || patient.email;
+
   return (
     <div className="expanded-row">
+      {hasDemographics && (
+        <div className="expanded-section">
+          <h4>Demographics</h4>
+          <dl className="demographics-list">
+            {patient.dateOfBirth && (
+              <>
+                <dt>Date of birth</dt>
+                <dd>{new Date(patient.dateOfBirth).toLocaleDateString()}</dd>
+              </>
+            )}
+            {patient.gender && (
+              <>
+                <dt>Gender</dt>
+                <dd>{patient.gender}</dd>
+              </>
+            )}
+            {patient.phone && (
+              <>
+                <dt>Phone</dt>
+                <dd>{patient.phone}</dd>
+              </>
+            )}
+            {patient.email && (
+              <>
+                <dt>Email</dt>
+                <dd>{patient.email}</dd>
+              </>
+            )}
+          </dl>
+        </div>
+      )}
       <div className="expanded-section">
         <h4>Medical History</h4>
         {medical.length === 0 ? (
