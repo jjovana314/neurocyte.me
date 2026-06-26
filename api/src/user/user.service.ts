@@ -8,7 +8,6 @@ import * as bcrypt from 'bcrypt';
 import { randomUUID } from 'crypto';
 import { PinoLogger } from 'nestjs-pino';
 import { User } from '../auth/entites/user.entity';
-import { Role } from '../auth/entites/role.entity';
 import { Repository } from 'typeorm';
 import { config } from '../config/config';
 import { MailService } from './mail.service';
@@ -17,7 +16,6 @@ import { MailService } from './mail.service';
 export class UserService {
   constructor(
     @InjectRepository(User) private userRepository: Repository<User>,
-    @InjectRepository(Role) private roleRepository: Repository<Role>,
     private readonly mailService: MailService,
     private readonly logger: PinoLogger,
   ) {}
