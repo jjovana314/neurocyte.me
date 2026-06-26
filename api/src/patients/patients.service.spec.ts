@@ -134,7 +134,7 @@ describe('PatientsService', () => {
       mockUserRepository.findOne.mockResolvedValue(mockDoctor);
       mockPatientRepository.findOne.mockResolvedValue(mockPatient);
 
-      const result = await service.exportPatientPdf(doctorId, patientId);
+      const result = await service.exportPatientPdf(doctorId, patientId, 'Doctor');
 
       expect(result).toBeInstanceOf(Buffer);
       // PDF files start with the %PDF magic bytes
@@ -145,7 +145,7 @@ describe('PatientsService', () => {
       mockUserRepository.findOne.mockResolvedValue(null);
 
       await expect(
-        service.exportPatientPdf(doctorId, patientId),
+        service.exportPatientPdf(doctorId, patientId, 'Doctor'),
       ).rejects.toThrow(NotFoundException);
     });
 
@@ -154,7 +154,7 @@ describe('PatientsService', () => {
       mockPatientRepository.findOne.mockResolvedValue(null);
 
       await expect(
-        service.exportPatientPdf(doctorId, patientId),
+        service.exportPatientPdf(doctorId, patientId, 'Doctor'),
       ).rejects.toThrow(NotFoundException);
     });
 
@@ -166,7 +166,7 @@ describe('PatientsService', () => {
       });
 
       await expect(
-        service.exportPatientPdf(doctorId, patientId),
+        service.exportPatientPdf(doctorId, patientId, 'Doctor'),
       ).rejects.toThrow(ForbiddenException);
     });
 
@@ -178,7 +178,7 @@ describe('PatientsService', () => {
         familyHistory: [],
       });
 
-      const result = await service.exportPatientPdf(doctorId, patientId);
+      const result = await service.exportPatientPdf(doctorId, patientId, 'Doctor');
 
       expect(result).toBeInstanceOf(Buffer);
       expect(result.slice(0, 4).toString()).toBe('%PDF');
@@ -194,7 +194,7 @@ describe('PatientsService', () => {
         familyHistory: [],
       });
 
-      const result = await service.exportPatientPdf(doctorId, patientId);
+      const result = await service.exportPatientPdf(doctorId, patientId, 'Doctor');
 
       expect(result).toBeInstanceOf(Buffer);
     });

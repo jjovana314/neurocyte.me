@@ -3,6 +3,7 @@ type Tab = 'patients' | 'add-patient' | 'import-csv' | 'profile';
 interface Props {
   active: Tab;
   onChange: (tab: Tab) => void;
+  role?: string;
 }
 
 const TABS: { id: Tab; label: string }[] = [
@@ -12,10 +13,16 @@ const TABS: { id: Tab; label: string }[] = [
   { id: 'profile', label: 'Profile' },
 ];
 
-export default function TabNav({ active, onChange }: Props) {
+export default function TabNav({ active, onChange, role }: Props) {
+  const hiddenForSupport = new Set(['add-patient', 'import-csv']);
+  const visibleTabs =
+    role === 'Support Engineer'
+      ? TABS.filter((tab) => !hiddenForSupport.has(tab.id))
+      : TABS;
+
   return (
     <nav className="tab-nav">
-      {TABS.map((tab) => (
+      {visibleTabs.map((tab) => (
         <button
           key={tab.id}
           className={`tab${active === tab.id ? ' tab-active' : ''}`}

@@ -20,7 +20,11 @@ async function parseExportError(err: unknown): Promise<string> {
   return 'Export failed';
 }
 
-export default function PatientTable() {
+interface Props {
+  role?: string;
+}
+
+export default function PatientTable({ role }: Props) {
   const queryClient = useQueryClient();
   const [expandedId, setExpandedId] = useState<number | null>(null);
   const [exportingPdf, setExportingPdf] = useState<number | null>(null);
@@ -95,7 +99,7 @@ export default function PatientTable() {
       </div>
 
       {list.length === 0 ? (
-        <p className="status-msg">No patients found. Create one using the Add Patient tab.</p>
+        <p className="status-msg">No patients found.</p>
       ) : (
         <table>
           <thead>
@@ -146,13 +150,15 @@ export default function PatientTable() {
                     >
                       {exportingPdf === patient.id ? '…' : 'PDF'}
                     </button>
-                    <button
-                      className="btn btn-sm btn-danger"
-                      disabled={deleteMutation.isPending}
-                      onClick={() => handleDelete(patient.id, patient.name)}
-                    >
-                      Delete
-                    </button>
+                    {role !== 'Support Engineer' && (
+                      <button
+                        className="btn btn-sm btn-danger"
+                        disabled={deleteMutation.isPending}
+                        onClick={() => handleDelete(patient.id, patient.name)}
+                      >
+                        Delete
+                      </button>
+                    )}
                   </td>
                 </tr>
                 {expandedId === patient.id && (

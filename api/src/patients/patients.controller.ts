@@ -60,7 +60,7 @@ export class PatientsController {
    */
   @Get('my-patients')
   async getMyPatients(@CurrentUser() user: JwtUser): Promise<Patient[]> {
-    return this.patientsService.getDoctorPatients(user.id);
+    return this.patientsService.getDoctorPatients(user.id, user.role.name);
   }
 
   /**
@@ -92,6 +92,7 @@ export class PatientsController {
     const buffer = await this.patientsService.exportPatientPdf(
       user.id,
       parseInt(patientId, 10),
+      user.role.name,
     );
     return new StreamableFile(buffer);
   }

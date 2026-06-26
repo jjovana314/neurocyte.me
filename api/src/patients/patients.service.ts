@@ -19,6 +19,7 @@ import {
   CreateFamilyHistoryDto,
   ImportCsvResponseDto,
 } from './dtos';
+import { maskString } from './utils/masking';
 
 @Injectable()
 export class PatientsService {
@@ -198,15 +199,18 @@ export class PatientsService {
   }
 
   @errorHandler
-  async getDoctorPatients(doctorId: number): Promise<Patient[]> {
+  async getDoctorPatients(
+    doctorId: number,
+    roleName: string,
+  ): Promise<Patient[]> {
     const patients = await this.patientRepository.find({
-      where: { doctorId },
+      where: roleName === 'Support Engineer' ? {} : { doctorId },
       relations: ['medicalHistory', 'familyHistory'],
       order: { createdAt: 'DESC' },
     });
 
     this.logger.info(
-      `Retrieved ${patients.length} patients for doctor ${doctorId}`,
+      `Retrieved ${patients.length} patients for user ${doctorId} (role: ${roleName})`,
     );
     return patients;
   }
@@ -397,7 +401,11 @@ export class PatientsService {
   }
 
   @errorHandler
-  async exportPatientPdf(doctorId: number, patientId: number): Promise<Buffer> {
+  async exportPatientPdf(
+    doctorId: number,
+    patientId: number,
+    roleName: string,
+  ): Promise<Buffer> {
     const doctor = await this.userRepository.findOne({
       where: { id: doctorId },
       relations: ['role'],
@@ -413,7 +421,7 @@ export class PatientsService {
     if (!patient) {
       throw new NotFoundException(`Patient with ID ${patientId} not found`);
     }
-    if (patient.doctorId !== doctorId) {
+    if (roleName !== 'Support Engineer' && patient.doctorId !== doctorId) {
       this.logger.warn(
         `Doctor ${doctorId} attempted to export PDF for patient ${patientId} created by doctor ${patient.doctorId}`,
       );
@@ -421,6 +429,8 @@ export class PatientsService {
         'You can only export records for patients you created',
       );
     }
+
+    const isSupportEngineer = roleName === 'Support Engineer';
 
     const doc = new PDFDocument({ margin: 50 });
     const buffers: Buffer[] = [];
@@ -462,11 +472,24 @@ export class PatientsService {
 
       const infoRows: [string, string][] = [
         ['Patient ID', String(patient.id)],
-        ['Patient Name', patient.name || 'N/A'],
+        [
+          'Patient Name',
+          isSupportEngineer ? maskString(patient.name) : patient.name || 'N/A',
+        ],
         ['Date of Birth', patient.dateOfBirth || 'N/A'],
         ['Gender', patient.gender || 'N/A'],
-        ['Phone', patient.phone || 'N/A'],
-        ['Email', patient.email || 'N/A'],
+        [
+          'Phone',
+          isSupportEngineer
+            ? maskString(patient.phone)
+            : patient.phone || 'N/A',
+        ],
+        [
+          'Email',
+          isSupportEngineer
+            ? maskString(patient.email)
+            : patient.email || 'N/A',
+        ],
         ['Attending Doctor', doctorFullName],
         ['Doctor Email', doctor.email],
         ['Notes', patient.notes || 'None'],

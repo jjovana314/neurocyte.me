@@ -77,7 +77,10 @@ describe('PatientsController', () => {
 
       const result = await controller.getMyPatients(mockUser);
 
-      expect(mockPatientsService.getDoctorPatients).toHaveBeenCalledWith(1);
+      expect(mockPatientsService.getDoctorPatients).toHaveBeenCalledWith(
+        1,
+        'Doctor',
+      );
       expect(result).toBe(mockPatients);
     });
   });
@@ -234,7 +237,11 @@ describe('PatientsController', () => {
 
       const result = await controller.exportPatientPdf(mockUser, '10');
 
-      expect(mockPatientsService.exportPatientPdf).toHaveBeenCalledWith(1, 10);
+      expect(mockPatientsService.exportPatientPdf).toHaveBeenCalledWith(
+        1,
+        10,
+        'Doctor',
+      );
       // StreamableFile wraps the buffer
       expect(result).toBeDefined();
     });

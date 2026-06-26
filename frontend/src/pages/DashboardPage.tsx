@@ -27,10 +27,10 @@ export default function DashboardPage() {
         </div>
       </header>
 
-      <TabNav active={activeTab} onChange={setActiveTab} />
+      <TabNav active={activeTab} onChange={setActiveTab} role={user?.role?.name} />
 
       <main className="content">
-        {activeTab === 'patients' && <PatientTable />}
+        {activeTab === 'patients' && <PatientTable role={user?.role?.name} />}
         {activeTab === 'add-patient' && <AddPatientForm />}
         {activeTab === 'import-csv' && <ImportCsv />}
         {activeTab === 'profile' && <Profile />}
