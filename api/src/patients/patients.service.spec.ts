@@ -134,7 +134,11 @@ describe('PatientsService', () => {
       mockUserRepository.findOne.mockResolvedValue(mockDoctor);
       mockPatientRepository.findOne.mockResolvedValue(mockPatient);
 
-      const result = await service.exportPatientPdf(doctorId, patientId, 'Doctor');
+      const result = await service.exportPatientPdf(
+        doctorId,
+        patientId,
+        'Doctor',
+      );
 
       expect(result).toBeInstanceOf(Buffer);
       // PDF files start with the %PDF magic bytes
@@ -178,7 +182,11 @@ describe('PatientsService', () => {
         familyHistory: [],
       });
 
-      const result = await service.exportPatientPdf(doctorId, patientId, 'Doctor');
+      const result = await service.exportPatientPdf(
+        doctorId,
+        patientId,
+        'Doctor',
+      );
 
       expect(result).toBeInstanceOf(Buffer);
       expect(result.slice(0, 4).toString()).toBe('%PDF');
@@ -194,7 +202,11 @@ describe('PatientsService', () => {
         familyHistory: [],
       });
 
-      const result = await service.exportPatientPdf(doctorId, patientId, 'Doctor');
+      const result = await service.exportPatientPdf(
+        doctorId,
+        patientId,
+        'Doctor',
+      );
 
       expect(result).toBeInstanceOf(Buffer);
     });
