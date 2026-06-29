@@ -37,7 +37,7 @@ export default function AddPatientForm() {
     },
   });
 
-  function handleSubmit(e: React.FormEvent) {
+  function handleSubmit(e: React.SubmitEvent) {
     e.preventDefault();
     setSuccess(false);
     mutation.mutate();
