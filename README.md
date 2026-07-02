@@ -42,4 +42,18 @@ Navigate to the backend directory, install dependencies, and start the service:
 cd backend
 npm install
 npm run start:dev
+```
+
+### 3. Frontend Setup (React + Vite + TypeScript)
+Navigate to the frontend directory, install the dependencies, and start the Vite development server:
+```sh
+cd frontend
+npm install
+npm run dev
+```
+### 💡 Additional Frontend Scripts for your Reference
+If you need to build or lint the frontend later, you can also use these commands based on your file:
+* **Production Build:** `npm run build` (runs the TypeScript compiler and compiles the Vite production asset bundle)
+* **Code Linting:** `npm run lint` (runs ESLint to check for code quality issues)
+* **Preview Build Locally:** `npm run preview` (boots up a local server to test the production build before deploying)
 
