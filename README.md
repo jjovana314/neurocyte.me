@@ -4,9 +4,11 @@
 	<img src="assets/logo.png" alt="neurocyte.me logo" width="200" />
 </p>
 
-neurocyte.me is an advanced neurology patient management platform designed to help neurologists track disease progression, manage medical records, and utilize AI-driven insights for better treatment planning.
+**neurocyte.me** is an advanced neurology patient management platform designed to help neurologists track disease progression, manage medical records, and utilize AI-driven insights for better treatment planning.
 
-## Features
+---
+
+## 🚀 Features
 
 - **Comprehensive Patient Records** – Store and manage patient details, medical history, and diagnostic information.
 - **Disease Progression Tracking** – Monitor symptoms, treatment effectiveness, and functional assessments over time.
@@ -17,24 +19,27 @@ neurocyte.me is an advanced neurology patient management platform designed to he
 - **Clinical Trial Candidate Identification** – Flag patients meeting criteria for research studies.
 - **Automated Report Generation** – Create detailed medical reports with charts and statistics in PDF format.
 
-## Installation
+---
 
-To run the backend, ensure you have Node.js installed, then execute:
+## 🛠️ Tech Stack
 
+- **Frontend:** React.js, TypeScript
+- **Backend:** NestJS, Node.js
+- **Database & Integrity:** *[e.g., PostgreSQL, Prisma — feel free to fill in]*
+
+---
+
+## 📦 Installation & Setup
+
+This repository contains both the frontend application and the backend service. 
+
+### 1. Prerequisites
+Ensure you have **Node.js** (v18+ recommended) and npm/yarn installed.
+
+### 2. Backend Setup
+Navigate to the backend directory, install dependencies, and start the service:
 ```sh
+cd backend
 npm install
-npm run start
-```
-
-## API Documentation
-
-The API follows RESTful principles and supports data retrieval, patient record management, and AI-assisted recommendations.
-
-## Contributing
-
-Contributions are welcome! Please submit a pull request or open an issue if you encounter bugs or have feature suggestions.
-
-## License
-
-MIT License
+npm run start:dev
 
