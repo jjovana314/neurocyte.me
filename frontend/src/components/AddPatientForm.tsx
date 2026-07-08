@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { createPatient } from '../api/patients';
+import { getErrorMessage } from '../api/errors';
 
 const GENDER_OPTIONS = ['Male', 'Female', 'Non-binary', 'Prefer not to say'];
 
@@ -110,9 +111,7 @@ export default function AddPatientForm() {
           />
         </div>
         {mutation.error && (
-          <p className="form-error">
-            {(mutation.error as Error).message}
-          </p>
+          <p className="form-error">{getErrorMessage(mutation.error)}</p>
         )}
         {success && <p className="form-success">Patient created successfully.</p>}
         <button className="btn btn-primary" type="submit" disabled={mutation.isPending}>

@@ -32,7 +32,7 @@ import { PatientHistory } from './entities/patient-history.entity';
 import { FamilyHistory } from './entities/family-history.entity';
 import { CurrentUser } from 'src/auth/decorators/current-user.decorator';
 import { JwtUser } from 'src/auth/classes/jwt-user.class';
-import { MultipartFile } from 'src/common/classes/multipart-file.class';
+import { MultipartFile } from 'src/common/multipart-file';
 
 @Controller('patients')
 @UseGuards(AuthGuard('jwt'))

@@ -3,7 +3,7 @@ import { PatientsController } from './patients.controller';
 import { PatientsService } from './patients.service';
 import { UserService } from 'src/user/user.service';
 import { JwtUser, JwtUserRole } from 'src/auth/classes/jwt-user.class';
-import { MultipartFile } from 'src/common/classes/multipart-file.class';
+import { MultipartFile } from 'src/common/multipart-file';
 
 describe('PatientsController', () => {
   let controller: PatientsController;

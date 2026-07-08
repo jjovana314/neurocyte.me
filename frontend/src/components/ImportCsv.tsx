@@ -2,6 +2,7 @@ import { useRef, useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { importCsv } from '../api/patients';
 import type { ImportCsvResponse } from '../api/types';
+import { getErrorMessage } from '../api/errors';
 
 export default function ImportCsv() {
   const queryClient = useQueryClient();
@@ -39,7 +40,7 @@ export default function ImportCsv() {
           <input id="csv-file" ref={fileRef} type="file" accept=".csv,text/csv" />
         </div>
         {mutation.error && (
-          <p className="form-error">{(mutation.error as Error).message}</p>
+          <p className="form-error">{getErrorMessage(mutation.error)}</p>
         )}
         <button
           className="btn btn-primary"

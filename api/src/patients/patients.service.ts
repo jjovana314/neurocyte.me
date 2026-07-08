@@ -20,6 +20,12 @@ import {
   ImportCsvResponseDto,
 } from './dtos';
 import { maskString } from './utils/masking';
+import {
+  PatientCreateForbiddenException,
+  UserNotFoundException,
+  PatientNotFoundException,
+  AccessToPatientForbiddenException,
+} from 'src/common/exceptions';
 
 @Injectable()
 export class PatientsService {
@@ -47,7 +53,7 @@ export class PatientsService {
       this.logger.warn(
         `User ${doctorId} attempted to create patient without doctor role`,
       );
-      throw new ForbiddenException('Only doctors can create patient records');
+      throw new PatientCreateForbiddenException();
     }
 
     const patient = new Patient();
@@ -74,7 +80,7 @@ export class PatientsService {
     });
     this.logger.info(`User: ${JSON.stringify(user)}`);
     if (!user) {
-      throw new NotFoundException(`User with ID ${userId} not found`);
+      throw new UserNotFoundException(userId);
     }
     return user;
   }
@@ -89,9 +95,7 @@ export class PatientsService {
       where: { id: createHistoryDto.patientId },
     });
     if (!patient) {
-      throw new NotFoundException(
-        `Patient with ID ${createHistoryDto.patientId} not found`,
-      );
+      throw new PatientNotFoundException(createHistoryDto.patientId);
     }
 
     // Verify that the requester is the doctor who created this patient
@@ -99,9 +103,7 @@ export class PatientsService {
       this.logger.warn(
         `Doctor ${doctorId} attempted to access patient ${createHistoryDto.patientId} created by doctor ${patient.doctorId}`,
       );
-      throw new ForbiddenException(
-        'You can only add history to patients you created',
-      );
+      throw new AccessToPatientForbiddenException();
     }
 
     // errorHandler required fields
@@ -225,7 +227,7 @@ export class PatientsService {
       where: { id: patientId },
     });
     if (!patient) {
-      throw new NotFoundException(`Patient with ID ${patientId} not found`);
+      throw new PatientNotFoundException(patientId);
     }
 
     if (patient.doctorId !== doctorId) {
@@ -283,7 +285,7 @@ export class PatientsService {
     }
 
     if (patient.doctorId !== doctorId) {
-      throw new ForbiddenException('You can only update patients you created');
+      throw new AccessToPatientForbiddenException();
     }
 
     patient.notes = notes;
