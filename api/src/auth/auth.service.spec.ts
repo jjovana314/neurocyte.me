@@ -73,11 +73,14 @@ describe('AuthService (login & register)', () => {
       password: 'password',
       firstName: 'First',
       lastName: 'Last',
-      role: 'Doctor'
+      role: 'Doctor',
     };
 
     mockUsersService.findUserByEmail.mockResolvedValue(null);
-    mockRoleRepository.findOne.mockResolvedValue({ id: 1, name: 'Doctor'} as Role);
+    mockRoleRepository.findOne.mockResolvedValue({
+      id: 1,
+      name: 'Doctor',
+    } as Role);
     mockJwtService.sign.mockReturnValue('reg-token');
 
     // prevent actual hashing by stubbing the prototype method
@@ -92,7 +95,9 @@ describe('AuthService (login & register)', () => {
 
     const result = await service.register(registerData);
 
-    expect(mockUsersService.findUserByEmail).toHaveBeenCalledWith(registerData.email);
+    expect(mockUsersService.findUserByEmail).toHaveBeenCalledWith(
+      registerData.email,
+    );
     expect(mockRoleRepository.findOne).toHaveBeenCalledWith({
       where: { name: registerData.role },
     });
