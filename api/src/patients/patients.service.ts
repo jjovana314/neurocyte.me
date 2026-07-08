@@ -487,12 +487,12 @@ export class PatientsService {
         ['Last Updated', patient.updatedAt.toLocaleString()],
       ];
 
-      for (const [label, value] of infoRows) {
+      for (const [label, patientData] of infoRows) {
         doc
           .font('Helvetica-Bold')
           .text(`${label}: `, { continued: true })
           .font('Helvetica')
-          .text(value);
+          .text(patientData);
       }
       doc.moveDown(1);
 

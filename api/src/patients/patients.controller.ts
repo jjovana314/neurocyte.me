@@ -110,7 +110,7 @@ export class PatientsController {
     @CurrentUser() user: JwtUser,
     @UploadedFile(
       new ParseFilePipe({
-        validators: [new FileTypeValidator({ fileType: 'text/csv' })],
+        validators: [ new FileTypeValidator({ fileType: 'csv', fallbackToMimetype: true }) ],
       }),
     )
     file: MultipartFile,
