@@ -1,6 +1,5 @@
 import {
   Injectable,
-  ForbiddenException,
   NotFoundException,
   BadRequestException,
 } from '@nestjs/common';
@@ -78,7 +77,6 @@ export class PatientsService {
       where: { id: userId },
       relations: ['role'],
     });
-    this.logger.info(`User: ${JSON.stringify(user)}`);
     if (!user) {
       throw new UserNotFoundException(userId);
     }
@@ -137,9 +135,7 @@ export class PatientsService {
       where: { id: createFamilyHistoryDto.patientId },
     });
     if (!patient) {
-      throw new NotFoundException(
-        `Patient with ID ${createFamilyHistoryDto.patientId} not found`,
-      );
+      throw new PatientNotFoundException(createFamilyHistoryDto.patientId);
     }
 
     // Verify that the requester is the doctor who created this patient
@@ -147,9 +143,7 @@ export class PatientsService {
       this.logger.warn(
         `Doctor ${doctorId} attempted to access patient ${createFamilyHistoryDto.patientId}`,
       );
-      throw new ForbiddenException(
-        'You can only add family history to patients you created',
-      );
+      throw new AccessToPatientForbiddenException();
     }
 
     // errorHandler required fields
@@ -194,7 +188,7 @@ export class PatientsService {
       this.logger.warn(
         `Doctor ${doctorId} attempted to access patient ${patientId} created by doctor ${patient.doctorId}`,
       );
-      throw new ForbiddenException('You can only view patients you created');
+      throw new AccessToPatientForbiddenException();
     }
 
     return patient;
@@ -231,9 +225,7 @@ export class PatientsService {
     }
 
     if (patient.doctorId !== doctorId) {
-      throw new ForbiddenException(
-        'You can only view history for patients you created',
-      );
+      throw new AccessToPatientForbiddenException();
     }
 
     const history = await this.patientHistoryRepository.find({
@@ -254,13 +246,11 @@ export class PatientsService {
       where: { id: patientId },
     });
     if (!patient) {
-      throw new NotFoundException(`Patient with ID ${patientId} not found`);
+      throw new PatientNotFoundException(patientId);
     }
 
     if (patient.doctorId !== doctorId) {
-      throw new ForbiddenException(
-        'You can only view family history for patients you created',
-      );
+      throw new AccessToPatientForbiddenException();
     }
 
     const familyHistory = await this.familyHistoryRepository.find({
@@ -281,7 +271,7 @@ export class PatientsService {
       where: { id: patientId },
     });
     if (!patient) {
-      throw new NotFoundException(`Patient with ID ${patientId} not found`);
+      throw new PatientNotFoundException(patientId);
     }
 
     if (patient.doctorId !== doctorId) {
@@ -303,11 +293,11 @@ export class PatientsService {
       where: { id: patientId },
     });
     if (!patient) {
-      throw new NotFoundException(`Patient with ID ${patientId} not found`);
+      throw new PatientNotFoundException(patientId);
     }
 
     if (patient.doctorId !== doctorId) {
-      throw new ForbiddenException('You can only delete patients you created');
+      throw new AccessToPatientForbiddenException();
     }
 
     // Delete associated histories (cascade handled by database, but explicit for clarity)
@@ -413,7 +403,7 @@ export class PatientsService {
       relations: ['role'],
     });
     if (!doctor) {
-      throw new NotFoundException(`Doctor with ID ${doctorId} not found`);
+      throw new UserNotFoundException(doctorId);
     }
 
     const patient = await this.patientRepository.findOne({
@@ -421,15 +411,13 @@ export class PatientsService {
       relations: ['medicalHistory', 'familyHistory', 'doctor'],
     });
     if (!patient) {
-      throw new NotFoundException(`Patient with ID ${patientId} not found`);
+      throw new PatientNotFoundException(patientId);
     }
     if (roleName !== 'Support Engineer' && patient.doctorId !== doctorId) {
       this.logger.warn(
         `Doctor ${doctorId} attempted to export PDF for patient ${patientId} created by doctor ${patient.doctorId}`,
       );
-      throw new ForbiddenException(
-        'You can only export records for patients you created',
-      );
+      throw new AccessToPatientForbiddenException();
     }
 
     const isSupportEngineer = roleName === 'Support Engineer';
