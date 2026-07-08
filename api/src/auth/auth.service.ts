@@ -15,6 +15,7 @@ import { UserInfo } from './interfaces/user-info.interface';
 import { Action } from './entites/action.entity';
 import { config } from '../config/config';
 import type { StringValue } from 'ms';
+import { RegisterDto } from './dtos/register.dto';
 
 @Injectable()
 export class AuthService {
@@ -46,13 +47,8 @@ export class AuthService {
     return this.login(user);
   }
 
-  async register(
-    email: string,
-    password: string,
-    firstName: string,
-    lastName: string,
-    role: string,
-  ): Promise<UserInfo> {
+  async register(registerData: RegisterDto): Promise<UserInfo> {
+    const { email, password, firstName, lastName, role } = registerData;
     // todo crete use info data with access token
     const existingUser = await this.usersService.findUserByEmail(email);
     if (existingUser) {

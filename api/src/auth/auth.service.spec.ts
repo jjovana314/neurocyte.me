@@ -7,6 +7,7 @@ import { User } from './entites/user.entity';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { Role } from './entites/role.entity';
 import { Action } from './entites/action.entity';
+import { RegisterDto } from './dtos/register.dto';
 
 describe('AuthService (login & register)', () => {
   let service: AuthService;
@@ -67,15 +68,16 @@ describe('AuthService (login & register)', () => {
   });
 
   it('register should create user and return accessToken and refreshToken', async () => {
-    const email = 'new@user.com';
-    const password = 'password';
-    const firstName = 'First';
-    const lastName = 'Last';
-    const roleName = 'Doctor';
-    const mockRole = { id: 1, name: 'Doctor' } as any;
+    const registerData: RegisterDto = {
+      email: 'new@user.com',
+      password: 'password',
+      firstName: 'First',
+      lastName: 'Last',
+      role: 'Doctor'
+    };
 
     mockUsersService.findUserByEmail.mockResolvedValue(null);
-    mockRoleRepository.findOne.mockResolvedValue(mockRole);
+    mockRoleRepository.findOne.mockResolvedValue({ id: 1, name: 'Doctor'} as Role);
     mockJwtService.sign.mockReturnValue('reg-token');
 
     // prevent actual hashing by stubbing the prototype method
@@ -88,17 +90,11 @@ describe('AuthService (login & register)', () => {
       return u;
     });
 
-    const result = await service.register(
-      email,
-      password,
-      firstName,
-      lastName,
-      roleName,
-    );
+    const result = await service.register(registerData);
 
-    expect(mockUsersService.findUserByEmail).toHaveBeenCalledWith(email);
+    expect(mockUsersService.findUserByEmail).toHaveBeenCalledWith(registerData.email);
     expect(mockRoleRepository.findOne).toHaveBeenCalledWith({
-      where: { name: roleName },
+      where: { name: registerData.role },
     });
     expect(mockUsersService.save).toHaveBeenCalled();
     expect(result).toEqual({

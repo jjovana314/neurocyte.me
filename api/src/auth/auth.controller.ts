@@ -19,15 +19,9 @@ export class AuthController {
 
   @Post('register')
   async register(
-    @Body() { email, password, firstName, lastName, role }: RegisterDto,
+    @Body() registerData: RegisterDto,
   ): Promise<{ accessToken: string }> {
-    return await this.authService.register(
-      email,
-      password,
-      firstName,
-      lastName,
-      role,
-    );
+    return await this.authService.register(registerData);
   }
 
   @Post('forgot-password')
