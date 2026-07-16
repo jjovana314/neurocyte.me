@@ -77,7 +77,12 @@ describe('PatientsService', () => {
 
   it('should create patient when doctor is valid', async () => {
     const doctorId = 1;
-    const createPatientDto = { notes: 'Test patient',  name: 'Test Name', gender: 'F', dateOfBirth: '24.01.1999.' };
+    const createPatientDto = {
+      notes: 'Test patient',
+      name: 'Test Name',
+      gender: 'F',
+      dateOfBirth: '24.01.1999.',
+    };
     const mockDoctor = { id: doctorId, role: { id: 1, name: 'Doctor' } } as any;
     const mockPatient = { id: 1, doctorId, ...createPatientDto } as any;
 
