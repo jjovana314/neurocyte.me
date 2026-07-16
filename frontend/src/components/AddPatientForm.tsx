@@ -19,8 +19,8 @@ export default function AddPatientForm() {
     mutationFn: () =>
       createPatient({
         name,
-        dateOfBirth: dateOfBirth || undefined,
-        gender: gender || undefined,
+        dateOfBirth: dateOfBirth,
+        gender: gender,
         phone: phone || undefined,
         email: email || undefined,
         notes,
