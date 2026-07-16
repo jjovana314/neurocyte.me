@@ -49,29 +49,32 @@ export default function AddPatientForm() {
       <h3>Create New Patient</h3>
       <form onSubmit={handleSubmit}>
         <div className="form-group">
-          <label htmlFor="patient-name">Patient name</label>
+          <label htmlFor="patient-name">Patient name*</label>
           <input
             id="patient-name"
             type="text"
             value={name}
+            required={true}
             onChange={(e) => setName(e.target.value)}
             placeholder="Full name"
           />
         </div>
         <div className="form-group">
-          <label htmlFor="patient-dob">Date of birth</label>
+          <label htmlFor="patient-dob">Date of birth*</label>
           <input
             id="patient-dob"
             type="date"
             value={dateOfBirth}
+            required={true}
             onChange={(e) => setDateOfBirth(e.target.value)}
           />
         </div>
         <div className="form-group">
-          <label htmlFor="patient-gender">Gender</label>
+          <label htmlFor="patient-gender">Gender*</label>
           <select
             id="patient-gender"
             value={gender}
+            required={true}
             onChange={(e) => setGender(e.target.value)}
           >
             <option value="">— Select —</option>
