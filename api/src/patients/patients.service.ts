@@ -54,15 +54,16 @@ export class PatientsService {
       );
       throw new PatientCreateForbiddenException();
     }
+    // add validation for patients
 
     const patient = new Patient();
     patient.doctor = doctor;
-    patient.name = createPatientDto.name || '';
-    patient.dateOfBirth = createPatientDto.dateOfBirth || null;
-    patient.gender = createPatientDto.gender || null;
+    patient.name = createPatientDto.name;
+    patient.dateOfBirth = createPatientDto.dateOfBirth;
+    patient.gender = createPatientDto.gender;
     patient.phone = createPatientDto.phone || null;
     patient.email = createPatientDto.email || null;
-    patient.notes = createPatientDto.notes || '';
+    patient.notes = createPatientDto.notes;
 
     const savedPatient = await this.patientRepository.save(patient);
     this.logger.info(

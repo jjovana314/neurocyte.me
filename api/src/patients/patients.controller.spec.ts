@@ -59,7 +59,7 @@ describe('PatientsController', () => {
 
   describe('createPatient', () => {
     it('should call patientsService.createPatient with user id and dto', async () => {
-      const dto = { notes: 'Test' };
+      const dto = { notes: 'Test patient',  name: 'Test Name', gender: 'F', dateOfBirth: '24.01.1999.' };
       const mockPatient = { id: 1, doctorId: 1, ...dto } as any;
       mockPatientsService.createPatient.mockResolvedValue(mockPatient);
 
