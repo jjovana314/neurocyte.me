@@ -247,12 +247,12 @@ describe('PatientsController', () => {
         bowelBladderSystem: 0,
         visualSystem: 0,
         mentalSystem: 0,
-        patientId: 0,
+        patientId: 5,
       } as any;
       const mockAssessment = { id: 1, patientId: 5, totalScore: 2.0 } as any;
       mockPatientsService.addEdssAssessment.mockResolvedValue(mockAssessment);
 
-      const result = await controller.addEdssAssessment(mockUser, '5', dto);
+      const result = await controller.addEdssAssessment(mockUser, dto);
 
       expect(mockPatientsService.addEdssAssessment).toHaveBeenCalledWith(1, {
         ...dto,

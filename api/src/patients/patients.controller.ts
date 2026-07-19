@@ -238,10 +238,8 @@ export class PatientsController {
   @HttpCode(HttpStatus.CREATED)
   async addEdssAssessment(
     @CurrentUser() user: JwtUser,
-    @Param('id') patientId: string,
     @Body() createEdssDto: CreateEdssAssessmentDto,
   ): Promise<EdssAssesment> {
-    createEdssDto.patientId = parseInt(patientId, 10);
     return this.patientsService.addEdssAssessment(user.id, createEdssDto);
   }
 
