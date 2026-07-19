@@ -24,12 +24,14 @@ import {
   CreatePatientDto,
   CreatePatientHistoryDto,
   CreateFamilyHistoryDto,
+  CreateEdssAssessmentDto,
   ImportCsvResponseDto,
   UpdatePatientNotesDto,
 } from './dtos';
 import { Patient } from './entities/patient.entity';
 import { PatientHistory } from './entities/patient-history.entity';
 import { FamilyHistory } from './entities/family-history.entity';
+import { EdssAssesment } from './entities/edss-assesment.entity';
 import { CurrentUser } from 'src/auth/decorators/current-user.decorator';
 import { JwtUser } from 'src/auth/classes/jwt-user.class';
 import { MultipartFile } from 'src/common/multipart-file';
@@ -221,6 +223,38 @@ export class PatientsController {
     @Param('id') patientId: string,
   ): Promise<FamilyHistory[]> {
     return this.patientsService.getPatientFamilyHistory(
+      user.id,
+      parseInt(patientId, 10),
+    );
+  }
+
+  /**
+   * Record an EDSS assessment for a patient
+   * POST /patients/:id/edss
+   * The composite score is derived server-side from the raw FSS grades and
+   * ambulation metrics, never accepted directly from the client.
+   */
+  @Post(':id/edss')
+  @HttpCode(HttpStatus.CREATED)
+  async addEdssAssessment(
+    @CurrentUser() user: JwtUser,
+    @Param('id') patientId: string,
+    @Body() createEdssDto: CreateEdssAssessmentDto,
+  ): Promise<EdssAssesment> {
+    createEdssDto.patientId = parseInt(patientId, 10);
+    return this.patientsService.addEdssAssessment(user.id, createEdssDto);
+  }
+
+  /**
+   * Get a patient's EDSS assessment history
+   * GET /patients/:id/edss
+   */
+  @Get(':id/edss')
+  async getPatientEdssAssessments(
+    @CurrentUser() user: JwtUser,
+    @Param('id') patientId: string,
+  ): Promise<EdssAssesment[]> {
+    return this.patientsService.getPatientEdssAssessments(
       user.id,
       parseInt(patientId, 10),
     );

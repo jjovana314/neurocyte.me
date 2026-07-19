@@ -10,6 +10,7 @@ import {
 import { User } from 'src/auth/entites/user.entity';
 import { PatientHistory } from './patient-history.entity';
 import { FamilyHistory } from './family-history.entity';
+import { EdssAssesment } from './edss-assesment.entity';
 
 @Entity()
 export class Patient {
@@ -56,4 +57,7 @@ export class Patient {
 
   @OneToMany(() => FamilyHistory, (family) => family.patient)
   familyHistory: FamilyHistory[];
+
+  @OneToMany(() => EdssAssesment, (assessment) => assessment.patient)
+  edssAssessments: EdssAssesment[];
 }

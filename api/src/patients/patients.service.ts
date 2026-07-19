@@ -10,15 +10,18 @@ import { errorHandler } from './decorators/validatieon-decorator';
 import { Patient } from './entities/patient.entity';
 import { PatientHistory } from './entities/patient-history.entity';
 import { FamilyHistory, DiseaseType } from './entities/family-history.entity';
+import { EdssAssesment } from './entities/edss-assesment.entity';
 import { User } from 'src/auth/entites/user.entity';
 import PDFDocument from 'pdfkit';
 import {
   CreatePatientDto,
   CreatePatientHistoryDto,
   CreateFamilyHistoryDto,
+  CreateEdssAssessmentDto,
   ImportCsvResponseDto,
 } from './dtos';
 import { maskString } from './utils/masking';
+import { calculateEdssScore } from './utils/edss-calculator';
 import {
   PatientCreateForbiddenException,
   UserNotFoundException,
@@ -34,6 +37,8 @@ export class PatientsService {
     private patientHistoryRepository: Repository<PatientHistory>,
     @InjectRepository(FamilyHistory)
     private familyHistoryRepository: Repository<FamilyHistory>,
+    @InjectRepository(EdssAssesment)
+    private edssAssessmentRepository: Repository<EdssAssesment>,
     @InjectRepository(User) private userRepository: Repository<User>,
     private readonly logger: PinoLogger,
   ) {}
@@ -260,6 +265,90 @@ export class PatientsService {
     });
 
     return familyHistory;
+  }
+
+  async addEdssAssessment(
+    doctorId: number,
+    createEdssDto: CreateEdssAssessmentDto,
+  ): Promise<EdssAssesment> {
+    // Verify patient exists
+    const patient = await this.patientRepository.findOne({
+      where: { id: createEdssDto.patientId },
+    });
+    if (!patient) {
+      throw new PatientNotFoundException(createEdssDto.patientId);
+    }
+
+    // Verify that the requester is the doctor who created this patient
+    if (patient.doctorId !== doctorId) {
+      this.logger.warn(
+        `Doctor ${doctorId} attempted to access patient ${createEdssDto.patientId} created by doctor ${patient.doctorId}`,
+      );
+      throw new AccessToPatientForbiddenException();
+    }
+
+    const ambulation = {
+      unassistedWalkingDistanceMeters:
+        createEdssDto.unassistedWalkingDistanceMeters,
+      requiresUnilateralAid: createEdssDto.requiresUnilateralAid || false,
+      requiresBilateralAid: createEdssDto.requiresBilateralAid || false,
+      wheelchairBound: createEdssDto.wheelchairBound || false,
+    };
+
+    // Engine validates the raw FSS grades and derives the composite score -
+    // the client never supplies totalScore directly
+    const totalScore = calculateEdssScore(
+      {
+        pyramidalSystem: createEdssDto.pyramidalSystem,
+        cerebellarSystem: createEdssDto.cerebellarSystem,
+        brainstemSystem: createEdssDto.brainstemSystem,
+        sensorySystem: createEdssDto.sensorySystem,
+        bowelBladderSystem: createEdssDto.bowelBladderSystem,
+        visualSystem: createEdssDto.visualSystem,
+        mentalSystem: createEdssDto.mentalSystem,
+      },
+      ambulation,
+    );
+
+    const assessment = new EdssAssesment();
+    assessment.patientId = createEdssDto.patientId;
+    assessment.pyramidalSystem = createEdssDto.pyramidalSystem;
+    assessment.cerebellarSystem = createEdssDto.cerebellarSystem;
+    assessment.brainstemSystem = createEdssDto.brainstemSystem;
+    assessment.sensorySystem = createEdssDto.sensorySystem;
+    assessment.bowelBladderSystem = createEdssDto.bowelBladderSystem;
+    assessment.visualSystem = createEdssDto.visualSystem;
+    assessment.mentalSystem = createEdssDto.mentalSystem;
+    assessment.unassistedWalkingDistanceMeters =
+      ambulation.unassistedWalkingDistanceMeters ?? null;
+    assessment.requiresUnilateralAid = ambulation.requiresUnilateralAid;
+    assessment.requiresBilateralAid = ambulation.requiresBilateralAid;
+    assessment.wheelchairBound = ambulation.wheelchairBound;
+    assessment.totalScore = totalScore;
+
+    return this.edssAssessmentRepository.save(assessment);
+  }
+
+  async getPatientEdssAssessments(
+    doctorId: number,
+    patientId: number,
+  ): Promise<EdssAssesment[]> {
+    // Verify permissions first
+    const patient = await this.patientRepository.findOne({
+      where: { id: patientId },
+    });
+    if (!patient) {
+      throw new PatientNotFoundException(patientId);
+    }
+
+    if (patient.doctorId !== doctorId) {
+      throw new AccessToPatientForbiddenException();
+    }
+
+    return this.edssAssessmentRepository.find({
+      where: { patientId },
+      order: { assessedAt: 'DESC' },
+    });
   }
 
   @errorHandler

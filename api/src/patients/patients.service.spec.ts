@@ -4,9 +4,14 @@ import { getRepositoryToken } from '@nestjs/typeorm';
 import { Patient } from './entities/patient.entity';
 import { PatientHistory } from './entities/patient-history.entity';
 import { FamilyHistory } from './entities/family-history.entity';
+import { EdssAssesment } from './entities/edss-assesment.entity';
 import { User } from 'src/auth/entites/user.entity';
 import { PinoLogger } from 'nestjs-pino';
-import { ForbiddenException, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ForbiddenException,
+  NotFoundException,
+} from '@nestjs/common';
 
 describe('PatientsService', () => {
   let service: PatientsService;
@@ -27,6 +32,13 @@ describe('PatientsService', () => {
   };
 
   const mockFamilyHistoryRepository = {
+    findOne: jest.fn(),
+    find: jest.fn(),
+    save: jest.fn(),
+    delete: jest.fn(),
+  };
+
+  const mockEdssAssessmentRepository = {
     findOne: jest.fn(),
     find: jest.fn(),
     save: jest.fn(),
@@ -58,6 +70,10 @@ describe('PatientsService', () => {
         {
           provide: getRepositoryToken(FamilyHistory),
           useValue: mockFamilyHistoryRepository,
+        },
+        {
+          provide: getRepositoryToken(EdssAssesment),
+          useValue: mockEdssAssessmentRepository,
         },
         { provide: getRepositoryToken(User), useValue: mockUserRepository },
         { provide: PinoLogger, useValue: mockLogger },
@@ -91,6 +107,127 @@ describe('PatientsService', () => {
 
     const result = await service.createPatient(doctorId, createPatientDto);
     expect(result).toEqual(mockPatient);
+  });
+
+  describe('addEdssAssessment', () => {
+    const doctorId = 1;
+    const patientId = 5;
+    const validDto = {
+      patientId,
+      pyramidalSystem: 3,
+      cerebellarSystem: 0,
+      brainstemSystem: 0,
+      sensorySystem: 0,
+      bowelBladderSystem: 0,
+      visualSystem: 0,
+      mentalSystem: 0,
+    };
+
+    it('should derive totalScore server-side and persist the assessment', async () => {
+      mockPatientRepository.findOne.mockResolvedValue({
+        id: patientId,
+        doctorId,
+      });
+      mockEdssAssessmentRepository.save.mockImplementation((a) =>
+        Promise.resolve({ id: 1, ...a }),
+      );
+
+      const result = await service.addEdssAssessment(doctorId, validDto);
+
+      expect(result.totalScore).toBe(3.0);
+      expect(mockEdssAssessmentRepository.save).toHaveBeenCalled();
+    });
+
+    it('should throw NotFoundException when patient does not exist', async () => {
+      mockPatientRepository.findOne.mockResolvedValue(null);
+
+      await expect(
+        service.addEdssAssessment(doctorId, validDto),
+      ).rejects.toThrow(NotFoundException);
+    });
+
+    it('should throw ForbiddenException when doctor does not own the patient', async () => {
+      mockPatientRepository.findOne.mockResolvedValue({
+        id: patientId,
+        doctorId: 999,
+      });
+
+      await expect(
+        service.addEdssAssessment(doctorId, validDto),
+      ).rejects.toThrow(ForbiddenException);
+    });
+
+    it('should throw BadRequestException when a FSS grade is out of bounds', async () => {
+      mockPatientRepository.findOne.mockResolvedValue({
+        id: patientId,
+        doctorId,
+      });
+
+      await expect(
+        service.addEdssAssessment(doctorId, {
+          ...validDto,
+          pyramidalSystem: 7,
+        }),
+      ).rejects.toThrow(BadRequestException);
+    });
+
+    it('should let ambulation impairment override a low FSS-derived score', async () => {
+      mockPatientRepository.findOne.mockResolvedValue({
+        id: patientId,
+        doctorId,
+      });
+      mockEdssAssessmentRepository.save.mockImplementation((a) =>
+        Promise.resolve({ id: 1, ...a }),
+      );
+
+      const result = await service.addEdssAssessment(doctorId, {
+        ...validDto,
+        pyramidalSystem: 1,
+        requiresBilateralAid: true,
+      });
+
+      expect(result.totalScore).toBe(6.5);
+    });
+  });
+
+  describe('getPatientEdssAssessments', () => {
+    const doctorId = 1;
+    const patientId = 5;
+
+    it('should return the assessment history ordered by most recent', async () => {
+      mockPatientRepository.findOne.mockResolvedValue({
+        id: patientId,
+        doctorId,
+      });
+      const mockAssessments = [{ id: 1, totalScore: 2.0 }];
+      mockEdssAssessmentRepository.find.mockResolvedValue(mockAssessments);
+
+      const result = await service.getPatientEdssAssessments(
+        doctorId,
+        patientId,
+      );
+
+      expect(result).toEqual(mockAssessments);
+    });
+
+    it('should throw NotFoundException when patient does not exist', async () => {
+      mockPatientRepository.findOne.mockResolvedValue(null);
+
+      await expect(
+        service.getPatientEdssAssessments(doctorId, patientId),
+      ).rejects.toThrow(NotFoundException);
+    });
+
+    it('should throw ForbiddenException when doctor does not own the patient', async () => {
+      mockPatientRepository.findOne.mockResolvedValue({
+        id: patientId,
+        doctorId: 999,
+      });
+
+      await expect(
+        service.getPatientEdssAssessments(doctorId, patientId),
+      ).rejects.toThrow(ForbiddenException);
+    });
   });
 
   describe('exportPatientPdf', () => {

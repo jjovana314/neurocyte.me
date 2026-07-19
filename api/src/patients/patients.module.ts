@@ -5,12 +5,19 @@ import { PatientsService } from './patients.service';
 import { Patient } from './entities/patient.entity';
 import { PatientHistory } from './entities/patient-history.entity';
 import { FamilyHistory } from './entities/family-history.entity';
+import { EdssAssesment } from './entities/edss-assesment.entity';
 import { User } from 'src/auth/entites/user.entity';
 import { UserModule } from 'src/user/user.module';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([Patient, PatientHistory, FamilyHistory, User]),
+    TypeOrmModule.forFeature([
+      Patient,
+      PatientHistory,
+      FamilyHistory,
+      EdssAssesment,
+      User,
+    ]),
     UserModule,
   ],
   controllers: [PatientsController],

@@ -21,6 +21,8 @@ describe('PatientsController', () => {
     getPatientMedicalHistory: jest.fn(),
     addFamilyHistory: jest.fn(),
     getPatientFamilyHistory: jest.fn(),
+    addEdssAssessment: jest.fn(),
+    getPatientEdssAssessments: jest.fn(),
   };
 
   const mockUserService = {
@@ -232,6 +234,50 @@ describe('PatientsController', () => {
         5,
       );
       expect(result).toBe(mockFamilyHistory);
+    });
+  });
+
+  describe('addEdssAssessment', () => {
+    it('should call patientsService.addEdssAssessment with user id and dto', async () => {
+      const dto = {
+        pyramidalSystem: 2,
+        cerebellarSystem: 0,
+        brainstemSystem: 0,
+        sensorySystem: 0,
+        bowelBladderSystem: 0,
+        visualSystem: 0,
+        mentalSystem: 0,
+        patientId: 0,
+      } as any;
+      const mockAssessment = { id: 1, patientId: 5, totalScore: 2.0 } as any;
+      mockPatientsService.addEdssAssessment.mockResolvedValue(mockAssessment);
+
+      const result = await controller.addEdssAssessment(mockUser, '5', dto);
+
+      expect(mockPatientsService.addEdssAssessment).toHaveBeenCalledWith(1, {
+        ...dto,
+        patientId: 5,
+      });
+      expect(result).toBe(mockAssessment);
+    });
+  });
+
+  describe('getPatientEdssAssessments', () => {
+    it('should call patientsService.getPatientEdssAssessments with user id and patient id', async () => {
+      const mockAssessments = [{ id: 1, totalScore: 2.0 }] as any[];
+      mockPatientsService.getPatientEdssAssessments.mockResolvedValue(
+        mockAssessments,
+      );
+
+      const result = await controller.getPatientEdssAssessments(
+        mockUser,
+        '5',
+      );
+
+      expect(
+        mockPatientsService.getPatientEdssAssessments,
+      ).toHaveBeenCalledWith(1, 5);
+      expect(result).toBe(mockAssessments);
     });
   });
 
