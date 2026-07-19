@@ -1,5 +1,8 @@
 import { BadRequestException } from '@nestjs/common';
-import { calculateEdssScore, validateFunctionalScores } from './edss-calculator';
+import {
+  calculateEdssScore,
+  validateFunctionalScores,
+} from './edss-calculator';
 
 const noAmbulationImpairment = {
   unassistedWalkingDistanceMeters: 1000,
@@ -80,22 +83,34 @@ describe('calculateEdssScore', () => {
   });
 
   it('should derive 4.0 from an unaided walking distance of 500m', () => {
-    const ambulation = { ...noAmbulationImpairment, unassistedWalkingDistanceMeters: 500 };
+    const ambulation = {
+      ...noAmbulationImpairment,
+      unassistedWalkingDistanceMeters: 500,
+    };
     expect(calculateEdssScore(zeroScores, ambulation)).toBe(4.0);
   });
 
   it('should derive 4.5 from an unaided walking distance of 300m', () => {
-    const ambulation = { ...noAmbulationImpairment, unassistedWalkingDistanceMeters: 300 };
+    const ambulation = {
+      ...noAmbulationImpairment,
+      unassistedWalkingDistanceMeters: 300,
+    };
     expect(calculateEdssScore(zeroScores, ambulation)).toBe(4.5);
   });
 
   it('should derive 6.0 when a unilateral aid is required', () => {
-    const ambulation = { ...noAmbulationImpairment, requiresUnilateralAid: true };
+    const ambulation = {
+      ...noAmbulationImpairment,
+      requiresUnilateralAid: true,
+    };
     expect(calculateEdssScore(zeroScores, ambulation)).toBe(6.0);
   });
 
   it('should derive 6.5 when a bilateral aid is required', () => {
-    const ambulation = { ...noAmbulationImpairment, requiresBilateralAid: true };
+    const ambulation = {
+      ...noAmbulationImpairment,
+      requiresBilateralAid: true,
+    };
     expect(calculateEdssScore(zeroScores, ambulation)).toBe(6.5);
   });
 
@@ -106,7 +121,10 @@ describe('calculateEdssScore', () => {
 
   it('should take the more severe of FSS-derived and ambulation-derived scores', () => {
     const scores = { ...zeroScores, pyramidalSystem: 1 }; // FSS alone -> 1.0
-    const ambulation = { ...noAmbulationImpairment, requiresBilateralAid: true }; // -> 6.5
+    const ambulation = {
+      ...noAmbulationImpairment,
+      requiresBilateralAid: true,
+    }; // -> 6.5
     expect(calculateEdssScore(scores, ambulation)).toBe(6.5);
   });
 

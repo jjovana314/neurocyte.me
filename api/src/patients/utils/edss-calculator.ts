@@ -90,17 +90,17 @@ function scoreFromAmbulation(ambulation: EdssAmbulationMetrics): number {
   if (ambulation.requiresUnilateralAid) return 6.0;
 
   const distance = ambulation.unassistedWalkingDistanceMeters;
-  
+
   // If distance is missing, undefined, or effectively unrestricted (> 500m)
   if (distance === undefined || distance === null || distance > 500) {
-    return 0.0; 
+    return 0.0;
   }
 
   // Evaluate from shortest (most severe) to longest (least severe) distance
   if (distance <= 100) return 5.5;
   if (distance <= 200) return 5.0; // Limited daily activity, can walk ~200m
   if (distance <= 300) return 4.5;
-  
+
   // distance is between 301 and 500 meters
   return 4.0;
 }

@@ -269,10 +269,7 @@ describe('PatientsController', () => {
         mockAssessments,
       );
 
-      const result = await controller.getPatientEdssAssessments(
-        mockUser,
-        '5',
-      );
+      const result = await controller.getPatientEdssAssessments(mockUser, '5');
 
       expect(
         mockPatientsService.getPatientEdssAssessments,
