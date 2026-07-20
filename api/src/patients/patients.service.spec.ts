@@ -188,6 +188,213 @@ describe('PatientsService', () => {
 
       expect(result.totalScore).toBe(6.5);
     });
+
+    it('should throw BadRequestException when a FSS grade is negative', async () => {
+      mockPatientRepository.findOne.mockResolvedValue({
+        id: patientId,
+        doctorId,
+      });
+
+      await expect(
+        service.addEdssAssessment(doctorId, {
+          ...validDto,
+          cerebellarSystem: -1,
+        }),
+      ).rejects.toThrow(BadRequestException);
+    });
+
+    it('should throw BadRequestException when a required FSS grade is missing', async () => {
+      mockPatientRepository.findOne.mockResolvedValue({
+        id: patientId,
+        doctorId,
+      });
+      const incomplete = { ...validDto, mentalSystem: null};
+      await expect(
+        service.addEdssAssessment(doctorId, incomplete as any),
+      ).rejects.toThrow(BadRequestException);
+    });
+
+    it('should not persist an assessment when validation fails', async () => {
+      mockPatientRepository.findOne.mockResolvedValue({
+        id: patientId,
+        doctorId,
+      });
+
+      await expect(
+        service.addEdssAssessment(doctorId, {
+          ...validDto,
+          sensorySystem: 99,
+        }),
+      ).rejects.toThrow(BadRequestException);
+      expect(mockEdssAssessmentRepository.save).not.toHaveBeenCalled();
+    });
+
+    it('should default ambulation fields and persist patientId correctly', async () => {
+      mockPatientRepository.findOne.mockResolvedValue({
+        id: patientId,
+        doctorId,
+      });
+      mockEdssAssessmentRepository.save.mockImplementation((a) =>
+        Promise.resolve({ id: 1, ...a }),
+      );
+
+      const result = await service.addEdssAssessment(doctorId, validDto);
+
+      expect(result.patientId).toBe(patientId);
+      expect(result.requiresUnilateralAid).toBe(false);
+      expect(result.requiresBilateralAid).toBe(false);
+      expect(result.wheelchairBound).toBe(false);
+      expect(result.unassistedWalkingDistanceMeters).toBeNull();
+    });
+
+    describe('scoring bands derived from FSS combinations (fully ambulatory)', () => {
+      const zero = {
+        pyramidalSystem: 0,
+        cerebellarSystem: 0,
+        brainstemSystem: 0,
+        sensorySystem: 0,
+        bowelBladderSystem: 0,
+        visualSystem: 0,
+        mentalSystem: 0,
+      };
+
+      beforeEach(() => {
+        mockPatientRepository.findOne.mockResolvedValue({
+          id: patientId,
+          doctorId,
+        });
+        mockEdssAssessmentRepository.save.mockImplementation((a) =>
+          Promise.resolve({ id: 1, ...a }),
+        );
+      });
+
+      it.each([
+        ['all FS at grade 0', {}, 0.0],
+        ['a single FS at grade 1', { sensorySystem: 1 }, 1.0],
+        ['two FS at grade 1', { sensorySystem: 1, visualSystem: 1 }, 1.5],
+        ['a single FS at grade 2', { cerebellarSystem: 2 }, 2.0],
+        ['two FS at grade 2', { cerebellarSystem: 2, sensorySystem: 2 }, 2.5],
+        ['a single FS at grade 3', { pyramidalSystem: 3 }, 3.0],
+        [
+          'three FS at grade 2',
+          { pyramidalSystem: 2, cerebellarSystem: 2, sensorySystem: 2 },
+          3.0,
+        ],
+        ['two FS at grade 3', { pyramidalSystem: 3, cerebellarSystem: 3 }, 3.5],
+        [
+          'five FS at grade 2',
+          {
+            pyramidalSystem: 2,
+            cerebellarSystem: 2,
+            brainstemSystem: 2,
+            sensorySystem: 2,
+            bowelBladderSystem: 2,
+          },
+          3.5,
+        ],
+        [
+          'three FS at grade 3',
+          {
+            pyramidalSystem: 3,
+            cerebellarSystem: 3,
+            brainstemSystem: 3,
+          },
+          4.0,
+        ],
+        ['a single FS at grade 4', { pyramidalSystem: 4 }, 4.0],
+        ['two FS at grade 4', { pyramidalSystem: 4, cerebellarSystem: 4 }, 4.5],
+      ])('should score %s as %s', async (_desc, overrides, expected) => {
+        const result = await service.addEdssAssessment(doctorId, {
+          patientId,
+          ...zero,
+          ...overrides,
+        });
+
+        expect(result.totalScore).toBe(expected);
+      });
+    });
+
+    describe('scoring bands derived from ambulation metrics', () => {
+      const zero = {
+        pyramidalSystem: 0,
+        cerebellarSystem: 0,
+        brainstemSystem: 0,
+        sensorySystem: 0,
+        bowelBladderSystem: 0,
+        visualSystem: 0,
+        mentalSystem: 0,
+      };
+
+      beforeEach(() => {
+        mockPatientRepository.findOne.mockResolvedValue({
+          id: patientId,
+          doctorId,
+        });
+        mockEdssAssessmentRepository.save.mockImplementation((a) =>
+          Promise.resolve({ id: 1, ...a }),
+        );
+      });
+
+      it.each([
+        [
+          'unaided distance of 1000m (no impairment)',
+          { unassistedWalkingDistanceMeters: 1000 },
+          0.0,
+        ],
+        [
+          'unaided distance just above the 500m threshold',
+          { unassistedWalkingDistanceMeters: 501 },
+          0.0,
+        ],
+        [
+          'unaided distance of 500m',
+          { unassistedWalkingDistanceMeters: 500 },
+          4.0,
+        ],
+        [
+          'unaided distance of 300m',
+          { unassistedWalkingDistanceMeters: 300 },
+          4.5,
+        ],
+        [
+          'unaided distance of 200m',
+          { unassistedWalkingDistanceMeters: 200 },
+          5.0,
+        ],
+        [
+          'unaided distance of 100m',
+          { unassistedWalkingDistanceMeters: 100 },
+          5.5,
+        ],
+        [
+          'unaided distance of 20m',
+          { unassistedWalkingDistanceMeters: 20 },
+          5.5,
+        ],
+        ['requiring a unilateral aid', { requiresUnilateralAid: true }, 6.0],
+        ['requiring a bilateral aid', { requiresBilateralAid: true }, 6.5],
+        ['being wheelchair-bound', { wheelchairBound: true }, 7.0],
+      ])('should score %s as %s', async (_desc, overrides, expected) => {
+        const result = await service.addEdssAssessment(doctorId, {
+          patientId,
+          ...zero,
+          ...overrides,
+        });
+
+        expect(result.totalScore).toBe(expected);
+      });
+
+      it('should use the more severe of the FSS-derived and ambulation-derived scores', async () => {
+        const result = await service.addEdssAssessment(doctorId, {
+          patientId,
+          ...zero,
+          mentalSystem: 2, // FSS alone -> 2.0
+          wheelchairBound: true, // -> 7.0
+        });
+
+        expect(result.totalScore).toBe(7.0);
+      });
+    });
   });
 
   describe('getPatientEdssAssessments', () => {

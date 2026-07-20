@@ -1,4 +1,5 @@
 import { Test, TestingModule } from '@nestjs/testing';
+import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { PatientsController } from './patients.controller';
 import { PatientsService } from './patients.service';
 import { UserService } from 'src/user/user.service';
@@ -238,27 +239,70 @@ describe('PatientsController', () => {
   });
 
   describe('addEdssAssessment', () => {
+    const baseDto = {
+      pyramidalSystem: 2,
+      cerebellarSystem: 0,
+      brainstemSystem: 0,
+      sensorySystem: 0,
+      bowelBladderSystem: 0,
+      visualSystem: 0,
+      mentalSystem: 0,
+      patientId: 5,
+    } as any;
+
     it('should call patientsService.addEdssAssessment with user id and dto', async () => {
-      const dto = {
-        pyramidalSystem: 2,
-        cerebellarSystem: 0,
-        brainstemSystem: 0,
-        sensorySystem: 0,
-        bowelBladderSystem: 0,
-        visualSystem: 0,
-        mentalSystem: 0,
-        patientId: 5,
-      } as any;
       const mockAssessment = { id: 1, patientId: 5, totalScore: 2.0 } as any;
       mockPatientsService.addEdssAssessment.mockResolvedValue(mockAssessment);
 
-      const result = await controller.addEdssAssessment(mockUser, dto);
+      const result = await controller.addEdssAssessment(mockUser, baseDto);
 
-      expect(mockPatientsService.addEdssAssessment).toHaveBeenCalledWith(1, {
-        ...dto,
-        patientId: 5,
-      });
+      expect(mockPatientsService.addEdssAssessment).toHaveBeenCalledWith(
+        1,
+        baseDto,
+      );
       expect(result).toBe(mockAssessment);
+    });
+
+    it('should not mutate or recompute the totalScore returned by the service', async () => {
+      // The controller must not touch scoring - that's the service/calculator's job
+      const mockAssessment = {
+        id: 1,
+        patientId: 5,
+        totalScore: 6.5,
+      } as any;
+      mockPatientsService.addEdssAssessment.mockResolvedValue(mockAssessment);
+
+      const result = await controller.addEdssAssessment(mockUser, {
+        ...baseDto,
+        requiresBilateralAid: true,
+      });
+
+      expect(result.totalScore).toBe(6.5);
+    });
+
+    it('should propagate BadRequestException thrown by the service for invalid scores', async () => {
+      mockPatientsService.addEdssAssessment.mockRejectedValue(
+        new BadRequestException(
+          'pyramidalSystem must be an integer between 0 and 6',
+        ),
+      );
+
+      await expect(
+        controller.addEdssAssessment(mockUser, {
+          ...baseDto,
+          pyramidalSystem: 99,
+        }),
+      ).rejects.toThrow(BadRequestException);
+    });
+
+    it('should propagate NotFoundException thrown by the service when the patient does not exist', async () => {
+      mockPatientsService.addEdssAssessment.mockRejectedValue(
+        new NotFoundException('Patient with ID 5 not found'),
+      );
+
+      await expect(
+        controller.addEdssAssessment(mockUser, baseDto),
+      ).rejects.toThrow(NotFoundException);
     });
   });
 
@@ -275,6 +319,24 @@ describe('PatientsController', () => {
         mockPatientsService.getPatientEdssAssessments,
       ).toHaveBeenCalledWith(1, 5);
       expect(result).toBe(mockAssessments);
+    });
+
+    it('should return an empty array when the patient has no assessments yet', async () => {
+      mockPatientsService.getPatientEdssAssessments.mockResolvedValue([]);
+
+      const result = await controller.getPatientEdssAssessments(mockUser, '5');
+
+      expect(result).toEqual([]);
+    });
+
+    it('should propagate NotFoundException thrown by the service', async () => {
+      mockPatientsService.getPatientEdssAssessments.mockRejectedValue(
+        new NotFoundException('Patient with ID 5 not found'),
+      );
+
+      await expect(
+        controller.getPatientEdssAssessments(mockUser, '5'),
+      ).rejects.toThrow(NotFoundException);
     });
   });
 
