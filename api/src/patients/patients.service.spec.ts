@@ -208,7 +208,7 @@ describe('PatientsService', () => {
         id: patientId,
         doctorId,
       });
-      const incomplete = { ...validDto, mentalSystem: null};
+      const incomplete = { ...validDto, mentalSystem: null };
       await expect(
         service.addEdssAssessment(doctorId, incomplete as any),
       ).rejects.toThrow(BadRequestException);
