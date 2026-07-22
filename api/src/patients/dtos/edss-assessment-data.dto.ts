@@ -1,6 +1,4 @@
-export class CreateEdssAssessmentDto {
-  patientId: number;
-
+export class EdssAssessmentDataDto {
   // Functional System Scores (FSS)
   pyramidalSystem: number; // 0-6
   cerebellarSystem: number; // 0-5

@@ -17,8 +17,9 @@ import {
   CreatePatientDto,
   CreatePatientHistoryDto,
   CreateFamilyHistoryDto,
-  CreateEdssAssessmentDto,
+  EdssAssessmentDataDto,
   ImportCsvResponseDto,
+  UpdatePatientNotesDto,
 } from './dtos';
 import { maskString } from './utils/masking';
 import { calculateEdssScore } from './utils/edss-calculator';
@@ -70,10 +71,21 @@ export class PatientsService {
     patient.email = createPatientDto.email || null;
     patient.notes = createPatientDto.notes;
 
+    // Build (and validate) the EDSS assessment before saving the patient, so
+    // an invalid assessment doesn't leave an orphan patient record behind.
+    const edssAssessment = createPatientDto.edss
+      ? this.buildEdssAssessment(createPatientDto.edss)
+      : null;
+
     const savedPatient = await this.patientRepository.save(patient);
     this.logger.info(
       `Patient record ${savedPatient.id} created by doctor ${doctorId}`,
     );
+
+    if (edssAssessment) {
+      edssAssessment.patientId = savedPatient.id;
+      await this.edssAssessmentRepository.save(edssAssessment);
+    }
 
     return savedPatient;
   }
@@ -267,58 +279,39 @@ export class PatientsService {
     return familyHistory;
   }
 
-  async addEdssAssessment(
-    doctorId: number,
-    createEdssDto: CreateEdssAssessmentDto,
-  ): Promise<EdssAssesment> {
-    // Verify patient exists
-    const patient = await this.patientRepository.findOne({
-      where: { id: createEdssDto.patientId },
-    });
-    if (!patient) {
-      throw new PatientNotFoundException(createEdssDto.patientId);
-    }
-
-    // Verify that the requester is the doctor who created this patient
-    if (patient.doctorId !== doctorId) {
-      this.logger.warn(
-        `Doctor ${doctorId} attempted to access patient ${createEdssDto.patientId} created by doctor ${patient.doctorId}`,
-      );
-      throw new AccessToPatientForbiddenException();
-    }
-
+  // Validates the raw FSS grades and derives the composite score - the
+  // client never supplies totalScore directly. Building this before any
+  // patient save means an invalid assessment fails before persisting
+  // anything.
+  private buildEdssAssessment(data: EdssAssessmentDataDto): EdssAssesment {
     const ambulation = {
-      unassistedWalkingDistanceMeters:
-        createEdssDto.unassistedWalkingDistanceMeters,
-      requiresUnilateralAid: createEdssDto.requiresUnilateralAid || false,
-      requiresBilateralAid: createEdssDto.requiresBilateralAid || false,
-      wheelchairBound: createEdssDto.wheelchairBound || false,
+      unassistedWalkingDistanceMeters: data.unassistedWalkingDistanceMeters,
+      requiresUnilateralAid: data.requiresUnilateralAid || false,
+      requiresBilateralAid: data.requiresBilateralAid || false,
+      wheelchairBound: data.wheelchairBound || false,
     };
 
-    // Engine validates the raw FSS grades and derives the composite score -
-    // the client never supplies totalScore directly
     const totalScore = calculateEdssScore(
       {
-        pyramidalSystem: createEdssDto.pyramidalSystem,
-        cerebellarSystem: createEdssDto.cerebellarSystem,
-        brainstemSystem: createEdssDto.brainstemSystem,
-        sensorySystem: createEdssDto.sensorySystem,
-        bowelBladderSystem: createEdssDto.bowelBladderSystem,
-        visualSystem: createEdssDto.visualSystem,
-        mentalSystem: createEdssDto.mentalSystem,
+        pyramidalSystem: data.pyramidalSystem,
+        cerebellarSystem: data.cerebellarSystem,
+        brainstemSystem: data.brainstemSystem,
+        sensorySystem: data.sensorySystem,
+        bowelBladderSystem: data.bowelBladderSystem,
+        visualSystem: data.visualSystem,
+        mentalSystem: data.mentalSystem,
       },
       ambulation,
     );
 
     const assessment = new EdssAssesment();
-    assessment.patientId = createEdssDto.patientId;
-    assessment.pyramidalSystem = createEdssDto.pyramidalSystem;
-    assessment.cerebellarSystem = createEdssDto.cerebellarSystem;
-    assessment.brainstemSystem = createEdssDto.brainstemSystem;
-    assessment.sensorySystem = createEdssDto.sensorySystem;
-    assessment.bowelBladderSystem = createEdssDto.bowelBladderSystem;
-    assessment.visualSystem = createEdssDto.visualSystem;
-    assessment.mentalSystem = createEdssDto.mentalSystem;
+    assessment.pyramidalSystem = data.pyramidalSystem;
+    assessment.cerebellarSystem = data.cerebellarSystem;
+    assessment.brainstemSystem = data.brainstemSystem;
+    assessment.sensorySystem = data.sensorySystem;
+    assessment.bowelBladderSystem = data.bowelBladderSystem;
+    assessment.visualSystem = data.visualSystem;
+    assessment.mentalSystem = data.mentalSystem;
     assessment.unassistedWalkingDistanceMeters =
       ambulation.unassistedWalkingDistanceMeters ?? null;
     assessment.requiresUnilateralAid = ambulation.requiresUnilateralAid;
@@ -326,7 +319,7 @@ export class PatientsService {
     assessment.wheelchairBound = ambulation.wheelchairBound;
     assessment.totalScore = totalScore;
 
-    return this.edssAssessmentRepository.save(assessment);
+    return assessment;
   }
 
   async getPatientEdssAssessments(
@@ -355,7 +348,7 @@ export class PatientsService {
   async updatePatientNotes(
     doctorId: number,
     patientId: number,
-    notes: string,
+    updatePatientDto: UpdatePatientNotesDto,
   ): Promise<Patient> {
     const patient = await this.patientRepository.findOne({
       where: { id: patientId },
@@ -368,11 +361,22 @@ export class PatientsService {
       throw new AccessToPatientForbiddenException();
     }
 
-    patient.notes = notes;
+    // Build (and validate) the EDSS assessment before saving, so an invalid
+    // assessment doesn't get the notes update to partially apply.
+    const edssAssessment = updatePatientDto.edss
+      ? this.buildEdssAssessment(updatePatientDto.edss)
+      : null;
+
+    patient.notes = updatePatientDto.notes;
     const updatedPatient = await this.patientRepository.save(patient);
     this.logger.info(
       `Patient ${patientId} notes updated by doctor ${doctorId}`,
     );
+
+    if (edssAssessment) {
+      edssAssessment.patientId = patientId;
+      await this.edssAssessmentRepository.save(edssAssessment);
+    }
 
     return updatedPatient;
   }

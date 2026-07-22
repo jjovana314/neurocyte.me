@@ -22,7 +22,6 @@ describe('PatientsController', () => {
     getPatientMedicalHistory: jest.fn(),
     addFamilyHistory: jest.fn(),
     getPatientFamilyHistory: jest.fn(),
-    addEdssAssessment: jest.fn(),
     getPatientEdssAssessments: jest.fn(),
   };
 
@@ -75,6 +74,49 @@ describe('PatientsController', () => {
 
       expect(mockPatientsService.createPatient).toHaveBeenCalledWith(1, dto);
       expect(result).toBe(mockPatient);
+    });
+
+    it('should forward an edss payload through to the service unchanged', async () => {
+      const dto = {
+        notes: 'Test patient',
+        name: 'Test Name',
+        gender: 'F',
+        dateOfBirth: '24.01.1999.',
+        edss: {
+          pyramidalSystem: 2,
+          cerebellarSystem: 0,
+          brainstemSystem: 0,
+          sensorySystem: 0,
+          bowelBladderSystem: 0,
+          visualSystem: 0,
+          mentalSystem: 0,
+        },
+      };
+      const mockPatient = { id: 1, doctorId: 1, ...dto } as any;
+      mockPatientsService.createPatient.mockResolvedValue(mockPatient);
+
+      const result = await controller.createPatient(mockUser, dto);
+
+      expect(mockPatientsService.createPatient).toHaveBeenCalledWith(1, dto);
+      expect(result).toBe(mockPatient);
+    });
+
+    it('should propagate BadRequestException thrown by the service for an invalid edss payload', async () => {
+      mockPatientsService.createPatient.mockRejectedValue(
+        new BadRequestException(
+          'pyramidalSystem must be an integer between 0 and 6',
+        ),
+      );
+
+      await expect(
+        controller.createPatient(mockUser, {
+          notes: 'Test patient',
+          name: 'Test Name',
+          gender: 'F',
+          dateOfBirth: '24.01.1999.',
+          edss: { pyramidalSystem: 99 },
+        } as any),
+      ).rejects.toThrow(BadRequestException);
     });
   });
 
@@ -141,20 +183,60 @@ describe('PatientsController', () => {
   });
 
   describe('updatePatientNotes', () => {
-    it('should call patientsService.updatePatientNotes with user id, patient id and notes', async () => {
+    it('should call patientsService.updatePatientNotes with user id, patient id and body', async () => {
+      const body = { notes: 'Updated' };
       const mockPatient = { id: 5, notes: 'Updated' } as any;
       mockPatientsService.updatePatientNotes.mockResolvedValue(mockPatient);
 
-      const result = await controller.updatePatientNotes(mockUser, '5', {
-        notes: 'Updated',
-      });
+      const result = await controller.updatePatientNotes(mockUser, '5', body);
 
       expect(mockPatientsService.updatePatientNotes).toHaveBeenCalledWith(
         1,
         5,
-        'Updated',
+        body,
       );
       expect(result).toBe(mockPatient);
+    });
+
+    it('should forward an edss payload through to the service unchanged', async () => {
+      const body = {
+        notes: 'Updated',
+        edss: {
+          pyramidalSystem: 2,
+          cerebellarSystem: 0,
+          brainstemSystem: 0,
+          sensorySystem: 0,
+          bowelBladderSystem: 0,
+          visualSystem: 0,
+          mentalSystem: 0,
+        },
+      };
+      const mockPatient = { id: 5, notes: 'Updated' } as any;
+      mockPatientsService.updatePatientNotes.mockResolvedValue(mockPatient);
+
+      const result = await controller.updatePatientNotes(mockUser, '5', body);
+
+      expect(mockPatientsService.updatePatientNotes).toHaveBeenCalledWith(
+        1,
+        5,
+        body,
+      );
+      expect(result).toBe(mockPatient);
+    });
+
+    it('should propagate BadRequestException thrown by the service for an invalid edss payload', async () => {
+      mockPatientsService.updatePatientNotes.mockRejectedValue(
+        new BadRequestException(
+          'pyramidalSystem must be an integer between 0 and 6',
+        ),
+      );
+
+      await expect(
+        controller.updatePatientNotes(mockUser, '5', {
+          notes: 'Updated',
+          edss: { pyramidalSystem: 99 },
+        } as any),
+      ).rejects.toThrow(BadRequestException);
     });
   });
 
@@ -235,74 +317,6 @@ describe('PatientsController', () => {
         5,
       );
       expect(result).toBe(mockFamilyHistory);
-    });
-  });
-
-  describe('addEdssAssessment', () => {
-    const baseDto = {
-      pyramidalSystem: 2,
-      cerebellarSystem: 0,
-      brainstemSystem: 0,
-      sensorySystem: 0,
-      bowelBladderSystem: 0,
-      visualSystem: 0,
-      mentalSystem: 0,
-      patientId: 5,
-    } as any;
-
-    it('should call patientsService.addEdssAssessment with user id and dto', async () => {
-      const mockAssessment = { id: 1, patientId: 5, totalScore: 2.0 } as any;
-      mockPatientsService.addEdssAssessment.mockResolvedValue(mockAssessment);
-
-      const result = await controller.addEdssAssessment(mockUser, baseDto);
-
-      expect(mockPatientsService.addEdssAssessment).toHaveBeenCalledWith(
-        1,
-        baseDto,
-      );
-      expect(result).toBe(mockAssessment);
-    });
-
-    it('should not mutate or recompute the totalScore returned by the service', async () => {
-      // The controller must not touch scoring - that's the service/calculator's job
-      const mockAssessment = {
-        id: 1,
-        patientId: 5,
-        totalScore: 6.5,
-      } as any;
-      mockPatientsService.addEdssAssessment.mockResolvedValue(mockAssessment);
-
-      const result = await controller.addEdssAssessment(mockUser, {
-        ...baseDto,
-        requiresBilateralAid: true,
-      });
-
-      expect(result.totalScore).toBe(6.5);
-    });
-
-    it('should propagate BadRequestException thrown by the service for invalid scores', async () => {
-      mockPatientsService.addEdssAssessment.mockRejectedValue(
-        new BadRequestException(
-          'pyramidalSystem must be an integer between 0 and 6',
-        ),
-      );
-
-      await expect(
-        controller.addEdssAssessment(mockUser, {
-          ...baseDto,
-          pyramidalSystem: 99,
-        }),
-      ).rejects.toThrow(BadRequestException);
-    });
-
-    it('should propagate NotFoundException thrown by the service when the patient does not exist', async () => {
-      mockPatientsService.addEdssAssessment.mockRejectedValue(
-        new NotFoundException('Patient with ID 5 not found'),
-      );
-
-      await expect(
-        controller.addEdssAssessment(mockUser, baseDto),
-      ).rejects.toThrow(NotFoundException);
     });
   });
 

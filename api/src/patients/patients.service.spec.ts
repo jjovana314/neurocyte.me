@@ -91,30 +91,17 @@ describe('PatientsService', () => {
     expect(service).toBeDefined();
   });
 
-  it('should create patient when doctor is valid', async () => {
+  describe('createPatient', () => {
     const doctorId = 1;
-    const createPatientDto = {
+    const mockDoctor = { id: doctorId, role: { id: 1, name: 'Doctor' } } as any;
+    const baseCreateDto = {
       notes: 'Test patient',
       name: 'Test Name',
       gender: 'F',
       dateOfBirth: '24.01.1999.',
     };
-    const mockDoctor = { id: doctorId, role: { id: 1, name: 'Doctor' } } as any;
-    const mockPatient = { id: 1, doctorId, ...createPatientDto } as any;
-
-    mockUserRepository.findOne.mockResolvedValue(mockDoctor);
-    mockPatientRepository.save.mockResolvedValue(mockPatient);
-
-    const result = await service.createPatient(doctorId, createPatientDto);
-    expect(result).toEqual(mockPatient);
-  });
-
-  describe('addEdssAssessment', () => {
-    const doctorId = 1;
-    const patientId = 5;
-    const validDto = {
-      patientId,
-      pyramidalSystem: 3,
+    const zeroEdss = {
+      pyramidalSystem: 0,
       cerebellarSystem: 0,
       brainstemSystem: 0,
       sensorySystem: 0,
@@ -123,145 +110,68 @@ describe('PatientsService', () => {
       mentalSystem: 0,
     };
 
-    it('should derive totalScore server-side and persist the assessment', async () => {
-      mockPatientRepository.findOne.mockResolvedValue({
-        id: patientId,
+    beforeEach(() => {
+      mockUserRepository.findOne.mockResolvedValue(mockDoctor);
+    });
+
+    it('should create patient when doctor is valid', async () => {
+      const mockPatient = { id: 1, doctorId, ...baseCreateDto } as any;
+      mockPatientRepository.save.mockResolvedValue(mockPatient);
+
+      const result = await service.createPatient(doctorId, baseCreateDto);
+      expect(result).toEqual(mockPatient);
+    });
+
+    it('should not create an EDSS assessment when none is provided', async () => {
+      mockPatientRepository.save.mockResolvedValue({
+        id: 1,
         doctorId,
-      });
-      mockEdssAssessmentRepository.save.mockImplementation((a) =>
-        Promise.resolve({ id: 1, ...a }),
-      );
-
-      const result = await service.addEdssAssessment(doctorId, validDto);
-
-      expect(result.totalScore).toBe(3.0);
-      expect(mockEdssAssessmentRepository.save).toHaveBeenCalled();
-    });
-
-    it('should throw NotFoundException when patient does not exist', async () => {
-      mockPatientRepository.findOne.mockResolvedValue(null);
-
-      await expect(
-        service.addEdssAssessment(doctorId, validDto),
-      ).rejects.toThrow(NotFoundException);
-    });
-
-    it('should throw ForbiddenException when doctor does not own the patient', async () => {
-      mockPatientRepository.findOne.mockResolvedValue({
-        id: patientId,
-        doctorId: 999,
+        ...baseCreateDto,
       });
 
-      await expect(
-        service.addEdssAssessment(doctorId, validDto),
-      ).rejects.toThrow(ForbiddenException);
-    });
+      await service.createPatient(doctorId, baseCreateDto);
 
-    it('should throw BadRequestException when a FSS grade is out of bounds', async () => {
-      mockPatientRepository.findOne.mockResolvedValue({
-        id: patientId,
-        doctorId,
-      });
-
-      await expect(
-        service.addEdssAssessment(doctorId, {
-          ...validDto,
-          pyramidalSystem: 7,
-        }),
-      ).rejects.toThrow(BadRequestException);
-    });
-
-    it('should let ambulation impairment override a low FSS-derived score', async () => {
-      mockPatientRepository.findOne.mockResolvedValue({
-        id: patientId,
-        doctorId,
-      });
-      mockEdssAssessmentRepository.save.mockImplementation((a) =>
-        Promise.resolve({ id: 1, ...a }),
-      );
-
-      const result = await service.addEdssAssessment(doctorId, {
-        ...validDto,
-        pyramidalSystem: 1,
-        requiresBilateralAid: true,
-      });
-
-      expect(result.totalScore).toBe(6.5);
-    });
-
-    it('should throw BadRequestException when a FSS grade is negative', async () => {
-      mockPatientRepository.findOne.mockResolvedValue({
-        id: patientId,
-        doctorId,
-      });
-
-      await expect(
-        service.addEdssAssessment(doctorId, {
-          ...validDto,
-          cerebellarSystem: -1,
-        }),
-      ).rejects.toThrow(BadRequestException);
-    });
-
-    it('should throw BadRequestException when a required FSS grade is missing', async () => {
-      mockPatientRepository.findOne.mockResolvedValue({
-        id: patientId,
-        doctorId,
-      });
-      const incomplete = { ...validDto, mentalSystem: null };
-      await expect(
-        service.addEdssAssessment(doctorId, incomplete as any),
-      ).rejects.toThrow(BadRequestException);
-    });
-
-    it('should not persist an assessment when validation fails', async () => {
-      mockPatientRepository.findOne.mockResolvedValue({
-        id: patientId,
-        doctorId,
-      });
-
-      await expect(
-        service.addEdssAssessment(doctorId, {
-          ...validDto,
-          sensorySystem: 99,
-        }),
-      ).rejects.toThrow(BadRequestException);
       expect(mockEdssAssessmentRepository.save).not.toHaveBeenCalled();
     });
 
-    it('should default ambulation fields and persist patientId correctly', async () => {
-      mockPatientRepository.findOne.mockResolvedValue({
-        id: patientId,
+    it('should derive and persist an EDSS assessment linked to the new patient', async () => {
+      mockPatientRepository.save.mockResolvedValue({
+        id: 42,
         doctorId,
+        ...baseCreateDto,
       });
       mockEdssAssessmentRepository.save.mockImplementation((a) =>
         Promise.resolve({ id: 1, ...a }),
       );
 
-      const result = await service.addEdssAssessment(doctorId, validDto);
+      await service.createPatient(doctorId, {
+        ...baseCreateDto,
+        edss: { ...zeroEdss, pyramidalSystem: 3 },
+      });
 
-      expect(result.patientId).toBe(patientId);
-      expect(result.requiresUnilateralAid).toBe(false);
-      expect(result.requiresBilateralAid).toBe(false);
-      expect(result.wheelchairBound).toBe(false);
-      expect(result.unassistedWalkingDistanceMeters).toBeNull();
+      expect(mockEdssAssessmentRepository.save).toHaveBeenCalledWith(
+        expect.objectContaining({ patientId: 42, totalScore: 3.0 }),
+      );
     });
 
-    describe('scoring bands derived from FSS combinations (fully ambulatory)', () => {
-      const zero = {
-        pyramidalSystem: 0,
-        cerebellarSystem: 0,
-        brainstemSystem: 0,
-        sensorySystem: 0,
-        bowelBladderSystem: 0,
-        visualSystem: 0,
-        mentalSystem: 0,
-      };
+    it('should reject an invalid EDSS assessment and not create the patient at all', async () => {
+      await expect(
+        service.createPatient(doctorId, {
+          ...baseCreateDto,
+          edss: { ...zeroEdss, pyramidalSystem: 99 },
+        }),
+      ).rejects.toThrow(BadRequestException);
 
+      expect(mockPatientRepository.save).not.toHaveBeenCalled();
+      expect(mockEdssAssessmentRepository.save).not.toHaveBeenCalled();
+    });
+
+    describe('EDSS scoring bands derived from FSS combinations (fully ambulatory)', () => {
       beforeEach(() => {
-        mockPatientRepository.findOne.mockResolvedValue({
-          id: patientId,
+        mockPatientRepository.save.mockResolvedValue({
+          id: 7,
           doctorId,
+          ...baseCreateDto,
         });
         mockEdssAssessmentRepository.save.mockImplementation((a) =>
           Promise.resolve({ id: 1, ...a }),
@@ -304,31 +214,23 @@ describe('PatientsService', () => {
         ['a single FS at grade 4', { pyramidalSystem: 4 }, 4.0],
         ['two FS at grade 4', { pyramidalSystem: 4, cerebellarSystem: 4 }, 4.5],
       ])('should score %s as %s', async (_desc, overrides, expected) => {
-        const result = await service.addEdssAssessment(doctorId, {
-          patientId,
-          ...zero,
-          ...overrides,
+        await service.createPatient(doctorId, {
+          ...baseCreateDto,
+          edss: { ...zeroEdss, ...overrides },
         });
 
-        expect(result.totalScore).toBe(expected);
+        expect(mockEdssAssessmentRepository.save).toHaveBeenCalledWith(
+          expect.objectContaining({ totalScore: expected }),
+        );
       });
     });
 
-    describe('scoring bands derived from ambulation metrics', () => {
-      const zero = {
-        pyramidalSystem: 0,
-        cerebellarSystem: 0,
-        brainstemSystem: 0,
-        sensorySystem: 0,
-        bowelBladderSystem: 0,
-        visualSystem: 0,
-        mentalSystem: 0,
-      };
-
+    describe('EDSS scoring bands derived from ambulation metrics', () => {
       beforeEach(() => {
-        mockPatientRepository.findOne.mockResolvedValue({
-          id: patientId,
+        mockPatientRepository.save.mockResolvedValue({
+          id: 7,
           doctorId,
+          ...baseCreateDto,
         });
         mockEdssAssessmentRepository.save.mockImplementation((a) =>
           Promise.resolve({ id: 1, ...a }),
@@ -375,25 +277,106 @@ describe('PatientsService', () => {
         ['requiring a bilateral aid', { requiresBilateralAid: true }, 6.5],
         ['being wheelchair-bound', { wheelchairBound: true }, 7.0],
       ])('should score %s as %s', async (_desc, overrides, expected) => {
-        const result = await service.addEdssAssessment(doctorId, {
-          patientId,
-          ...zero,
-          ...overrides,
+        await service.createPatient(doctorId, {
+          ...baseCreateDto,
+          edss: { ...zeroEdss, ...overrides },
         });
 
-        expect(result.totalScore).toBe(expected);
+        expect(mockEdssAssessmentRepository.save).toHaveBeenCalledWith(
+          expect.objectContaining({ totalScore: expected }),
+        );
       });
 
       it('should use the more severe of the FSS-derived and ambulation-derived scores', async () => {
-        const result = await service.addEdssAssessment(doctorId, {
-          patientId,
-          ...zero,
-          mentalSystem: 2, // FSS alone -> 2.0
-          wheelchairBound: true, // -> 7.0
+        await service.createPatient(doctorId, {
+          ...baseCreateDto,
+          edss: { ...zeroEdss, mentalSystem: 2, wheelchairBound: true },
         });
 
-        expect(result.totalScore).toBe(7.0);
+        expect(mockEdssAssessmentRepository.save).toHaveBeenCalledWith(
+          expect.objectContaining({ totalScore: 7.0 }),
+        );
       });
+    });
+  });
+
+  describe('updatePatientNotes', () => {
+    const doctorId = 1;
+    const patientId = 5;
+    const zeroEdss = {
+      pyramidalSystem: 0,
+      cerebellarSystem: 0,
+      brainstemSystem: 0,
+      sensorySystem: 0,
+      bowelBladderSystem: 0,
+      visualSystem: 0,
+      mentalSystem: 0,
+    };
+
+    beforeEach(() => {
+      mockPatientRepository.findOne.mockResolvedValue({
+        id: patientId,
+        doctorId,
+        notes: 'old notes',
+      });
+      mockPatientRepository.save.mockImplementation((p) =>
+        Promise.resolve(p),
+      );
+    });
+
+    it('should update notes without creating an EDSS assessment when none is provided', async () => {
+      const result = await service.updatePatientNotes(doctorId, patientId, {
+        notes: 'Updated',
+      });
+
+      expect(result.notes).toBe('Updated');
+      expect(mockEdssAssessmentRepository.save).not.toHaveBeenCalled();
+    });
+
+    it('should derive and persist an EDSS assessment linked to the patient', async () => {
+      mockEdssAssessmentRepository.save.mockImplementation((a) =>
+        Promise.resolve({ id: 1, ...a }),
+      );
+
+      await service.updatePatientNotes(doctorId, patientId, {
+        notes: 'Updated',
+        edss: { ...zeroEdss, requiresBilateralAid: true },
+      });
+
+      expect(mockEdssAssessmentRepository.save).toHaveBeenCalledWith(
+        expect.objectContaining({ patientId, totalScore: 6.5 }),
+      );
+    });
+
+    it('should reject an invalid EDSS assessment and not update the patient at all', async () => {
+      await expect(
+        service.updatePatientNotes(doctorId, patientId, {
+          notes: 'Updated',
+          edss: { ...zeroEdss, pyramidalSystem: 99 },
+        }),
+      ).rejects.toThrow(BadRequestException);
+
+      expect(mockPatientRepository.save).not.toHaveBeenCalled();
+      expect(mockEdssAssessmentRepository.save).not.toHaveBeenCalled();
+    });
+
+    it('should throw NotFoundException when patient does not exist', async () => {
+      mockPatientRepository.findOne.mockResolvedValue(null);
+
+      await expect(
+        service.updatePatientNotes(doctorId, patientId, { notes: 'x' }),
+      ).rejects.toThrow(NotFoundException);
+    });
+
+    it('should throw ForbiddenException when doctor does not own the patient', async () => {
+      mockPatientRepository.findOne.mockResolvedValue({
+        id: patientId,
+        doctorId: 999,
+      });
+
+      await expect(
+        service.updatePatientNotes(doctorId, patientId, { notes: 'x' }),
+      ).rejects.toThrow(ForbiddenException);
     });
   });
 

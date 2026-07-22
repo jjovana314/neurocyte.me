@@ -24,7 +24,6 @@ import {
   CreatePatientDto,
   CreatePatientHistoryDto,
   CreateFamilyHistoryDto,
-  CreateEdssAssessmentDto,
   ImportCsvResponseDto,
   UpdatePatientNotesDto,
 } from './dtos';
@@ -42,7 +41,8 @@ export class PatientsController {
   constructor(private readonly patientsService: PatientsService) {}
 
   /**
-   * Create a new patient record
+   * Create a new patient record, optionally recording an initial EDSS
+   * assessment in the same request
    * POST /patients
    * Only doctors can create patients
    */
@@ -136,7 +136,8 @@ export class PatientsController {
   }
 
   /**
-   * Update patient notes
+   * Update patient notes, optionally recording a new EDSS assessment in the
+   * same request
    * PUT /patients/:id
    */
   @Put(':id')
@@ -148,7 +149,7 @@ export class PatientsController {
     return this.patientsService.updatePatientNotes(
       user.id,
       parseInt(patientId, 10),
-      body.notes,
+      body,
     );
   }
 
@@ -229,22 +230,8 @@ export class PatientsController {
   }
 
   /**
-   * Record an EDSS assessment for a patient
-   * POST /patients/:id/edss
-   * The composite score is derived server-side from the raw FSS grades and
-   * ambulation metrics, never accepted directly from the client.
-   */
-  @Post(':id/edss')
-  @HttpCode(HttpStatus.CREATED)
-  async addEdssAssessment(
-    @CurrentUser() user: JwtUser,
-    @Body() createEdssDto: CreateEdssAssessmentDto,
-  ): Promise<EdssAssesment> {
-    return this.patientsService.addEdssAssessment(user.id, createEdssDto);
-  }
-
-  /**
-   * Get a patient's EDSS assessment history
+   * Get a patient's EDSS assessment history. Assessments themselves are
+   * recorded via createPatient/updatePatientNotes, not a dedicated endpoint.
    * GET /patients/:id/edss
    */
   @Get(':id/edss')

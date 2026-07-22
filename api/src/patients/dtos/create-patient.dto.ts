@@ -1,3 +1,5 @@
+import { EdssAssessmentDataDto } from './edss-assessment-data.dto';
+
 export class CreatePatientDto {
   name: string;
   dateOfBirth: string;
@@ -5,4 +7,5 @@ export class CreatePatientDto {
   phone?: string;
   email?: string;
   notes: string;
+  edss?: EdssAssessmentDataDto;
 }
