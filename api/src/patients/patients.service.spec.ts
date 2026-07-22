@@ -319,9 +319,7 @@ describe('PatientsService', () => {
         doctorId,
         notes: 'old notes',
       });
-      mockPatientRepository.save.mockImplementation((p) =>
-        Promise.resolve(p),
-      );
+      mockPatientRepository.save.mockImplementation((p) => Promise.resolve(p));
     });
 
     it('should update notes without creating an EDSS assessment when none is provided', async () => {
