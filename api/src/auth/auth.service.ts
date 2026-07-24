@@ -70,9 +70,9 @@ export class AuthService {
     user.role = foundRole;
     this.logger.info('Creating user...');
 
-    await this.usersService.save(user);
-    this.logger.info(`User with id ${user.id} registered successfully`);
-    return await this.login(user);
+    const savedUser = await this.usersService.save(user);
+    this.logger.info(`User with id ${savedUser.id} registered successfully`);
+    return await this.login(savedUser);
   }
 
   async forgotPassword(email: string): Promise<void> {

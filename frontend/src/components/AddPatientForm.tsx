@@ -2,6 +2,12 @@ import { useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { createPatient } from '../api/patients';
 import { getErrorMessage } from '../api/errors';
+import EdssAssessmentForm from './EdssAssessmentForm';
+import {
+  EMPTY_EDSS_FORM_STATE,
+  edssFormStateToInput,
+  type EdssFormState,
+} from '../utils/edssForm';
 
 const GENDER_OPTIONS = ['Male', 'Female', 'Non-binary', 'Prefer not to say'];
 
@@ -13,6 +19,7 @@ export default function AddPatientForm() {
   const [phone, setPhone] = useState('');
   const [email, setEmail] = useState('');
   const [notes, setNotes] = useState('');
+  const [edssForm, setEdssForm] = useState<EdssFormState>(EMPTY_EDSS_FORM_STATE);
   const [success, setSuccess] = useState(false);
 
   const mutation = useMutation({
@@ -24,6 +31,7 @@ export default function AddPatientForm() {
         phone: phone || undefined,
         email: email || undefined,
         notes,
+        edss: edssFormStateToInput(edssForm),
       }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['patients'] });
@@ -33,6 +41,7 @@ export default function AddPatientForm() {
       setPhone('');
       setEmail('');
       setNotes('');
+      setEdssForm(EMPTY_EDSS_FORM_STATE);
       setSuccess(true);
       setTimeout(() => setSuccess(false), 3000);
     },
@@ -46,7 +55,7 @@ export default function AddPatientForm() {
 
   return (
     <div className="form-container">
-      <h3>Create New Patient</h3>
+      <h3>Add New Patient</h3>
       <form onSubmit={handleSubmit}>
         <div className="form-group">
           <label htmlFor="patient-name">Patient name*</label>
@@ -113,6 +122,7 @@ export default function AddPatientForm() {
             placeholder="Initial notes about this patient"
           />
         </div>
+        <EdssAssessmentForm value={edssForm} onChange={setEdssForm} idPrefix="add-patient" />
         {mutation.error && (
           <p className="form-error">{getErrorMessage(mutation.error)}</p>
         )}

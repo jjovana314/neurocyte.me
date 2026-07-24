@@ -71,11 +71,11 @@ export class PatientsService {
     patient.email = createPatientDto.email || null;
     patient.notes = createPatientDto.notes;
 
-    // Build (and validate) the EDSS assessment before saving the patient, so
-    // an invalid assessment doesn't leave an orphan patient record behind.
-    const edssAssessment = createPatientDto.edss
-      ? this.buildEdssAssessment(createPatientDto.edss)
-      : null;
+    let edssAssessment;
+
+    if (createPatientDto.edss) {
+      edssAssessment = this.buildEdssAssessment(createPatientDto.edss);
+    }
 
     const savedPatient = await this.patientRepository.save(patient);
     this.logger.info(
@@ -194,7 +194,12 @@ export class PatientsService {
   async getPatient(doctorId: number, patientId: number): Promise<Patient> {
     const patient = await this.patientRepository.findOne({
       where: { id: patientId },
-      relations: ['medicalHistory', 'familyHistory', 'doctor'],
+      relations: [
+        'medicalHistory',
+        'familyHistory',
+        'edssAssessments',
+        'doctor',
+      ],
     });
 
     if (!patient) {
@@ -219,7 +224,7 @@ export class PatientsService {
   ): Promise<Patient[]> {
     const patients = await this.patientRepository.find({
       where: roleName === 'Support Engineer' ? {} : { doctorId },
-      relations: ['medicalHistory', 'familyHistory'],
+      relations: ['medicalHistory', 'familyHistory', 'edssAssessments'],
       order: { createdAt: 'DESC' },
     });
 
@@ -362,7 +367,7 @@ export class PatientsService {
     }
 
     // Build (and validate) the EDSS assessment before saving, so an invalid
-    // assessment doesn't get the notes update to partially apply.
+    // assessment doesn't let the notes update partially apply.
     const edssAssessment = updatePatientDto.edss
       ? this.buildEdssAssessment(updatePatientDto.edss)
       : null;

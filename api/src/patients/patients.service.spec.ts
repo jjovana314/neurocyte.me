@@ -112,45 +112,39 @@ describe('PatientsService', () => {
 
     beforeEach(() => {
       mockUserRepository.findOne.mockResolvedValue(mockDoctor);
+      mockPatientRepository.save.mockImplementation((p) =>
+        Promise.resolve({ id: 42, ...p }),
+      );
+      mockEdssAssessmentRepository.save.mockImplementation((a) =>
+        Promise.resolve({ id: 1, ...a }),
+      );
     });
 
     it('should create patient when doctor is valid', async () => {
-      const mockPatient = { id: 1, doctorId, ...baseCreateDto } as any;
-      mockPatientRepository.save.mockResolvedValue(mockPatient);
-
       const result = await service.createPatient(doctorId, baseCreateDto);
-      expect(result).toEqual(mockPatient);
+      expect(result).toEqual(
+        expect.objectContaining({ notes: 'Test patient' }),
+      );
     });
 
     it('should not create an EDSS assessment when none is provided', async () => {
-      mockPatientRepository.save.mockResolvedValue({
-        id: 1,
-        doctorId,
-        ...baseCreateDto,
-      });
-
       await service.createPatient(doctorId, baseCreateDto);
 
       expect(mockEdssAssessmentRepository.save).not.toHaveBeenCalled();
     });
 
     it('should derive and persist an EDSS assessment linked to the new patient', async () => {
-      mockPatientRepository.save.mockResolvedValue({
-        id: 42,
-        doctorId,
-        ...baseCreateDto,
-      });
-      mockEdssAssessmentRepository.save.mockImplementation((a) =>
-        Promise.resolve({ id: 1, ...a }),
-      );
-
       await service.createPatient(doctorId, {
         ...baseCreateDto,
         edss: { ...zeroEdss, pyramidalSystem: 3 },
       });
 
       expect(mockEdssAssessmentRepository.save).toHaveBeenCalledWith(
-        expect.objectContaining({ patientId: 42, totalScore: 3.0 }),
+        expect.objectContaining({
+          patientId: 42,
+          pyramidalSystem: 3,
+          totalScore: 3.0,
+        }),
       );
     });
 
@@ -167,17 +161,6 @@ describe('PatientsService', () => {
     });
 
     describe('EDSS scoring bands derived from FSS combinations (fully ambulatory)', () => {
-      beforeEach(() => {
-        mockPatientRepository.save.mockResolvedValue({
-          id: 7,
-          doctorId,
-          ...baseCreateDto,
-        });
-        mockEdssAssessmentRepository.save.mockImplementation((a) =>
-          Promise.resolve({ id: 1, ...a }),
-        );
-      });
-
       it.each([
         ['all FS at grade 0', {}, 0.0],
         ['a single FS at grade 1', { sensorySystem: 1 }, 1.0],
@@ -226,17 +209,6 @@ describe('PatientsService', () => {
     });
 
     describe('EDSS scoring bands derived from ambulation metrics', () => {
-      beforeEach(() => {
-        mockPatientRepository.save.mockResolvedValue({
-          id: 7,
-          doctorId,
-          ...baseCreateDto,
-        });
-        mockEdssAssessmentRepository.save.mockImplementation((a) =>
-          Promise.resolve({ id: 1, ...a }),
-        );
-      });
-
       it.each([
         [
           'unaided distance of 1000m (no impairment)',
@@ -320,6 +292,9 @@ describe('PatientsService', () => {
         notes: 'old notes',
       });
       mockPatientRepository.save.mockImplementation((p) => Promise.resolve(p));
+      mockEdssAssessmentRepository.save.mockImplementation((a) =>
+        Promise.resolve({ id: 1, ...a }),
+      );
     });
 
     it('should update notes without creating an EDSS assessment when none is provided', async () => {
@@ -332,10 +307,6 @@ describe('PatientsService', () => {
     });
 
     it('should derive and persist an EDSS assessment linked to the patient', async () => {
-      mockEdssAssessmentRepository.save.mockImplementation((a) =>
-        Promise.resolve({ id: 1, ...a }),
-      );
-
       await service.updatePatientNotes(doctorId, patientId, {
         notes: 'Updated',
         edss: { ...zeroEdss, requiresBilateralAid: true },

@@ -37,6 +37,38 @@ export interface FamilyHistory {
   recordedAt: string;
 }
 
+export interface EdssAssessment {
+  id: number;
+  patientId: number;
+  assessedAt: string;
+  pyramidalSystem: number;
+  cerebellarSystem: number;
+  brainstemSystem: number;
+  sensorySystem: number;
+  bowelBladderSystem: number;
+  visualSystem: number;
+  mentalSystem: number;
+  unassistedWalkingDistanceMeters: number | null;
+  requiresUnilateralAid: boolean;
+  requiresBilateralAid: boolean;
+  wheelchairBound: boolean;
+  totalScore: number;
+}
+
+export interface EdssAssessmentInput {
+  pyramidalSystem: number;
+  cerebellarSystem: number;
+  brainstemSystem: number;
+  sensorySystem: number;
+  bowelBladderSystem: number;
+  visualSystem: number;
+  mentalSystem: number;
+  unassistedWalkingDistanceMeters?: number;
+  requiresUnilateralAid?: boolean;
+  requiresBilateralAid?: boolean;
+  wheelchairBound?: boolean;
+}
+
 export interface Patient {
   id: number;
   doctorId: number;
@@ -50,6 +82,7 @@ export interface Patient {
   updatedAt: string;
   medicalHistory: PatientHistory[];
   familyHistory: FamilyHistory[];
+  edssAssessments: EdssAssessment[];
 }
 
 export interface CreatePatientDto {
@@ -59,6 +92,12 @@ export interface CreatePatientDto {
   phone?: string;
   email?: string;
   notes?: string;
+  edss?: EdssAssessmentInput;
+}
+
+export interface UpdatePatientDto {
+  notes: string;
+  edss?: EdssAssessmentInput;
 }
 
 export interface CreatePatientHistoryDto {

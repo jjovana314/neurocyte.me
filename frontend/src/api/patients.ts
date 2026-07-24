@@ -2,6 +2,7 @@ import client from './client';
 import type {
   Patient,
   CreatePatientDto,
+  UpdatePatientDto,
   CreatePatientHistoryDto,
   CreateFamilyHistoryDto,
   PatientHistory,
@@ -24,8 +25,8 @@ export async function createPatient(dto: CreatePatientDto): Promise<Patient> {
   return data;
 }
 
-export async function updatePatientNotes(id: number, notes: string): Promise<Patient> {
-  const { data } = await client.put<Patient>(`/patients/${id}`, { notes });
+export async function updatePatient(id: number, dto: UpdatePatientDto): Promise<Patient> {
+  const { data } = await client.put<Patient>(`/patients/${id}`, dto);
   return data;
 }
 

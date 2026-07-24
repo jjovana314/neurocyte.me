@@ -241,6 +241,63 @@ td {
 .severity-moderate { background: #fef9c3; color: #854d0e; }
 .severity-severe { background: #fee2e2; color: #991b1b; }
 
+.edss-score-badge {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 12px;
+  font-size: 11px;
+  font-weight: 600;
+  background: #dbeafe;
+  color: #1d4ed8;
+}
+.table-scroll {
+  overflow-x: auto;
+}
+
+/* ── Expanded row edit / EDSS form ── */
+.expanded-toolbar {
+  display: flex;
+  justify-content: flex-end;
+}
+.edit-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 4px;
+}
+.checkbox-label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 400;
+  color: #333;
+  cursor: pointer;
+}
+.checkbox-label input[type="checkbox"] {
+  width: auto;
+}
+.form-container .edss-toggle,
+.expanded-section .edss-toggle {
+  margin-bottom: 14px;
+}
+.edss-fields {
+  border-top: 1px solid #eee;
+  padding-top: 14px;
+  margin-top: -2px;
+}
+.edss-fss-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: 12px;
+  margin-bottom: 14px;
+}
+.edss-ambulation-flags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+  margin-bottom: 10px;
+}
+
 /* ── Status messages ── */
 .status-msg {
   color: #666;
