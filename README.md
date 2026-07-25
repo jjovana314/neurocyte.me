@@ -4,56 +4,96 @@
 	<img src="assets/logo.png" alt="neurocyte.me logo" width="200" />
 </p>
 
-**neurocyte.me** is an advanced neurology patient management platform designed to help neurologists track disease progression, manage medical records, and utilize AI-driven insights for better treatment planning.
+**neurocyte.me** is a neurology patient-management platform that helps doctors record patient demographics, medical and family history, EDSS disability assessments, and migraine logs — with CSV/PDF export and import for reporting and data portability.
 
 ---
 
 ## 🚀 Features
 
-- **Comprehensive Patient Records** – Store and manage patient details, medical history, and diagnostic information.
-- **Disease Progression Tracking** – Monitor symptoms, treatment effectiveness, and functional assessments over time.
-- **Medical Document Management** – Upload and export PDFs, Word files, or CSV reports, including MRI, CT, and EEG findings.
-- **AI-Powered Insights** – Receive treatment suggestions and predictive analytics based on historical patient data.
-- **Device Synchronization** – Connect with medical devices (e.g., EEG) and wearable health trackers for real-time data analysis.
-- **Hospital System Integration** – Ensure compatibility with healthcare standards like HL7/FHIR.
-- **Clinical Trial Candidate Identification** – Flag patients meeting criteria for research studies.
-- **Automated Report Generation** – Create detailed medical reports with charts and statistics in PDF format.
+- **Patient Records** – Create and manage patients (name, date of birth, gender, phone, email, free-text notes), each owned by the doctor who created it.
+- **Medical History Tracking** – Log prior disorders per patient (disorder, description, diagnosis date, severity, medications).
+- **Family History Tracking** – Log hereditary/neurological conditions in relatives (disease type, relation, severity, notes).
+- **EDSS Disability Assessments** – Record Kurtzke Expanded Disability Status Scale assessments (7 functional-system scores + ambulation details); the total score is derived server-side by an EDSS scoring algorithm, never supplied by the client.
+- **Migraine Logs** – Track individual migraine episodes (date/time, duration, pain severity 1–10, aura, triggers, symptoms, medication taken, notes).
+- **CSV Export & Import** – Export all patient + history data to CSV, or bulk-import patients and their history from a CSV file in the same column layout.
+- **PDF Reports** – Generate a per-patient PDF report (demographics, medical history, family history); sensitive fields (name, phone, email) are masked for the Support Engineer role.
+- **Role-Based Access Control** – `Doctor`, `Support Engineer`, and `admin` roles with JWT-authenticated endpoints; doctors can only access patients they created, Support Engineers get a read-oriented, masked view across all patients.
+- **Account Management** – Registration/login, forgot/reset password by email, and self-service account deactivation (confirmed by an admin via emailed link).
 
 ---
 
 ## 🛠️ Tech Stack
 
-- **Frontend:** React.js, TypeScript
-- **Backend:** NestJS, Node.js
-- **Database & Integrity:** *[e.g., PostgreSQL, Prisma — feel free to fill in]*
+- **Frontend:** React 19, TypeScript, Vite, React Router, TanStack Query, Axios
+- **Backend:** NestJS, TypeORM, MySQL
+- **Auth:** Passport (JWT strategy), bcrypt password hashing
+- **Other:** pdfkit (PDF generation), Nodemailer (transactional email), nestjs-pino (structured logging)
 
 ---
 
 ## 📦 Installation & Setup
 
-This repository contains both the frontend application and the backend service. 
+This repository contains both the backend API (`api/`) and the frontend application (`frontend/`).
 
 ### 1. Prerequisites
-Ensure you have **Node.js** (v18+ recommended) and npm/yarn installed.
+- **Node.js** (v18+ recommended) and npm
+- A running **MySQL** instance
 
 ### 2. Backend Setup
-Navigate to the backend directory, install dependencies, and start the service:
+Copy `api/env.example` to `api/.env` and fill in your database, JWT, and mail settings (`DATABASE_URL`, `DATABASE_NAME`, `DATABASE_USERNAME`, `DATABASE_PASSWORD`, `DATABASE_PORT`, `SECRET_KEY`, `ACCESS_TOKEN_TIME`, `REFRESH_TOKEN_TIME`, `MAIL_HOST`, `MAIL_PORT`, `MAIL_USER`, `MAIL_PASS`, `MAIL_FROM`, `APP_URL`, `FRONTEND_URL`), then:
 ```sh
-cd backend
+cd api
 npm install
 npm run start:dev
 ```
+Roles (`Doctor`, `Support Engineer`, `admin`) can be seeded with `npx ts-node scripts/seed.ts` (see `api/scripts`).
 
 ### 3. Frontend Setup (React + Vite + TypeScript)
-Navigate to the frontend directory, install the dependencies, and start the Vite development server:
 ```sh
 cd frontend
 npm install
 npm run dev
 ```
-### 💡 Additional Frontend Scripts for your Reference
-If you need to build or lint the frontend later, you can also use these commands based on your file:
-* **Production Build:** `npm run build` (runs the TypeScript compiler and compiles the Vite production asset bundle)
-* **Code Linting:** `npm run lint` (runs ESLint to check for code quality issues)
-* **Preview Build Locally:** `npm run preview` (boots up a local server to test the production build before deploying)
 
+### 💡 Additional Scripts
+- **Root convenience scripts** (from the repo root): `npm run start` (runs both API and frontend dev servers), `npm run build` (builds both)
+- **Backend:** `npm run test` / `npm run test:cov` (unit tests), `npm run test:e2e` (end-to-end tests), `npm run lint`, `npm run format`
+- **Frontend:** `npm run build` (type-check + production bundle), `npm run lint`, `npm run preview` (serve the production build locally)
+
+---
+
+## 📡 API Overview
+
+All `/patients` and most `/user` routes require a `Bearer` JWT obtained from `/auth/login` or `/auth/register`.
+
+**Auth** (`/auth`): `POST /login`, `POST /register`, `POST /forgot-password`, `POST /reset-password`, `GET /roles`
+
+**User** (`/user`): `DELETE /:id` (admin only), `POST /:id/request-deactivation`, `GET /deactivate/:token`
+
+**Patients** (`/patients`):
+| Method & Path | Purpose |
+|---|---|
+| `POST /` | Create a patient, optionally with an initial EDSS assessment (doctors only) |
+| `GET /my-patients` | List patients (own patients for doctors, all patients for other roles) |
+| `GET /:id` | Get a patient with full history, EDSS assessments, and migraine logs |
+| `PUT /:id` | Update notes, optionally adding a new EDSS assessment |
+| `DELETE /:id` | Delete a patient and all associated records |
+| `POST /:id/history` · `GET /:id/history` | Add / list medical history |
+| `POST /:id/family-history` · `GET /:id/family-history` | Add / list family history |
+| `GET /:id/edss` | List EDSS assessment history |
+| `POST /:id/migraines` · `GET /:id/migraines` | Add / list migraine log entries |
+| `GET /export/csv` | Export all accessible patients + history as CSV |
+| `POST /import/csv` | Bulk-import patients + history from a CSV file |
+| `GET /:id/export/pdf` | Generate a PDF report for one patient |
+
+A Postman collection covering the core auth, user, and patient endpoints is available in [`postman/`](postman).
+
+---
+
+## 🧪 Testing
+
+The backend has unit tests (Jest) for the auth, user, and patient services/controllers, plus the EDSS scoring algorithm, and a minimal end-to-end smoke test. Run them from `api/`:
+```sh
+npm run test
+npm run test:e2e
+```
