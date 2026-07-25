@@ -617,9 +617,9 @@ describe('PatientsService', () => {
     it('should throw NotFoundException when patient does not exist', async () => {
       mockPatientRepository.findOne.mockResolvedValue(null);
 
-      await expect(
-        service.deletePatient(doctorId, patientId),
-      ).rejects.toThrow(NotFoundException);
+      await expect(service.deletePatient(doctorId, patientId)).rejects.toThrow(
+        NotFoundException,
+      );
 
       expect(mockMigraineLogRepository.delete).not.toHaveBeenCalled();
     });
@@ -630,9 +630,9 @@ describe('PatientsService', () => {
         doctorId: 999,
       });
 
-      await expect(
-        service.deletePatient(doctorId, patientId),
-      ).rejects.toThrow(ForbiddenException);
+      await expect(service.deletePatient(doctorId, patientId)).rejects.toThrow(
+        ForbiddenException,
+      );
 
       expect(mockMigraineLogRepository.delete).not.toHaveBeenCalled();
     });
