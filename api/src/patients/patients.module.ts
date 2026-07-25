@@ -6,6 +6,7 @@ import { Patient } from './entities/patient.entity';
 import { PatientHistory } from './entities/patient-history.entity';
 import { FamilyHistory } from './entities/family-history.entity';
 import { EdssAssesment } from './entities/edss-assesment.entity';
+import { MigraineLog } from './entities/migraine-log.entity';
 import { User } from 'src/auth/entites/user.entity';
 import { UserModule } from 'src/user/user.module';
 
@@ -16,6 +17,7 @@ import { UserModule } from 'src/user/user.module';
       PatientHistory,
       FamilyHistory,
       EdssAssesment,
+      MigraineLog,
       User,
     ]),
     UserModule,

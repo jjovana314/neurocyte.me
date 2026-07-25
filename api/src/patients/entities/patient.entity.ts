@@ -11,6 +11,7 @@ import { User } from 'src/auth/entites/user.entity';
 import { PatientHistory } from './patient-history.entity';
 import { FamilyHistory } from './family-history.entity';
 import { EdssAssesment } from './edss-assesment.entity';
+import { MigraineLog } from './migraine-log.entity';
 
 @Entity()
 export class Patient {
@@ -60,4 +61,7 @@ export class Patient {
 
   @OneToMany(() => EdssAssesment, (assessment) => assessment.patient)
   edssAssessments: EdssAssesment[];
+
+  @OneToMany(() => MigraineLog, (migraineLog) => migraineLog.patient)
+  migraineLogs: MigraineLog[];
 }

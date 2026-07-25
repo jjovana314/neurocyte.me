@@ -5,6 +5,7 @@ import { updatePatient } from '../api/patients';
 import { getErrorMessage } from '../api/errors';
 import { EDSS_FSS_FIELDS } from '../constants/edss';
 import EdssAssessmentForm from './EdssAssessmentForm';
+import MigraineLogForm from './MigraineLogForm';
 import {
   EMPTY_EDSS_FORM_STATE,
   edssFormStateToInput,
@@ -30,6 +31,7 @@ export default function ExpandedRow({ patient }: Props) {
   const [editing, setEditing] = useState(false);
   const [notes, setNotes] = useState(patient.notes ?? '');
   const [edssForm, setEdssForm] = useState<EdssFormState>(EMPTY_EDSS_FORM_STATE);
+  const [addingMigraineLog, setAddingMigraineLog] = useState(false);
 
   const mutation = useMutation({
     mutationFn: () =>
@@ -63,6 +65,9 @@ export default function ExpandedRow({ patient }: Props) {
   const family = patient.familyHistory ?? [];
   const edssAssessments = [...(patient.edssAssessments ?? [])].sort(
     (a, b) => new Date(b.assessedAt).getTime() - new Date(a.assessedAt).getTime(),
+  );
+  const migraineLogs = [...(patient.migraineLogs ?? [])].sort(
+    (a, b) => new Date(b.occurredAt).getTime() - new Date(a.occurredAt).getTime(),
   );
 
   const hasDemographics = patient.dateOfBirth || patient.gender || patient.phone || patient.email;
@@ -175,6 +180,60 @@ export default function ExpandedRow({ patient }: Props) {
                     <td>
                       <span className="edss-score-badge">{assessment.totalScore.toFixed(1)}</span>
                     </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+
+      <div className="expanded-section">
+        <div className="section-header">
+          <h4>Migraine Log</h4>
+          {!addingMigraineLog && (
+            <button className="btn btn-sm" onClick={() => setAddingMigraineLog(true)}>
+              Add migraine log
+            </button>
+          )}
+        </div>
+
+        {addingMigraineLog && (
+          <MigraineLogForm
+            patientId={patient.id}
+            idPrefix={`migraine-${patient.id}`}
+            onDone={() => setAddingMigraineLog(false)}
+          />
+        )}
+
+        {migraineLogs.length === 0 ? (
+          <p className="empty-note">No migraine episodes recorded.</p>
+        ) : (
+          <div className="table-scroll">
+            <table className="inner-table">
+              <thead>
+                <tr>
+                  <th>Occurred</th>
+                  <th>Duration</th>
+                  <th>Pain</th>
+                  <th>Aura</th>
+                  <th>Triggers</th>
+                  <th>Symptoms</th>
+                  <th>Medication</th>
+                </tr>
+              </thead>
+              <tbody>
+                {migraineLogs.map((log) => (
+                  <tr key={log.id}>
+                    <td>{new Date(log.occurredAt).toLocaleString()}</td>
+                    <td>{log.durationMinutes != null ? `${log.durationMinutes}m` : '—'}</td>
+                    <td>
+                      <span className="pain-severity-badge">{log.painSeverity}/10</span>
+                    </td>
+                    <td>{log.auraPresent ? 'Yes' : 'No'}</td>
+                    <td>{log.triggers || '—'}</td>
+                    <td>{log.symptoms || '—'}</td>
+                    <td>{log.medicationTaken || '—'}</td>
                   </tr>
                 ))}
               </tbody>

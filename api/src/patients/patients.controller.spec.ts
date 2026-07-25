@@ -23,6 +23,8 @@ describe('PatientsController', () => {
     addFamilyHistory: jest.fn(),
     getPatientFamilyHistory: jest.fn(),
     getPatientEdssAssessments: jest.fn(),
+    addMigraineLog: jest.fn(),
+    getPatientMigraineLogs: jest.fn(),
   };
 
   const mockUserService = {
@@ -351,6 +353,64 @@ describe('PatientsController', () => {
       await expect(
         controller.getPatientEdssAssessments(mockUser, '5'),
       ).rejects.toThrow(NotFoundException);
+    });
+  });
+
+  describe('addMigraineLog', () => {
+    it('should call patientsService.addMigraineLog with user id and dto', async () => {
+      const dto = {
+        occurredAt: '2026-07-20T10:00:00Z',
+        painSeverity: 7,
+        patientId: 0,
+      } as any;
+      const mockLog = { id: 1, patientId: 5, painSeverity: 7 } as any;
+      mockPatientsService.addMigraineLog.mockResolvedValue(mockLog);
+
+      const result = await controller.addMigraineLog(mockUser, '5', dto);
+
+      expect(mockPatientsService.addMigraineLog).toHaveBeenCalledWith(1, {
+        ...dto,
+        patientId: 5,
+      });
+      expect(result).toBe(mockLog);
+    });
+
+    it('should propagate BadRequestException thrown by the service for an invalid payload', async () => {
+      mockPatientsService.addMigraineLog.mockRejectedValue(
+        new BadRequestException(
+          'Pain severity is required and must be an integer between 1 and 10',
+        ),
+      );
+
+      await expect(
+        controller.addMigraineLog(mockUser, '5', {
+          occurredAt: '2026-07-20T10:00:00Z',
+          painSeverity: 99,
+        } as any),
+      ).rejects.toThrow(BadRequestException);
+    });
+  });
+
+  describe('getPatientMigraineLogs', () => {
+    it('should call patientsService.getPatientMigraineLogs with user id and patient id', async () => {
+      const mockLogs = [{ id: 1, painSeverity: 6 }] as any[];
+      mockPatientsService.getPatientMigraineLogs.mockResolvedValue(mockLogs);
+
+      const result = await controller.getPatientMigraineLogs(mockUser, '5');
+
+      expect(mockPatientsService.getPatientMigraineLogs).toHaveBeenCalledWith(
+        1,
+        5,
+      );
+      expect(result).toBe(mockLogs);
+    });
+
+    it('should return an empty array when the patient has no migraine logs yet', async () => {
+      mockPatientsService.getPatientMigraineLogs.mockResolvedValue([]);
+
+      const result = await controller.getPatientMigraineLogs(mockUser, '5');
+
+      expect(result).toEqual([]);
     });
   });
 

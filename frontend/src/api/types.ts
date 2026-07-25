@@ -69,6 +69,32 @@ export interface EdssAssessmentInput {
   wheelchairBound?: boolean;
 }
 
+export interface MigraineLog {
+  id: number;
+  patientId: number;
+  occurredAt: string;
+  durationMinutes: number | null;
+  painSeverity: number;
+  auraPresent: boolean;
+  triggers: string;
+  symptoms: string;
+  medicationTaken: string;
+  notes: string;
+  recordedAt: string;
+}
+
+export interface CreateMigraineLogDto {
+  patientId?: number;
+  occurredAt: string;
+  durationMinutes?: number;
+  painSeverity: number;
+  auraPresent?: boolean;
+  triggers?: string;
+  symptoms?: string;
+  medicationTaken?: string;
+  notes?: string;
+}
+
 export interface Patient {
   id: number;
   doctorId: number;
@@ -83,6 +109,7 @@ export interface Patient {
   medicalHistory: PatientHistory[];
   familyHistory: FamilyHistory[];
   edssAssessments: EdssAssessment[];
+  migraineLogs: MigraineLog[];
 }
 
 export interface CreatePatientDto {

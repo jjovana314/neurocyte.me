@@ -11,12 +11,14 @@ import { Patient } from './entities/patient.entity';
 import { PatientHistory } from './entities/patient-history.entity';
 import { FamilyHistory, DiseaseType } from './entities/family-history.entity';
 import { EdssAssesment } from './entities/edss-assesment.entity';
+import { MigraineLog } from './entities/migraine-log.entity';
 import { User } from 'src/auth/entites/user.entity';
 import PDFDocument from 'pdfkit';
 import {
   CreatePatientDto,
   CreatePatientHistoryDto,
   CreateFamilyHistoryDto,
+  CreateMigraineLogDto,
   EdssAssessmentDataDto,
   ImportCsvResponseDto,
   UpdatePatientNotesDto,
@@ -40,6 +42,8 @@ export class PatientsService {
     private familyHistoryRepository: Repository<FamilyHistory>,
     @InjectRepository(EdssAssesment)
     private edssAssessmentRepository: Repository<EdssAssesment>,
+    @InjectRepository(MigraineLog)
+    private migraineLogRepository: Repository<MigraineLog>,
     @InjectRepository(User) private userRepository: Repository<User>,
     private readonly logger: PinoLogger,
   ) {}
@@ -191,6 +195,84 @@ export class PatientsService {
   }
 
   @errorHandler
+  async addMigraineLog(
+    doctorId: number,
+    createMigraineLogDto: CreateMigraineLogDto,
+  ): Promise<MigraineLog> {
+    // Verify patient exists
+    const patient = await this.patientRepository.findOne({
+      where: { id: createMigraineLogDto.patientId },
+    });
+    if (!patient) {
+      throw new PatientNotFoundException(createMigraineLogDto.patientId);
+    }
+
+    // Verify that the requester is the doctor who created this patient
+    if (patient.doctorId !== doctorId) {
+      this.logger.warn(
+        `Doctor ${doctorId} attempted to access patient ${createMigraineLogDto.patientId} created by doctor ${patient.doctorId}`,
+      );
+      throw new AccessToPatientForbiddenException();
+    }
+
+    // errorHandler required fields
+    if (!createMigraineLogDto.occurredAt) {
+      throw new BadRequestException('occurredAt field is required');
+    }
+    if (
+      createMigraineLogDto.painSeverity == null ||
+      !Number.isInteger(createMigraineLogDto.painSeverity) ||
+      createMigraineLogDto.painSeverity < 1 ||
+      createMigraineLogDto.painSeverity > 10
+    ) {
+      throw new BadRequestException(
+        'Pain severity is required and must be an integer between 1 and 10',
+      );
+    }
+
+    const migraineLog = new MigraineLog();
+    migraineLog.patientId = createMigraineLogDto.patientId;
+    migraineLog.occurredAt = new Date(createMigraineLogDto.occurredAt);
+    migraineLog.durationMinutes = createMigraineLogDto.durationMinutes ?? null;
+    migraineLog.painSeverity = createMigraineLogDto.painSeverity;
+    migraineLog.auraPresent = createMigraineLogDto.auraPresent || false;
+    migraineLog.triggers = createMigraineLogDto.triggers || '';
+    migraineLog.symptoms = createMigraineLogDto.symptoms || '';
+    migraineLog.medicationTaken = createMigraineLogDto.medicationTaken || '';
+    migraineLog.notes = createMigraineLogDto.notes || '';
+
+    const savedMigraineLog = await this.migraineLogRepository.save(migraineLog);
+    this.logger.info(
+      `Migraine log added to patient ${createMigraineLogDto.patientId}`,
+    );
+
+    return savedMigraineLog;
+  }
+
+  @errorHandler
+  async getPatientMigraineLogs(
+    doctorId: number,
+    patientId: number,
+  ): Promise<MigraineLog[]> {
+    // Verify permissions first
+    const patient = await this.patientRepository.findOne({
+      where: { id: patientId },
+    });
+    if (!patient) {
+      throw new PatientNotFoundException(patientId);
+    }
+
+    if (patient.doctorId !== doctorId) {
+      throw new AccessToPatientForbiddenException();
+    }
+
+    return this.migraineLogRepository.find({
+      where: { patientId },
+      order: { occurredAt: 'DESC' },
+    });
+  }
+
+  @errorHandler
   async getPatient(doctorId: number, patientId: number): Promise<Patient> {
     const patient = await this.patientRepository.findOne({
       where: { id: patientId },
@@ -198,6 +280,7 @@ export class PatientsService {
         'medicalHistory',
         'familyHistory',
         'edssAssessments',
+        'migraineLogs',
         'doctor',
       ],
     });
@@ -224,7 +307,12 @@ export class PatientsService {
   ): Promise<Patient[]> {
     const patients = await this.patientRepository.find({
       where: roleName === 'Support Engineer' ? {} : { doctorId },
-      relations: ['medicalHistory', 'familyHistory', 'edssAssessments'],
+      relations: [
+        'medicalHistory',
+        'familyHistory',
+        'edssAssessments',
+        'migraineLogs',
+      ],
       order: { createdAt: 'DESC' },
     });
 
@@ -402,6 +490,7 @@ export class PatientsService {
     // Delete associated histories (cascade handled by database, but explicit for clarity)
     await this.patientHistoryRepository.delete({ patientId });
     await this.familyHistoryRepository.delete({ patientId });
+    await this.migraineLogRepository.delete({ patientId });
     await this.patientRepository.delete({ id: patientId });
 
     this.logger.info(`Patient ${patientId} deleted by doctor ${doctorId}`);

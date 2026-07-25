@@ -5,6 +5,7 @@ import { Patient } from './entities/patient.entity';
 import { PatientHistory } from './entities/patient-history.entity';
 import { FamilyHistory } from './entities/family-history.entity';
 import { EdssAssesment } from './entities/edss-assesment.entity';
+import { MigraineLog } from './entities/migraine-log.entity';
 import { User } from 'src/auth/entites/user.entity';
 import { PinoLogger } from 'nestjs-pino';
 import {
@@ -45,6 +46,13 @@ describe('PatientsService', () => {
     delete: jest.fn(),
   };
 
+  const mockMigraineLogRepository = {
+    findOne: jest.fn(),
+    find: jest.fn(),
+    save: jest.fn(),
+    delete: jest.fn(),
+  };
+
   const mockUserRepository = {
     findOne: jest.fn(),
   };
@@ -74,6 +82,10 @@ describe('PatientsService', () => {
         {
           provide: getRepositoryToken(EdssAssesment),
           useValue: mockEdssAssessmentRepository,
+        },
+        {
+          provide: getRepositoryToken(MigraineLog),
+          useValue: mockMigraineLogRepository,
         },
         { provide: getRepositoryToken(User), useValue: mockUserRepository },
         { provide: PinoLogger, useValue: mockLogger },
@@ -385,6 +397,113 @@ describe('PatientsService', () => {
 
       await expect(
         service.getPatientEdssAssessments(doctorId, patientId),
+      ).rejects.toThrow(ForbiddenException);
+    });
+  });
+
+  describe('addMigraineLog', () => {
+    const doctorId = 1;
+    const patientId = 5;
+    const baseDto = {
+      patientId,
+      occurredAt: '2026-07-20T10:00:00Z',
+      painSeverity: 7,
+    };
+
+    beforeEach(() => {
+      mockPatientRepository.findOne.mockResolvedValue({
+        id: patientId,
+        doctorId,
+      });
+      mockMigraineLogRepository.save.mockImplementation((m) =>
+        Promise.resolve({ id: 1, ...m }),
+      );
+    });
+
+    it('should create a migraine log for a patient owned by the doctor', async () => {
+      const result = await service.addMigraineLog(doctorId, baseDto);
+
+      expect(mockMigraineLogRepository.save).toHaveBeenCalledWith(
+        expect.objectContaining({ patientId, painSeverity: 7 }),
+      );
+      expect(result).toEqual(expect.objectContaining({ painSeverity: 7 }));
+    });
+
+    it('should throw NotFoundException when patient does not exist', async () => {
+      mockPatientRepository.findOne.mockResolvedValue(null);
+
+      await expect(service.addMigraineLog(doctorId, baseDto)).rejects.toThrow(
+        NotFoundException,
+      );
+    });
+
+    it('should throw ForbiddenException when doctor does not own the patient', async () => {
+      mockPatientRepository.findOne.mockResolvedValue({
+        id: patientId,
+        doctorId: 999,
+      });
+
+      await expect(service.addMigraineLog(doctorId, baseDto)).rejects.toThrow(
+        ForbiddenException,
+      );
+    });
+
+    it('should throw BadRequestException when occurredAt is missing', async () => {
+      await expect(
+        service.addMigraineLog(doctorId, { ...baseDto, occurredAt: '' }),
+      ).rejects.toThrow(BadRequestException);
+
+      expect(mockMigraineLogRepository.save).not.toHaveBeenCalled();
+    });
+
+    it.each([0, 11, 1.5, null, undefined])(
+      'should throw BadRequestException for an out-of-range painSeverity of %s',
+      async (painSeverity) => {
+        await expect(
+          service.addMigraineLog(doctorId, {
+            ...baseDto,
+            painSeverity: painSeverity as any,
+          }),
+        ).rejects.toThrow(BadRequestException);
+
+        expect(mockMigraineLogRepository.save).not.toHaveBeenCalled();
+      },
+    );
+  });
+
+  describe('getPatientMigraineLogs', () => {
+    const doctorId = 1;
+    const patientId = 5;
+
+    it('should return the migraine log history ordered by most recent', async () => {
+      mockPatientRepository.findOne.mockResolvedValue({
+        id: patientId,
+        doctorId,
+      });
+      const mockLogs = [{ id: 1, painSeverity: 6 }];
+      mockMigraineLogRepository.find.mockResolvedValue(mockLogs);
+
+      const result = await service.getPatientMigraineLogs(doctorId, patientId);
+
+      expect(result).toEqual(mockLogs);
+    });
+
+    it('should throw NotFoundException when patient does not exist', async () => {
+      mockPatientRepository.findOne.mockResolvedValue(null);
+
+      await expect(
+        service.getPatientMigraineLogs(doctorId, patientId),
+      ).rejects.toThrow(NotFoundException);
+    });
+
+    it('should throw ForbiddenException when doctor does not own the patient', async () => {
+      mockPatientRepository.findOne.mockResolvedValue({
+        id: patientId,
+        doctorId: 999,
+      });
+
+      await expect(
+        service.getPatientMigraineLogs(doctorId, patientId),
       ).rejects.toThrow(ForbiddenException);
     });
   });
