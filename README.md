@@ -86,8 +86,6 @@ All `/patients` and most `/user` routes require a `Bearer` JWT obtained from `/a
 | `POST /import/csv` | Bulk-import patients + history from a CSV file |
 | `GET /:id/export/pdf` | Generate a PDF report for one patient |
 
-A Postman collection covering the core auth, user, and patient endpoints is available in [`postman/`](postman).
-
 ---
 
 ## 🧪 Testing
