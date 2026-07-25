@@ -429,6 +429,53 @@ describe('PatientsService', () => {
       expect(result).toEqual(expect.objectContaining({ painSeverity: 7 }));
     });
 
+    it('should apply default values for optional fields when omitted', async () => {
+      await service.addMigraineLog(doctorId, baseDto);
+
+      expect(mockMigraineLogRepository.save).toHaveBeenCalledWith(
+        expect.objectContaining({
+          durationMinutes: null,
+          auraPresent: false,
+          triggers: '',
+          symptoms: '',
+          medicationTaken: '',
+          notes: '',
+        }),
+      );
+    });
+
+    it('should persist provided optional fields instead of defaults', async () => {
+      const fullDto = {
+        ...baseDto,
+        durationMinutes: 45,
+        auraPresent: true,
+        triggers: 'lack of sleep',
+        symptoms: 'nausea',
+        medicationTaken: 'ibuprofen',
+        notes: 'occurred after work',
+      };
+
+      await service.addMigraineLog(doctorId, fullDto);
+
+      expect(mockMigraineLogRepository.save).toHaveBeenCalledWith(
+        expect.objectContaining({
+          ...fullDto,
+          occurredAt: new Date(fullDto.occurredAt),
+        }),
+      );
+    });
+
+    it.each([1, 10])(
+      'should accept a boundary painSeverity of %s',
+      async (painSeverity) => {
+        await service.addMigraineLog(doctorId, { ...baseDto, painSeverity });
+
+        expect(mockMigraineLogRepository.save).toHaveBeenCalledWith(
+          expect.objectContaining({ painSeverity }),
+        );
+      },
+    );
+
     it('should throw NotFoundException when patient does not exist', async () => {
       mockPatientRepository.findOne.mockResolvedValue(null);
 
@@ -505,6 +552,89 @@ describe('PatientsService', () => {
       await expect(
         service.getPatientMigraineLogs(doctorId, patientId),
       ).rejects.toThrow(ForbiddenException);
+    });
+  });
+
+  describe('getPatient', () => {
+    it('should request the migraineLogs relation when fetching a patient', async () => {
+      const doctorId = 1;
+      const patientId = 5;
+      mockPatientRepository.findOne.mockResolvedValue({
+        id: patientId,
+        doctorId,
+        migraineLogs: [{ id: 1, painSeverity: 7 }],
+      });
+
+      const result = await service.getPatient(doctorId, patientId);
+
+      expect(mockPatientRepository.findOne).toHaveBeenCalledWith(
+        expect.objectContaining({
+          relations: expect.arrayContaining(['migraineLogs']),
+        }),
+      );
+      expect(result.migraineLogs).toEqual([{ id: 1, painSeverity: 7 }]);
+    });
+  });
+
+  describe('getDoctorPatients', () => {
+    it('should request the migraineLogs relation for the doctor patient list', async () => {
+      const doctorId = 1;
+      mockPatientRepository.find.mockResolvedValue([
+        { id: 5, doctorId, migraineLogs: [{ id: 1, painSeverity: 7 }] },
+      ]);
+
+      const result = await service.getDoctorPatients(doctorId, 'Doctor');
+
+      expect(mockPatientRepository.find).toHaveBeenCalledWith(
+        expect.objectContaining({
+          relations: expect.arrayContaining(['migraineLogs']),
+        }),
+      );
+      expect(result[0].migraineLogs).toEqual([{ id: 1, painSeverity: 7 }]);
+    });
+  });
+
+  describe('deletePatient', () => {
+    const doctorId = 1;
+    const patientId = 5;
+
+    it('should delete the patient and cascade-delete their migraine logs', async () => {
+      mockPatientRepository.findOne.mockResolvedValue({
+        id: patientId,
+        doctorId,
+      });
+
+      await service.deletePatient(doctorId, patientId);
+
+      expect(mockMigraineLogRepository.delete).toHaveBeenCalledWith({
+        patientId,
+      });
+      expect(mockPatientRepository.delete).toHaveBeenCalledWith({
+        id: patientId,
+      });
+    });
+
+    it('should throw NotFoundException when patient does not exist', async () => {
+      mockPatientRepository.findOne.mockResolvedValue(null);
+
+      await expect(
+        service.deletePatient(doctorId, patientId),
+      ).rejects.toThrow(NotFoundException);
+
+      expect(mockMigraineLogRepository.delete).not.toHaveBeenCalled();
+    });
+
+    it('should throw ForbiddenException when doctor does not own the patient', async () => {
+      mockPatientRepository.findOne.mockResolvedValue({
+        id: patientId,
+        doctorId: 999,
+      });
+
+      await expect(
+        service.deletePatient(doctorId, patientId),
+      ).rejects.toThrow(ForbiddenException);
+
+      expect(mockMigraineLogRepository.delete).not.toHaveBeenCalled();
     });
   });
 
