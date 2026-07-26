@@ -12,6 +12,7 @@ import { PatientHistory } from './patient-history.entity';
 import { FamilyHistory } from './family-history.entity';
 import { EdssAssesment } from './edss-assesment.entity';
 import { MigraineLog } from './migraine-log.entity';
+import { SeizureLog } from './seizure-log.entity';
 
 @Entity()
 export class Patient {
@@ -29,7 +30,7 @@ export class Patient {
   name: string;
 
   @Column({ nullable: true })
-  dateOfBirth: string;
+  dateOfBirth: Date;
 
   @Column({ nullable: true })
   gender: string;
@@ -64,4 +65,7 @@ export class Patient {
 
   @OneToMany(() => MigraineLog, (migraineLog) => migraineLog.patient)
   migraineLogs: MigraineLog[];
+
+  @OneToMany(() => SeizureLog, (seizureLog) => seizureLog.patient)
+  seizureLogs: SeizureLog[];
 }

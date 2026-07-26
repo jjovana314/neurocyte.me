@@ -6,6 +6,12 @@ import { PatientHistory } from './entities/patient-history.entity';
 import { FamilyHistory } from './entities/family-history.entity';
 import { EdssAssesment } from './entities/edss-assesment.entity';
 import { MigraineLog } from './entities/migraine-log.entity';
+import {
+  SeizureLog,
+  OnsetVector,
+  MotorFeature,
+  SeizureTrigger,
+} from './entities/seizure-log.entity';
 import { User } from 'src/auth/entites/user.entity';
 import { PinoLogger } from 'nestjs-pino';
 import {
@@ -53,6 +59,13 @@ describe('PatientsService', () => {
     delete: jest.fn(),
   };
 
+  const mockSeizureLogRepository = {
+    findOne: jest.fn(),
+    find: jest.fn(),
+    save: jest.fn(),
+    delete: jest.fn(),
+  };
+
   const mockUserRepository = {
     findOne: jest.fn(),
   };
@@ -87,6 +100,10 @@ describe('PatientsService', () => {
           provide: getRepositoryToken(MigraineLog),
           useValue: mockMigraineLogRepository,
         },
+        {
+          provide: getRepositoryToken(SeizureLog),
+          useValue: mockSeizureLogRepository,
+        },
         { provide: getRepositoryToken(User), useValue: mockUserRepository },
         { provide: PinoLogger, useValue: mockLogger },
       ],
@@ -110,7 +127,7 @@ describe('PatientsService', () => {
       notes: 'Test patient',
       name: 'Test Name',
       gender: 'F',
-      dateOfBirth: '24.01.1999.',
+      dateOfBirth: '1999-01-24',
     };
     const zeroEdss = {
       pyramidalSystem: 0,
@@ -130,6 +147,12 @@ describe('PatientsService', () => {
       mockEdssAssessmentRepository.save.mockImplementation((a) =>
         Promise.resolve({ id: 1, ...a }),
       );
+      mockMigraineLogRepository.save.mockImplementation((m) =>
+        Promise.resolve({ id: 1, ...m }),
+      );
+      mockSeizureLogRepository.save.mockImplementation((s) =>
+        Promise.resolve({ id: 1, ...s }),
+      );
     });
 
     it('should create patient when doctor is valid', async () => {
@@ -145,6 +168,28 @@ describe('PatientsService', () => {
       expect(mockEdssAssessmentRepository.save).not.toHaveBeenCalled();
     });
 
+    it('should throw BadRequestException when dateOfBirth is in the future', async () => {
+      await expect(
+        service.createPatient(doctorId, {
+          ...baseCreateDto,
+          dateOfBirth: '2099-01-01',
+        }),
+      ).rejects.toThrow(BadRequestException);
+
+      expect(mockPatientRepository.save).not.toHaveBeenCalled();
+    });
+
+    it('should throw BadRequestException when dateOfBirth is not a valid date', async () => {
+      await expect(
+        service.createPatient(doctorId, {
+          ...baseCreateDto,
+          dateOfBirth: 'not-a-date',
+        }),
+      ).rejects.toThrow(BadRequestException);
+
+      expect(mockPatientRepository.save).not.toHaveBeenCalled();
+    });
+
     it('should derive and persist an EDSS assessment linked to the new patient', async () => {
       await service.createPatient(doctorId, {
         ...baseCreateDto,
@@ -157,6 +202,100 @@ describe('PatientsService', () => {
           pyramidalSystem: 3,
           totalScore: 3.0,
         }),
+      );
+    });
+
+    it('should not create a migraine or seizure log when none is provided', async () => {
+      await service.createPatient(doctorId, baseCreateDto);
+
+      expect(mockMigraineLogRepository.save).not.toHaveBeenCalled();
+      expect(mockSeizureLogRepository.save).not.toHaveBeenCalled();
+    });
+
+    it('should derive and persist a migraine log linked to the new patient', async () => {
+      await service.createPatient(doctorId, {
+        ...baseCreateDto,
+        migraineLog: {
+          occurredAt: '2026-07-20T10:00:00Z',
+          painSeverity: 7,
+        },
+      });
+
+      expect(mockMigraineLogRepository.save).toHaveBeenCalledWith(
+        expect.objectContaining({ patientId: 42, painSeverity: 7 }),
+      );
+    });
+
+    it('should reject an invalid migraine log and not create the patient at all', async () => {
+      await expect(
+        service.createPatient(doctorId, {
+          ...baseCreateDto,
+          migraineLog: {
+            occurredAt: '2026-07-20T10:00:00Z',
+            painSeverity: 99,
+          },
+        }),
+      ).rejects.toThrow(BadRequestException);
+
+      expect(mockPatientRepository.save).not.toHaveBeenCalled();
+      expect(mockMigraineLogRepository.save).not.toHaveBeenCalled();
+    });
+
+    it('should derive and persist a seizure log linked to the new patient', async () => {
+      await service.createPatient(doctorId, {
+        ...baseCreateDto,
+        seizureLog: {
+          onsetVector: OnsetVector.GENERALIZED,
+          ictusStart: '2026-07-20T10:00:00Z',
+          ictusEnd: '2026-07-20T10:02:30Z',
+        },
+      });
+
+      expect(mockSeizureLogRepository.save).toHaveBeenCalledWith(
+        expect.objectContaining({
+          patientId: 42,
+          onsetVector: OnsetVector.GENERALIZED,
+          ictusDurationSeconds: 150,
+        }),
+      );
+    });
+
+    it('should reject an invalid seizure log and not create the patient at all', async () => {
+      await expect(
+        service.createPatient(doctorId, {
+          ...baseCreateDto,
+          seizureLog: {
+            onsetVector: OnsetVector.GENERALIZED,
+            ictusStart: '2026-07-20T10:02:30Z',
+            ictusEnd: '2026-07-20T10:00:00Z',
+          },
+        }),
+      ).rejects.toThrow(BadRequestException);
+
+      expect(mockPatientRepository.save).not.toHaveBeenCalled();
+      expect(mockSeizureLogRepository.save).not.toHaveBeenCalled();
+    });
+
+    it('should create patient, migraine log, and seizure log together in one call', async () => {
+      const result = await service.createPatient(doctorId, {
+        ...baseCreateDto,
+        migraineLog: {
+          occurredAt: '2026-07-20T10:00:00Z',
+          painSeverity: 7,
+        },
+        seizureLog: {
+          onsetVector: OnsetVector.FOCAL_AWARE,
+          ictusStart: '2026-07-20T09:00:00Z',
+          ictusEnd: '2026-07-20T09:01:00Z',
+        },
+      });
+
+      expect(result).toEqual(expect.objectContaining({ id: 42 }));
+      expect(mockMigraineLogRepository.save).toHaveBeenCalledWith(
+        expect.objectContaining({ patientId: 42 }),
+      );
+      expect(mockSeizureLogRepository.save).toHaveBeenCalledWith(
+        expect.objectContaining({ patientId: 42 }),
       );
     });
 
@@ -503,6 +642,28 @@ describe('PatientsService', () => {
       expect(mockMigraineLogRepository.save).not.toHaveBeenCalled();
     });
 
+    it('should throw BadRequestException when occurredAt is not a valid date', async () => {
+      await expect(
+        service.addMigraineLog(doctorId, {
+          ...baseDto,
+          occurredAt: 'not-a-date',
+        }),
+      ).rejects.toThrow(BadRequestException);
+
+      expect(mockMigraineLogRepository.save).not.toHaveBeenCalled();
+    });
+
+    it('should throw BadRequestException when occurredAt is in the future', async () => {
+      await expect(
+        service.addMigraineLog(doctorId, {
+          ...baseDto,
+          occurredAt: '2099-01-01T10:00:00Z',
+        }),
+      ).rejects.toThrow(BadRequestException);
+
+      expect(mockMigraineLogRepository.save).not.toHaveBeenCalled();
+    });
+
     it.each([0, 11, 1.5, null, undefined])(
       'should throw BadRequestException for an out-of-range painSeverity of %s',
       async (painSeverity) => {
@@ -555,42 +716,288 @@ describe('PatientsService', () => {
     });
   });
 
+  describe('addSeizureLog', () => {
+    const doctorId = 1;
+    const patientId = 5;
+    const baseDto = {
+      patientId,
+      onsetVector: OnsetVector.GENERALIZED,
+      ictusStart: '2026-07-20T10:00:00Z',
+      ictusEnd: '2026-07-20T10:02:30Z',
+    };
+
+    beforeEach(() => {
+      mockPatientRepository.findOne.mockResolvedValue({
+        id: patientId,
+        doctorId,
+      });
+      mockSeizureLogRepository.save.mockImplementation((s) =>
+        Promise.resolve({ id: 1, ...s }),
+      );
+    });
+
+    it('should create a seizure log for a patient owned by the doctor', async () => {
+      const result = await service.addSeizureLog(doctorId, baseDto);
+
+      expect(mockSeizureLogRepository.save).toHaveBeenCalledWith(
+        expect.objectContaining({
+          patientId,
+          onsetVector: OnsetVector.GENERALIZED,
+        }),
+      );
+      expect(result).toEqual(
+        expect.objectContaining({ onsetVector: OnsetVector.GENERALIZED }),
+      );
+    });
+
+    it('should derive ictusDurationSeconds from ictusStart and ictusEnd', async () => {
+      await service.addSeizureLog(doctorId, baseDto);
+
+      expect(mockSeizureLogRepository.save).toHaveBeenCalledWith(
+        expect.objectContaining({ ictusDurationSeconds: 150 }),
+      );
+    });
+
+    it('should apply default values for optional fields when omitted', async () => {
+      await service.addSeizureLog(doctorId, baseDto);
+
+      expect(mockSeizureLogRepository.save).toHaveBeenCalledWith(
+        expect.objectContaining({
+          motorFeatures: [],
+          triggers: [],
+          postictalDurationMinutes: null,
+          notes: '',
+        }),
+      );
+    });
+
+    it('should persist provided motor features and triggers', async () => {
+      const fullDto = {
+        ...baseDto,
+        motorFeatures: [MotorFeature.TONIC, MotorFeature.CLONIC],
+        triggers: [SeizureTrigger.SLEEP_DEPRIVATION, SeizureTrigger.ILLNESS],
+        postictalDurationMinutes: 20,
+        notes: 'witnessed by spouse',
+      };
+
+      await service.addSeizureLog(doctorId, fullDto);
+
+      expect(mockSeizureLogRepository.save).toHaveBeenCalledWith(
+        expect.objectContaining({
+          motorFeatures: [MotorFeature.TONIC, MotorFeature.CLONIC],
+          triggers: [SeizureTrigger.SLEEP_DEPRIVATION, SeizureTrigger.ILLNESS],
+          postictalDurationMinutes: 20,
+          notes: 'witnessed by spouse',
+        }),
+      );
+    });
+
+    it('should throw NotFoundException when patient does not exist', async () => {
+      mockPatientRepository.findOne.mockResolvedValue(null);
+
+      await expect(service.addSeizureLog(doctorId, baseDto)).rejects.toThrow(
+        NotFoundException,
+      );
+    });
+
+    it('should throw ForbiddenException when doctor does not own the patient', async () => {
+      mockPatientRepository.findOne.mockResolvedValue({
+        id: patientId,
+        doctorId: 999,
+      });
+
+      await expect(service.addSeizureLog(doctorId, baseDto)).rejects.toThrow(
+        ForbiddenException,
+      );
+    });
+
+    it('should throw BadRequestException when onsetVector is missing or invalid', async () => {
+      await expect(
+        service.addSeizureLog(doctorId, {
+          ...baseDto,
+          onsetVector: 'NOT_A_REAL_VECTOR' as any,
+        }),
+      ).rejects.toThrow(BadRequestException);
+
+      expect(mockSeizureLogRepository.save).not.toHaveBeenCalled();
+    });
+
+    it('should throw BadRequestException when ictusStart or ictusEnd is missing', async () => {
+      await expect(
+        service.addSeizureLog(doctorId, { ...baseDto, ictusEnd: '' }),
+      ).rejects.toThrow(BadRequestException);
+
+      expect(mockSeizureLogRepository.save).not.toHaveBeenCalled();
+    });
+
+    it('should throw BadRequestException when ictusEnd is before ictusStart', async () => {
+      await expect(
+        service.addSeizureLog(doctorId, {
+          ...baseDto,
+          ictusStart: '2026-07-20T10:02:30Z',
+          ictusEnd: '2026-07-20T10:00:00Z',
+        }),
+      ).rejects.toThrow(BadRequestException);
+
+      expect(mockSeizureLogRepository.save).not.toHaveBeenCalled();
+    });
+
+    it('should throw BadRequestException when ictusStart or ictusEnd is not a valid date', async () => {
+      await expect(
+        service.addSeizureLog(doctorId, {
+          ...baseDto,
+          ictusStart: 'not-a-date',
+        }),
+      ).rejects.toThrow(BadRequestException);
+
+      expect(mockSeizureLogRepository.save).not.toHaveBeenCalled();
+    });
+
+    it('should throw BadRequestException when ictusStart is in the future', async () => {
+      await expect(
+        service.addSeizureLog(doctorId, {
+          ...baseDto,
+          ictusStart: '2099-01-01T10:00:00Z',
+          ictusEnd: '2099-01-01T10:02:30Z',
+        }),
+      ).rejects.toThrow(BadRequestException);
+
+      expect(mockSeizureLogRepository.save).not.toHaveBeenCalled();
+    });
+
+    it('should throw BadRequestException when ictusEnd is in the future', async () => {
+      await expect(
+        service.addSeizureLog(doctorId, {
+          ...baseDto,
+          ictusEnd: '2099-01-01T10:00:00Z',
+        }),
+      ).rejects.toThrow(BadRequestException);
+
+      expect(mockSeizureLogRepository.save).not.toHaveBeenCalled();
+    });
+
+    it('should throw BadRequestException for an unknown motor feature', async () => {
+      await expect(
+        service.addSeizureLog(doctorId, {
+          ...baseDto,
+          motorFeatures: ['NOT_A_FEATURE' as any],
+        }),
+      ).rejects.toThrow(BadRequestException);
+
+      expect(mockSeizureLogRepository.save).not.toHaveBeenCalled();
+    });
+
+    it('should throw BadRequestException for an unknown trigger', async () => {
+      await expect(
+        service.addSeizureLog(doctorId, {
+          ...baseDto,
+          triggers: ['NOT_A_TRIGGER' as any],
+        }),
+      ).rejects.toThrow(BadRequestException);
+
+      expect(mockSeizureLogRepository.save).not.toHaveBeenCalled();
+    });
+
+    it.each([-1, 1.5])(
+      'should throw BadRequestException for an invalid postictalDurationMinutes of %s',
+      async (postictalDurationMinutes) => {
+        await expect(
+          service.addSeizureLog(doctorId, {
+            ...baseDto,
+            postictalDurationMinutes,
+          }),
+        ).rejects.toThrow(BadRequestException);
+
+        expect(mockSeizureLogRepository.save).not.toHaveBeenCalled();
+      },
+    );
+  });
+
+  describe('getPatientSeizureLogs', () => {
+    const doctorId = 1;
+    const patientId = 5;
+
+    it('should return the seizure log history ordered by most recent ictus', async () => {
+      mockPatientRepository.findOne.mockResolvedValue({
+        id: patientId,
+        doctorId,
+      });
+      const mockLogs = [{ id: 1, onsetVector: OnsetVector.GENERALIZED }];
+      mockSeizureLogRepository.find.mockResolvedValue(mockLogs);
+
+      const result = await service.getPatientSeizureLogs(doctorId, patientId);
+
+      expect(result).toEqual(mockLogs);
+    });
+
+    it('should throw NotFoundException when patient does not exist', async () => {
+      mockPatientRepository.findOne.mockResolvedValue(null);
+
+      await expect(
+        service.getPatientSeizureLogs(doctorId, patientId),
+      ).rejects.toThrow(NotFoundException);
+    });
+
+    it('should throw ForbiddenException when doctor does not own the patient', async () => {
+      mockPatientRepository.findOne.mockResolvedValue({
+        id: patientId,
+        doctorId: 999,
+      });
+
+      await expect(
+        service.getPatientSeizureLogs(doctorId, patientId),
+      ).rejects.toThrow(ForbiddenException);
+    });
+  });
+
   describe('getPatient', () => {
-    it('should request the migraineLogs relation when fetching a patient', async () => {
+    it('should request the migraineLogs and seizureLogs relations when fetching a patient', async () => {
       const doctorId = 1;
       const patientId = 5;
       mockPatientRepository.findOne.mockResolvedValue({
         id: patientId,
         doctorId,
         migraineLogs: [{ id: 1, painSeverity: 7 }],
+        seizureLogs: [{ id: 1, onsetVector: OnsetVector.GENERALIZED }],
       });
 
       const result = await service.getPatient(doctorId, patientId);
 
       expect(mockPatientRepository.findOne).toHaveBeenCalledWith(
         expect.objectContaining({
-          relations: expect.arrayContaining(['migraineLogs']),
+          relations: expect.arrayContaining(['migraineLogs', 'seizureLogs']),
         }),
       );
       expect(result.migraineLogs).toEqual([{ id: 1, painSeverity: 7 }]);
+      expect(result.seizureLogs).toEqual([
+        { id: 1, onsetVector: OnsetVector.GENERALIZED },
+      ]);
     });
   });
 
   describe('getDoctorPatients', () => {
-    it('should request the migraineLogs relation for the doctor patient list', async () => {
+    it('should request the migraineLogs and seizureLogs relations for the doctor patient list', async () => {
       const doctorId = 1;
       mockPatientRepository.find.mockResolvedValue([
-        { id: 5, doctorId, migraineLogs: [{ id: 1, painSeverity: 7 }] },
+        {
+          id: 5,
+          doctorId,
+          migraineLogs: [{ id: 1, painSeverity: 7 }],
+          seizureLogs: [{ id: 1, onsetVector: OnsetVector.GENERALIZED }],
+        },
       ]);
 
       const result = await service.getDoctorPatients(doctorId, 'Doctor');
 
       expect(mockPatientRepository.find).toHaveBeenCalledWith(
         expect.objectContaining({
-          relations: expect.arrayContaining(['migraineLogs']),
+          relations: expect.arrayContaining(['migraineLogs', 'seizureLogs']),
         }),
       );
       expect(result[0].migraineLogs).toEqual([{ id: 1, painSeverity: 7 }]);
+      expect(result[0].seizureLogs).toEqual([
+        { id: 1, onsetVector: OnsetVector.GENERALIZED },
+      ]);
     });
   });
 
@@ -598,7 +1005,7 @@ describe('PatientsService', () => {
     const doctorId = 1;
     const patientId = 5;
 
-    it('should delete the patient and cascade-delete their migraine logs', async () => {
+    it('should delete the patient and cascade-delete their migraine and seizure logs', async () => {
       mockPatientRepository.findOne.mockResolvedValue({
         id: patientId,
         doctorId,
@@ -607,6 +1014,9 @@ describe('PatientsService', () => {
       await service.deletePatient(doctorId, patientId);
 
       expect(mockMigraineLogRepository.delete).toHaveBeenCalledWith({
+        patientId,
+      });
+      expect(mockSeizureLogRepository.delete).toHaveBeenCalledWith({
         patientId,
       });
       expect(mockPatientRepository.delete).toHaveBeenCalledWith({
@@ -622,6 +1032,7 @@ describe('PatientsService', () => {
       );
 
       expect(mockMigraineLogRepository.delete).not.toHaveBeenCalled();
+      expect(mockSeizureLogRepository.delete).not.toHaveBeenCalled();
     });
 
     it('should throw ForbiddenException when doctor does not own the patient', async () => {
@@ -635,6 +1046,7 @@ describe('PatientsService', () => {
       );
 
       expect(mockMigraineLogRepository.delete).not.toHaveBeenCalled();
+      expect(mockSeizureLogRepository.delete).not.toHaveBeenCalled();
     });
   });
 

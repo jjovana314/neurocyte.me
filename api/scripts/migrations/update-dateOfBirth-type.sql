@@ -1,0 +1,2 @@
+ALTER TABLE patient
+MODIFY COLUMN dateOfBirth DATE;

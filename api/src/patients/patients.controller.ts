@@ -25,6 +25,7 @@ import {
   CreatePatientHistoryDto,
   CreateFamilyHistoryDto,
   CreateMigraineLogDto,
+  CreateSeizureLogDto,
   ImportCsvResponseDto,
   UpdatePatientNotesDto,
 } from './dtos';
@@ -33,6 +34,7 @@ import { PatientHistory } from './entities/patient-history.entity';
 import { FamilyHistory } from './entities/family-history.entity';
 import { EdssAssesment } from './entities/edss-assesment.entity';
 import { MigraineLog } from './entities/migraine-log.entity';
+import { SeizureLog } from './entities/seizure-log.entity';
 import { CurrentUser } from 'src/auth/decorators/current-user.decorator';
 import { JwtUser } from 'src/auth/classes/jwt-user.class';
 import { MultipartFile } from 'src/common/multipart-file';
@@ -272,6 +274,36 @@ export class PatientsController {
     @Param('id') patientId: string,
   ): Promise<MigraineLog[]> {
     return this.patientsService.getPatientMigraineLogs(
+      user.id,
+      parseInt(patientId, 10),
+    );
+  }
+
+  /**
+   * Add a seizure log entry for a patient
+   * POST /patients/:id/seizures
+   */
+  @Post(':id/seizures')
+  @HttpCode(HttpStatus.CREATED)
+  async addSeizureLog(
+    @CurrentUser() user: JwtUser,
+    @Param('id') patientId: string,
+    @Body() createSeizureLogDto: CreateSeizureLogDto,
+  ): Promise<SeizureLog> {
+    createSeizureLogDto.patientId = parseInt(patientId, 10);
+    return this.patientsService.addSeizureLog(user.id, createSeizureLogDto);
+  }
+
+  /**
+   * Get a patient's seizure log history
+   * GET /patients/:id/seizures
+   */
+  @Get(':id/seizures')
+  async getPatientSeizureLogs(
+    @CurrentUser() user: JwtUser,
+    @Param('id') patientId: string,
+  ): Promise<SeizureLog[]> {
+    return this.patientsService.getPatientSeizureLogs(
       user.id,
       parseInt(patientId, 10),
     );

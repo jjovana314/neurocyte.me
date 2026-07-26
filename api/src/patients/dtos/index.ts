@@ -2,6 +2,7 @@ export * from './create-patient.dto';
 export * from './create-patient-history.dto';
 export * from './create-family-history.dto';
 export * from './create-migraine-log.dto';
+export * from './create-seizure-log.dto';
 export * from './edss-assessment-data.dto';
 export * from './import-csv-response.dto';
 export * from './update-patient-notes.dto';

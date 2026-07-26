@@ -6,12 +6,18 @@ import {
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { PinoLogger } from 'nestjs-pino';
-import { errorHandler } from './decorators/validatieon-decorator';
+import { errorHandler } from './decorators/error-handler-decorator';
 import { Patient } from './entities/patient.entity';
 import { PatientHistory } from './entities/patient-history.entity';
 import { FamilyHistory, DiseaseType } from './entities/family-history.entity';
 import { EdssAssesment } from './entities/edss-assesment.entity';
 import { MigraineLog } from './entities/migraine-log.entity';
+import {
+  SeizureLog,
+  OnsetVector,
+  MotorFeature,
+  SeizureTrigger,
+} from './entities/seizure-log.entity';
 import { User } from 'src/auth/entites/user.entity';
 import PDFDocument from 'pdfkit';
 import {
@@ -19,6 +25,7 @@ import {
   CreatePatientHistoryDto,
   CreateFamilyHistoryDto,
   CreateMigraineLogDto,
+  CreateSeizureLogDto,
   EdssAssessmentDataDto,
   ImportCsvResponseDto,
   UpdatePatientNotesDto,
@@ -31,6 +38,7 @@ import {
   PatientNotFoundException,
   AccessToPatientForbiddenException,
 } from 'src/common/exceptions';
+import { dateValidation } from './utils/validation';
 
 @Injectable()
 export class PatientsService {
@@ -44,6 +52,8 @@ export class PatientsService {
     private edssAssessmentRepository: Repository<EdssAssesment>,
     @InjectRepository(MigraineLog)
     private migraineLogRepository: Repository<MigraineLog>,
+    @InjectRepository(SeizureLog)
+    private seizureLogRepository: Repository<SeizureLog>,
     @InjectRepository(User) private userRepository: Repository<User>,
     private readonly logger: PinoLogger,
   ) {}
@@ -65,21 +75,28 @@ export class PatientsService {
       throw new PatientCreateForbiddenException();
     }
     // add validation for patients
+    const dateOfBirth = dateValidation(createPatientDto.dateOfBirth, 'dateOfBirth');
+
+    // Build (and validate) any embedded initial records before saving the
+    // patient, so an invalid one fails before persisting anything.
+    const edssAssessment = createPatientDto.edss
+      ? this.buildEdssAssessment(createPatientDto.edss)
+      : undefined;
+    const migraineLog = createPatientDto.migraineLog
+      ? this.buildMigraineLog(createPatientDto.migraineLog)
+      : undefined;
+    const seizureLog = createPatientDto.seizureLog
+      ? this.buildSeizureLog(createPatientDto.seizureLog)
+      : undefined;
 
     const patient = new Patient();
     patient.doctor = doctor;
     patient.name = createPatientDto.name;
-    patient.dateOfBirth = createPatientDto.dateOfBirth;
+    patient.dateOfBirth = dateOfBirth;
     patient.gender = createPatientDto.gender;
     patient.phone = createPatientDto.phone || null;
     patient.email = createPatientDto.email || null;
     patient.notes = createPatientDto.notes;
-
-    let edssAssessment;
-
-    if (createPatientDto.edss) {
-      edssAssessment = this.buildEdssAssessment(createPatientDto.edss);
-    }
 
     const savedPatient = await this.patientRepository.save(patient);
     this.logger.info(
@@ -89,6 +106,18 @@ export class PatientsService {
     if (edssAssessment) {
       edssAssessment.patientId = savedPatient.id;
       await this.edssAssessmentRepository.save(edssAssessment);
+    }
+
+    if (migraineLog) {
+      migraineLog.patientId = savedPatient.id;
+      await this.migraineLogRepository.save(migraineLog);
+      this.logger.info(`Migraine log added to patient ${savedPatient.id}`);
+    }
+
+    if (seizureLog) {
+      seizureLog.patientId = savedPatient.id;
+      await this.seizureLogRepository.save(seizureLog);
+      this.logger.info(`Seizure log added to patient ${savedPatient.id}`);
     }
 
     return savedPatient;
@@ -215,31 +244,8 @@ export class PatientsService {
       throw new AccessToPatientForbiddenException();
     }
 
-    // errorHandler required fields
-    if (!createMigraineLogDto.occurredAt) {
-      throw new BadRequestException('occurredAt field is required');
-    }
-    if (
-      createMigraineLogDto.painSeverity == null ||
-      !Number.isInteger(createMigraineLogDto.painSeverity) ||
-      createMigraineLogDto.painSeverity < 1 ||
-      createMigraineLogDto.painSeverity > 10
-    ) {
-      throw new BadRequestException(
-        'Pain severity is required and must be an integer between 1 and 10',
-      );
-    }
-
-    const migraineLog = new MigraineLog();
+    const migraineLog = this.buildMigraineLog(createMigraineLogDto);
     migraineLog.patientId = createMigraineLogDto.patientId;
-    migraineLog.occurredAt = new Date(createMigraineLogDto.occurredAt);
-    migraineLog.durationMinutes = createMigraineLogDto.durationMinutes ?? null;
-    migraineLog.painSeverity = createMigraineLogDto.painSeverity;
-    migraineLog.auraPresent = createMigraineLogDto.auraPresent || false;
-    migraineLog.triggers = createMigraineLogDto.triggers || '';
-    migraineLog.symptoms = createMigraineLogDto.symptoms || '';
-    migraineLog.medicationTaken = createMigraineLogDto.medicationTaken || '';
-    migraineLog.notes = createMigraineLogDto.notes || '';
 
     const savedMigraineLog = await this.migraineLogRepository.save(migraineLog);
     this.logger.info(
@@ -273,6 +279,61 @@ export class PatientsService {
   }
 
   @errorHandler
+  async addSeizureLog(
+    doctorId: number,
+    createSeizureLogDto: CreateSeizureLogDto,
+  ): Promise<SeizureLog> {
+    // Verify patient exists
+    const patient = await this.patientRepository.findOne({
+      where: { id: createSeizureLogDto.patientId },
+    });
+    if (!patient) {
+      throw new PatientNotFoundException(createSeizureLogDto.patientId);
+    }
+
+    // Verify that the requester is the doctor who created this patient
+    if (patient.doctorId !== doctorId) {
+      this.logger.warn(
+        `Doctor ${doctorId} attempted to access patient ${createSeizureLogDto.patientId} created by doctor ${patient.doctorId}`,
+      );
+      throw new AccessToPatientForbiddenException();
+    }
+
+    const seizureLog = this.buildSeizureLog(createSeizureLogDto);
+    seizureLog.patientId = createSeizureLogDto.patientId;
+
+    const savedSeizureLog = await this.seizureLogRepository.save(seizureLog);
+    this.logger.info(
+      `Seizure log added to patient ${createSeizureLogDto.patientId}`,
+    );
+
+    return savedSeizureLog;
+  }
+
+  @errorHandler
+  async getPatientSeizureLogs(
+    doctorId: number,
+    patientId: number,
+  ): Promise<SeizureLog[]> {
+    // Verify permissions first
+    const patient = await this.patientRepository.findOne({
+      where: { id: patientId },
+    });
+    if (!patient) {
+      throw new PatientNotFoundException(patientId);
+    }
+
+    if (patient.doctorId !== doctorId) {
+      throw new AccessToPatientForbiddenException();
+    }
+
+    return this.seizureLogRepository.find({
+      where: { patientId },
+      order: { ictusStart: 'DESC' },
+    });
+  }
+
+  @errorHandler
   async getPatient(doctorId: number, patientId: number): Promise<Patient> {
     const patient = await this.patientRepository.findOne({
       where: { id: patientId },
@@ -281,6 +342,7 @@ export class PatientsService {
         'familyHistory',
         'edssAssessments',
         'migraineLogs',
+        'seizureLogs',
         'doctor',
       ],
     });
@@ -312,6 +374,7 @@ export class PatientsService {
         'familyHistory',
         'edssAssessments',
         'migraineLogs',
+        'seizureLogs',
       ],
       order: { createdAt: 'DESC' },
     });
@@ -415,6 +478,110 @@ export class PatientsService {
     return assessment;
   }
 
+  // Validates and constructs a migraine log entry without persisting it or
+  // touching patientId, so it can be validated before a patient save
+  // (createPatient) or attached to an existing patient (addMigraineLog).
+  private buildMigraineLog(
+    dto: Omit<CreateMigraineLogDto, 'patientId'>,
+  ): MigraineLog {
+    const date = dateValidation(dto.occurredAt, 'occurredAt', true);
+    if (
+      dto.painSeverity == null ||
+      !Number.isInteger(dto.painSeverity) ||
+      dto.painSeverity < 1 ||
+      dto.painSeverity > 10
+    ) {
+      throw new BadRequestException(
+        'Pain severity is required and must be an integer between 1 and 10',
+      );
+    }
+
+    const migraineLog = new MigraineLog();
+    migraineLog.occurredAt = date;
+    migraineLog.durationMinutes = dto.durationMinutes ?? null;
+    migraineLog.painSeverity = dto.painSeverity;
+    migraineLog.auraPresent = dto.auraPresent || false;
+    migraineLog.triggers = dto.triggers || '';
+    migraineLog.symptoms = dto.symptoms || '';
+    migraineLog.medicationTaken = dto.medicationTaken || '';
+    migraineLog.notes = dto.notes || '';
+
+    return migraineLog;
+  }
+
+  // Validates and constructs a seizure log entry without persisting it or
+  // touching patientId, so it can be validated before a patient save
+  // (createPatient) or attached to an existing patient (addSeizureLog).
+  private buildSeizureLog(
+    dto: Omit<CreateSeizureLogDto, 'patientId'>,
+  ): SeizureLog {
+    if (!Object.values(OnsetVector).includes(dto.onsetVector)) {
+      throw new BadRequestException(
+        'onsetVector is required and must be one of FOCAL_AWARE, FOCAL_IMPAIRED_AWARENESS, GENERALIZED',
+      );
+    }
+    if (!dto.ictusStart || !dto.ictusEnd) {
+      throw new BadRequestException('ictusStart and ictusEnd are required');
+    }
+
+    const ictusStart = new Date(dto.ictusStart);
+    const ictusEnd = new Date(dto.ictusEnd);
+    if (
+      Number.isNaN(ictusStart.getTime()) ||
+      Number.isNaN(ictusEnd.getTime())
+    ) {
+      throw new BadRequestException(
+        'ictusStart and ictusEnd must be valid dates',
+      );
+    }
+    if (ictusStart.getTime() > Date.now() || ictusEnd.getTime() > Date.now()) {
+      throw new BadRequestException(
+        'ictusStart and ictusEnd cannot be in the future',
+      );
+    }
+    if (ictusEnd.getTime() < ictusStart.getTime()) {
+      throw new BadRequestException('ictusEnd must not be before ictusStart');
+    }
+
+    const motorFeatures = dto.motorFeatures || [];
+    if (motorFeatures.some((f) => !Object.values(MotorFeature).includes(f))) {
+      throw new BadRequestException(
+        'motorFeatures may only contain TONIC, CLONIC, ATONIC, AUTOMATISMS',
+      );
+    }
+
+    const triggers = dto.triggers || [];
+    if (triggers.some((t) => !Object.values(SeizureTrigger).includes(t))) {
+      throw new BadRequestException(
+        'triggers may only contain SLEEP_DEPRIVATION, MISSED_DOSE, HIGH_STRESS, ILLNESS',
+      );
+    }
+
+    if (
+      dto.postictalDurationMinutes != null &&
+      (!Number.isInteger(dto.postictalDurationMinutes) ||
+        dto.postictalDurationMinutes < 0)
+    ) {
+      throw new BadRequestException(
+        'postictalDurationMinutes must be a non-negative integer',
+      );
+    }
+
+    const seizureLog = new SeizureLog();
+    seizureLog.onsetVector = dto.onsetVector;
+    seizureLog.motorFeatures = motorFeatures;
+    seizureLog.ictusStart = ictusStart;
+    seizureLog.ictusEnd = ictusEnd;
+    seizureLog.ictusDurationSeconds = Math.round(
+      (ictusEnd.getTime() - ictusStart.getTime()) / 1000,
+    );
+    seizureLog.postictalDurationMinutes = dto.postictalDurationMinutes ?? null;
+    seizureLog.triggers = triggers;
+    seizureLog.notes = dto.notes || '';
+
+    return seizureLog;
+  }
+
   async getPatientEdssAssessments(
     doctorId: number,
     patientId: number,
@@ -491,6 +658,7 @@ export class PatientsService {
     await this.patientHistoryRepository.delete({ patientId });
     await this.familyHistoryRepository.delete({ patientId });
     await this.migraineLogRepository.delete({ patientId });
+    await this.seizureLogRepository.delete({ patientId });
     await this.patientRepository.delete({ id: patientId });
 
     this.logger.info(`Patient ${patientId} deleted by doctor ${doctorId}`);
@@ -654,7 +822,7 @@ export class PatientsService {
           'Patient Name',
           isSupportEngineer ? maskString(patient.name) : patient.name || 'N/A',
         ],
-        ['Date of Birth', patient.dateOfBirth || 'N/A'],
+        ['Date of Birth', patient.dateOfBirth ? patient.dateOfBirth.toDateString() : 'N/A'],
         ['Gender', patient.gender || 'N/A'],
         [
           'Phone',
