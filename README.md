@@ -4,7 +4,7 @@
 	<img src="assets/logo.png" alt="neurocyte.me logo" width="200" />
 </p>
 
-**neurocyte.me** is a neurology patient-management platform that helps doctors record patient demographics, medical and family history, EDSS disability assessments, and migraine logs — with CSV/PDF export and import for reporting and data portability.
+**neurocyte.me** is a neurology patient-management platform that helps doctors record patient demographics, medical and family history, EDSS disability assessments, migraine logs, and seizure logs — with CSV/PDF export and import for reporting and data portability.
 
 ---
 
@@ -15,6 +15,7 @@
 - **Family History Tracking** – Log hereditary/neurological conditions in relatives (disease type, relation, severity, notes).
 - **EDSS Disability Assessments** – Record Kurtzke Expanded Disability Status Scale assessments (7 functional-system scores + ambulation details); the total score is derived server-side by an EDSS scoring algorithm, never supplied by the client.
 - **Migraine Logs** – Track individual migraine episodes (date/time, duration, pain severity 1–10, aura, triggers, symptoms, medication taken, notes).
+- **Seizure Logs** – Record seizure events with onset vector (focal aware, focal impaired awareness, generalized), motor features (tonic, clonic, atonic, automatisms), ictus start/end (active duration computed server-side), postictal recovery time, and environmental triggers (sleep deprivation, missed dose, high stress, illness).
 - **CSV Export & Import** – Export all patient + history data to CSV, or bulk-import patients and their history from a CSV file in the same column layout.
 - **PDF Reports** – Generate a per-patient PDF report (demographics, medical history, family history); sensitive fields (name, phone, email) are masked for the Support Engineer role.
 - **Role-Based Access Control** – `Doctor`, `Support Engineer`, and `admin` roles with JWT-authenticated endpoints; doctors can only access patients they created, Support Engineers get a read-oriented, masked view across all patients.
@@ -44,8 +45,11 @@ Copy `api/env.example` to `api/.env` and fill in your database, JWT, and mail se
 ```sh
 cd api
 npm install
+npm run migrate
 npm run start:dev
 ```
+`npm run migrate` applies any `.sql` files under `api/scripts/migrations` that haven't run yet (tracked in a `schema_migrations` table) — run it after every pull that adds a new migration file.
+
 Roles (`Doctor`, `Support Engineer`, `admin`) can be seeded with `npx ts-node scripts/seed.ts` (see `api/scripts`).
 
 ### 3. Frontend Setup (React + Vite + TypeScript)
@@ -75,13 +79,14 @@ All `/patients` and most `/user` routes require a `Bearer` JWT obtained from `/a
 |---|---|
 | `POST /` | Create a patient, optionally with an initial EDSS assessment (doctors only) |
 | `GET /my-patients` | List patients (own patients for doctors, all patients for other roles) |
-| `GET /:id` | Get a patient with full history, EDSS assessments, and migraine logs |
+| `GET /:id` | Get a patient with full history, EDSS assessments, migraine logs, and seizure logs |
 | `PUT /:id` | Update notes, optionally adding a new EDSS assessment |
 | `DELETE /:id` | Delete a patient and all associated records |
 | `POST /:id/history` · `GET /:id/history` | Add / list medical history |
 | `POST /:id/family-history` · `GET /:id/family-history` | Add / list family history |
 | `GET /:id/edss` | List EDSS assessment history |
 | `POST /:id/migraines` · `GET /:id/migraines` | Add / list migraine log entries |
+| `POST /:id/seizures` · `GET /:id/seizures` | Add / list seizure log entries |
 | `GET /export/csv` | Export all accessible patients + history as CSV |
 | `POST /import/csv` | Bulk-import patients + history from a CSV file |
 | `GET /:id/export/pdf` | Generate a PDF report for one patient |

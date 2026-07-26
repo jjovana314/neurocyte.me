@@ -1,9 +1,9 @@
 import { useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { addMigraineLog } from '../api/patients';
+import { addSeizureLog } from '../api/patients';
 import { getErrorMessage } from '../api/errors';
-import MigraineLogFields from './MigraineLogFields';
-import { EMPTY_MIGRAINE_LOG_FORM_STATE, migraineLogFormStateToInput } from '../utils/migraineLogForm';
+import SeizureLogFields from './SeizureLogFields';
+import { EMPTY_SEIZURE_LOG_FORM_STATE, seizureLogFormStateToInput } from '../utils/seizureLogForm';
 
 interface Props {
   patientId: number;
@@ -11,19 +11,19 @@ interface Props {
   onDone?: () => void;
 }
 
-export default function MigraineLogForm({ patientId, idPrefix, onDone }: Props) {
+export default function SeizureLogForm({ patientId, idPrefix, onDone }: Props) {
   const queryClient = useQueryClient();
-  const [fields, setFields] = useState(EMPTY_MIGRAINE_LOG_FORM_STATE);
+  const [fields, setFields] = useState(EMPTY_SEIZURE_LOG_FORM_STATE);
 
   const mutation = useMutation({
     mutationFn: () =>
-      addMigraineLog(
+      addSeizureLog(
         patientId,
-        migraineLogFormStateToInput({ ...fields, enabled: true })!,
+        seizureLogFormStateToInput({ ...fields, enabled: true })!,
       ),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['patients'] });
-      setFields(EMPTY_MIGRAINE_LOG_FORM_STATE);
+      setFields(EMPTY_SEIZURE_LOG_FORM_STATE);
       onDone?.();
     },
   });
@@ -34,8 +34,8 @@ export default function MigraineLogForm({ patientId, idPrefix, onDone }: Props) 
   }
 
   return (
-    <form onSubmit={handleSubmit} className="migraine-log-form">
-      <MigraineLogFields
+    <form onSubmit={handleSubmit} className="seizure-log-form">
+      <SeizureLogFields
         value={fields}
         onChange={(f) => setFields((prev) => ({ ...prev, ...f }))}
         idPrefix={idPrefix}
@@ -43,7 +43,7 @@ export default function MigraineLogForm({ patientId, idPrefix, onDone }: Props) 
       {mutation.error && <p className="form-error">{getErrorMessage(mutation.error)}</p>}
       <div className="edit-actions">
         <button className="btn btn-primary btn-sm" type="submit" disabled={mutation.isPending}>
-          {mutation.isPending ? 'Saving…' : 'Add migraine log'}
+          {mutation.isPending ? 'Saving…' : 'Add seizure log'}
         </button>
       </div>
     </form>

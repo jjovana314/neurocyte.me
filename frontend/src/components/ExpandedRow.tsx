@@ -6,11 +6,33 @@ import { getErrorMessage } from '../api/errors';
 import { EDSS_FSS_FIELDS } from '../constants/edss';
 import EdssAssessmentForm from './EdssAssessmentForm';
 import MigraineLogForm from './MigraineLogForm';
+import SeizureLogForm from './SeizureLogForm';
 import {
   EMPTY_EDSS_FORM_STATE,
   edssFormStateToInput,
   type EdssFormState,
 } from '../utils/edssForm';
+import { MOTOR_FEATURE_OPTIONS, SEIZURE_TRIGGER_OPTIONS } from '../constants/seizure';
+
+const MOTOR_FEATURE_LABELS = Object.fromEntries(
+  MOTOR_FEATURE_OPTIONS.map((opt) => [opt.value, opt.label]),
+);
+const SEIZURE_TRIGGER_LABELS = Object.fromEntries(
+  SEIZURE_TRIGGER_OPTIONS.map((opt) => [opt.value, opt.label]),
+);
+
+function onsetVectorLabel(onsetVector: Patient['seizureLogs'][number]['onsetVector']): string {
+  switch (onsetVector) {
+    case 'FOCAL_AWARE':
+      return 'Focal aware';
+    case 'FOCAL_IMPAIRED_AWARENESS':
+      return 'Focal impaired awareness';
+    case 'GENERALIZED':
+      return 'Generalized';
+    default:
+      return onsetVector;
+  }
+}
 
 interface Props {
   patient: Patient;
@@ -32,6 +54,7 @@ export default function ExpandedRow({ patient }: Props) {
   const [notes, setNotes] = useState(patient.notes ?? '');
   const [edssForm, setEdssForm] = useState<EdssFormState>(EMPTY_EDSS_FORM_STATE);
   const [addingMigraineLog, setAddingMigraineLog] = useState(false);
+  const [addingSeizureLog, setAddingSeizureLog] = useState(false);
 
   const mutation = useMutation({
     mutationFn: () =>
@@ -68,6 +91,9 @@ export default function ExpandedRow({ patient }: Props) {
   );
   const migraineLogs = [...(patient.migraineLogs ?? [])].sort(
     (a, b) => new Date(b.occurredAt).getTime() - new Date(a.occurredAt).getTime(),
+  );
+  const seizureLogs = [...(patient.seizureLogs ?? [])].sort(
+    (a, b) => new Date(b.ictusStart).getTime() - new Date(a.ictusStart).getTime(),
   );
 
   const hasDemographics = patient.dateOfBirth || patient.gender || patient.phone || patient.email;
@@ -234,6 +260,68 @@ export default function ExpandedRow({ patient }: Props) {
                     <td>{log.triggers || '—'}</td>
                     <td>{log.symptoms || '—'}</td>
                     <td>{log.medicationTaken || '—'}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+
+      <div className="expanded-section">
+        <div className="section-header">
+          <h4>Seizure Log</h4>
+          {!addingSeizureLog && (
+            <button className="btn btn-sm" onClick={() => setAddingSeizureLog(true)}>
+              Add seizure log
+            </button>
+          )}
+        </div>
+
+        {addingSeizureLog && (
+          <SeizureLogForm
+            patientId={patient.id}
+            idPrefix={`seizure-${patient.id}`}
+            onDone={() => setAddingSeizureLog(false)}
+          />
+        )}
+
+        {seizureLogs.length === 0 ? (
+          <p className="empty-note">No seizures recorded.</p>
+        ) : (
+          <div className="table-scroll">
+            <table className="inner-table">
+              <thead>
+                <tr>
+                  <th>Ictus start</th>
+                  <th>Duration</th>
+                  <th>Onset</th>
+                  <th>Motor features</th>
+                  <th>Postictal</th>
+                  <th>Triggers</th>
+                </tr>
+              </thead>
+              <tbody>
+                {seizureLogs.map((log) => (
+                  <tr key={log.id}>
+                    <td>{new Date(log.ictusStart).toLocaleString()}</td>
+                    <td>{log.ictusDurationSeconds}s</td>
+                    <td>{onsetVectorLabel(log.onsetVector)}</td>
+                    <td>
+                      {log.motorFeatures.length > 0
+                        ? log.motorFeatures.map((f) => MOTOR_FEATURE_LABELS[f] ?? f).join(', ')
+                        : '—'}
+                    </td>
+                    <td>
+                      {log.postictalDurationMinutes != null
+                        ? `${log.postictalDurationMinutes}m`
+                        : '—'}
+                    </td>
+                    <td>
+                      {log.triggers.length > 0
+                        ? log.triggers.map((t) => SEIZURE_TRIGGER_LABELS[t] ?? t).join(', ')
+                        : '—'}
+                    </td>
                   </tr>
                 ))}
               </tbody>

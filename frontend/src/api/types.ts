@@ -95,6 +95,35 @@ export interface CreateMigraineLogDto {
   notes?: string;
 }
 
+export type OnsetVector = 'FOCAL_AWARE' | 'FOCAL_IMPAIRED_AWARENESS' | 'GENERALIZED';
+export type MotorFeature = 'TONIC' | 'CLONIC' | 'ATONIC' | 'AUTOMATISMS';
+export type SeizureTrigger = 'SLEEP_DEPRIVATION' | 'MISSED_DOSE' | 'HIGH_STRESS' | 'ILLNESS';
+
+export interface SeizureLog {
+  id: number;
+  patientId: number;
+  onsetVector: OnsetVector;
+  motorFeatures: MotorFeature[];
+  ictusStart: string;
+  ictusEnd: string;
+  ictusDurationSeconds: number;
+  postictalDurationMinutes: number | null;
+  triggers: SeizureTrigger[];
+  notes: string;
+  recordedAt: string;
+}
+
+export interface CreateSeizureLogDto {
+  patientId?: number;
+  onsetVector: OnsetVector;
+  motorFeatures?: MotorFeature[];
+  ictusStart: string;
+  ictusEnd: string;
+  postictalDurationMinutes?: number;
+  triggers?: SeizureTrigger[];
+  notes?: string;
+}
+
 export interface Patient {
   id: number;
   doctorId: number;
@@ -110,6 +139,7 @@ export interface Patient {
   familyHistory: FamilyHistory[];
   edssAssessments: EdssAssessment[];
   migraineLogs: MigraineLog[];
+  seizureLogs: SeizureLog[];
 }
 
 export interface CreatePatientDto {
@@ -120,6 +150,8 @@ export interface CreatePatientDto {
   email?: string;
   notes?: string;
   edss?: EdssAssessmentInput;
+  migraineLog?: Omit<CreateMigraineLogDto, 'patientId'>;
+  seizureLog?: Omit<CreateSeizureLogDto, 'patientId'>;
 }
 
 export interface UpdatePatientDto {

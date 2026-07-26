@@ -75,7 +75,10 @@ export class PatientsService {
       throw new PatientCreateForbiddenException();
     }
     // add validation for patients
-    const dateOfBirth = dateValidation(createPatientDto.dateOfBirth, 'dateOfBirth');
+    const dateOfBirth = dateValidation(
+      createPatientDto.dateOfBirth,
+      'dateOfBirth',
+    );
 
     // Build (and validate) any embedded initial records before saving the
     // patient, so an invalid one fails before persisting anything.
@@ -822,7 +825,10 @@ export class PatientsService {
           'Patient Name',
           isSupportEngineer ? maskString(patient.name) : patient.name || 'N/A',
         ],
-        ['Date of Birth', patient.dateOfBirth ? patient.dateOfBirth.toDateString() : 'N/A'],
+        [
+          'Date of Birth',
+          patient.dateOfBirth ? patient.dateOfBirth.toDateString() : 'N/A',
+        ],
         ['Gender', patient.gender || 'N/A'],
         [
           'Phone',
