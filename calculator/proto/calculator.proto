@@ -9,10 +9,11 @@ syntax = "proto3";
 package calculator;
 
 // Shared calculator service for the monorepo - each clinical scoring model
-// (EDSS today, others later) gets its own rpc + request/response pair here so
-// every calculation lives behind a single client connection.
+// (EDSS today, NCS/Action Potential, others later) gets its own rpc + request/response pair
+// here so every calculation lives behind a single client connection.
 service CalculatorService {
   rpc CalculateEdss(EdssRequest) returns (EdssResponse);
+  rpc CalculateNcs(NcsRequest) returns (NcsResponse);
 }
 
 message EdssRequest {
@@ -36,4 +37,40 @@ message EdssRequest {
 
 message EdssResponse {
   double total_score = 1;
+}
+
+// Enum for Nerve Conduction Study Type
+enum StudyType {
+  STUDY_TYPE_UNSPECIFIED = 0;
+  MOTOR = 1;   // CMAP (Compound Muscle Action Potential)
+  SENSORY = 2; // SNAP (Sensory Nerve Action Potential)
+}
+
+message NcsSegmentMeasurement {
+  double latency_ms = 1;            // Latency in milliseconds
+  double amplitude = 2;             // mV for motor, uV for sensory
+  optional double duration_ms = 3;  // Signal duration in milliseconds
+}
+
+message NcsRequest {
+  string nerve_name = 1;            // e.g. "Median", "Ulnar", "Peroneal", "Sural"
+  StudyType study_type = 2;
+  double distance_mm = 3;           // Distance between distal and proximal stimulation points
+  NcsSegmentMeasurement distal_site = 4;
+  optional NcsSegmentMeasurement proximal_site = 5;
+  optional double skin_temperature_celsius = 6; // Temperature correction factor
+}
+
+message NcsResponse {
+  string nerve_name = 1;
+  optional double conduction_velocity_m_per_s = 2;
+  optional double amplitude_drop_percent = 3;
+  optional double temporal_dispersion_percent = 4;
+  
+  // Diagnostic Summary Flags
+  bool is_normal = 5;
+  bool axonal_loss = 6;
+  bool demyelination = 7;
+  bool conduction_block = 8;
+  string diagnostic_summary = 9;
 }

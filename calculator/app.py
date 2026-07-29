@@ -10,6 +10,13 @@ from edss_calculator import (
     InvalidFunctionalScoreError,
     calculate_edss_score,
 )
+from ncs_calculator import (
+    InvalidActionPotentialError,
+    NcsInput,
+    NcsSegmentMeasurement,
+    StudyType,
+    calculate_ncs,
+)
 from generated import calculator_pb2, calculator_pb2_grpc
 
 logger = logging.getLogger(__name__)
@@ -44,6 +51,62 @@ class CalculatorServicer(calculator_pb2_grpc.CalculatorServiceServicer):
             return
 
         return calculator_pb2.EdssResponse(total_score=total_score)
+
+    def CalculateNcs(self, request, context):
+        study_type = {
+            calculator_pb2.MOTOR: StudyType.MOTOR,
+            calculator_pb2.SENSORY: StudyType.SENSORY,
+        }.get(request.study_type)
+        if study_type is None:
+            context.abort(
+                grpc.StatusCode.INVALID_ARGUMENT,
+                "study_type must be MOTOR or SENSORY",
+            )
+            return
+
+        def to_segment(segment) -> NcsSegmentMeasurement:
+            return NcsSegmentMeasurement(
+                latency_ms=segment.latency_ms,
+                amplitude=segment.amplitude,
+                duration_ms=(
+                    segment.duration_ms if segment.HasField("duration_ms") else None
+                ),
+            )
+
+        ncs_input = NcsInput(
+            nerve_name=request.nerve_name,
+            study_type=study_type,
+            distance_mm=request.distance_mm,
+            distal_site=to_segment(request.distal_site),
+            proximal_site=(
+                to_segment(request.proximal_site)
+                if request.HasField("proximal_site")
+                else None
+            ),
+            skin_temperature_celsius=(
+                request.skin_temperature_celsius
+                if request.HasField("skin_temperature_celsius")
+                else None
+            ),
+        )
+
+        try:
+            result = calculate_ncs(ncs_input)
+        except InvalidActionPotentialError as exc:
+            context.abort(grpc.StatusCode.INVALID_ARGUMENT, str(exc))
+            return
+
+        return calculator_pb2.NcsResponse(
+            nerve_name=result.nerve_name,
+            conduction_velocity_m_per_s=result.conduction_velocity_m_per_s,
+            amplitude_drop_percent=result.amplitude_drop_percent,
+            temporal_dispersion_percent=result.temporal_dispersion_percent,
+            is_normal=result.is_normal,
+            axonal_loss=result.axonal_loss,
+            demyelination=result.demyelination,
+            conduction_block=result.conduction_block,
+            diagnostic_summary=result.diagnostic_summary,
+        )
 
 
 def serve() -> None:
