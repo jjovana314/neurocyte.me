@@ -1,0 +1,39 @@
+// After changing this file, regenerate the Python stubs from calculator/:
+//   .venv/bin/python -m grpc_tools.protoc -I proto \
+//     --python_out=generated --grpc_python_out=generated proto/calculator.proto
+// then fix the import in generated/calculator_pb2_grpc.py to
+// `from . import calculator_pb2 as calculator__pb2` (protoc emits an absolute
+// import that doesn't work from inside the `generated` package).
+syntax = "proto3";
+
+package calculator;
+
+// Shared calculator service for the monorepo - each clinical scoring model
+// (EDSS today, others later) gets its own rpc + request/response pair here so
+// every calculation lives behind a single client connection.
+service CalculatorService {
+  rpc CalculateEdss(EdssRequest) returns (EdssResponse);
+}
+
+message EdssRequest {
+  // Functional System Scores (FSS)
+  int32 pyramidal_system = 1; // 0-6
+  int32 cerebellar_system = 2; // 0-5
+  int32 brainstem_system = 3; // 0-5
+  int32 sensory_system = 4; // 0-6
+  int32 bowel_bladder_system = 5; // 0-6
+  int32 visual_system = 6; // 0-6
+  int32 mental_system = 7; // 0-5
+
+  // Ambulation metrics
+  // proto3 `optional` gives this field explicit presence, so "not provided"
+  // (unrestricted ambulation) can be distinguished from an actual 0 value.
+  optional double unassisted_walking_distance_meters = 8;
+  bool requires_unilateral_aid = 9;
+  bool requires_bilateral_aid = 10;
+  bool wheelchair_bound = 11;
+}
+
+message EdssResponse {
+  double total_score = 1;
+}

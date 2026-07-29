@@ -41,3 +41,6 @@ postman/
 .claude/
 
 api/node_modules/
+calculator/.venv/
+calculator/**/__pycache__/
+calculator/.env

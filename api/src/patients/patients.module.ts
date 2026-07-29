@@ -10,6 +10,7 @@ import { MigraineLog } from './entities/migraine-log.entity';
 import { SeizureLog } from './entities/seizure-log.entity';
 import { User } from 'src/auth/entites/user.entity';
 import { UserModule } from 'src/user/user.module';
+import { CalculatorClientModule } from 'src/calculator-client/calculator-client.module';
 
 @Module({
   imports: [
@@ -23,6 +24,7 @@ import { UserModule } from 'src/user/user.module';
       User,
     ]),
     UserModule,
+    CalculatorClientModule,
   ],
   controllers: [PatientsController],
   providers: [PatientsService],

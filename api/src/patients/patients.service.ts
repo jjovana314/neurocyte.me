@@ -31,7 +31,7 @@ import {
   UpdatePatientNotesDto,
 } from './dtos';
 import { maskString } from './utils/masking';
-import { calculateEdssScore } from './utils/edss-calculator';
+import { CalculatorClientService } from 'src/calculator-client/calculator-client.service';
 import {
   PatientCreateForbiddenException,
   UserNotFoundException,
@@ -56,6 +56,7 @@ export class PatientsService {
     private seizureLogRepository: Repository<SeizureLog>,
     @InjectRepository(User) private userRepository: Repository<User>,
     private readonly logger: PinoLogger,
+    private readonly calculatorClient: CalculatorClientService,
   ) {}
 
   @errorHandler
@@ -83,7 +84,7 @@ export class PatientsService {
     // Build (and validate) any embedded initial records before saving the
     // patient, so an invalid one fails before persisting anything.
     const edssAssessment = createPatientDto.edss
-      ? this.buildEdssAssessment(createPatientDto.edss)
+      ? await this.buildEdssAssessment(createPatientDto.edss)
       : undefined;
     const migraineLog = createPatientDto.migraineLog
       ? this.buildMigraineLog(createPatientDto.migraineLog)
@@ -442,7 +443,9 @@ export class PatientsService {
   // client never supplies totalScore directly. Building this before any
   // patient save means an invalid assessment fails before persisting
   // anything.
-  private buildEdssAssessment(data: EdssAssessmentDataDto): EdssAssesment {
+  private async buildEdssAssessment(
+    data: EdssAssessmentDataDto,
+  ): Promise<EdssAssesment> {
     const ambulation = {
       unassistedWalkingDistanceMeters: data.unassistedWalkingDistanceMeters,
       requiresUnilateralAid: data.requiresUnilateralAid || false,
@@ -450,7 +453,7 @@ export class PatientsService {
       wheelchairBound: data.wheelchairBound || false,
     };
 
-    const totalScore = calculateEdssScore(
+    const totalScore = await this.calculatorClient.calculateEdssScore(
       {
         pyramidalSystem: data.pyramidalSystem,
         cerebellarSystem: data.cerebellarSystem,
@@ -627,7 +630,7 @@ export class PatientsService {
     // Build (and validate) the EDSS assessment before saving, so an invalid
     // assessment doesn't let the notes update partially apply.
     const edssAssessment = updatePatientDto.edss
-      ? this.buildEdssAssessment(updatePatientDto.edss)
+      ? await this.buildEdssAssessment(updatePatientDto.edss)
       : null;
 
     patient.notes = updatePatientDto.notes;

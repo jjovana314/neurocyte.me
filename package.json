@@ -6,12 +6,14 @@
   "private": true,
   "license": "UNLICENSED",
   "scripts": {
-    "start": "npm run --prefix api start:dev & npm run --prefix frontend dev",
+    "start": "npm run start:calculator & npm run --prefix api start:dev & npm run --prefix frontend dev",
     "build": "npm run --prefix api build & npm run --prefix frontend build",
     "test": "npm run test:backend",
     "test:backend": "npm test --prefix api",
     "debug:frontend": "npm run --prefix frontend dev -- --debug",
-    "debug:backend": "npm run --prefix api start:debug"
+    "debug:backend": "npm run --prefix api start:debug",
+    "setup:calculator": "python3 -m venv calculator/.venv && calculator/.venv/bin/pip install -r calculator/requirements.txt",
+    "start:calculator": "calculator/.venv/bin/python calculator/app.py"
   },
   "dependencies": {
     "@golevelup/profiguration": "^0.2.1",

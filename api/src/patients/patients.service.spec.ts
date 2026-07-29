@@ -19,6 +19,8 @@ import {
   ForbiddenException,
   NotFoundException,
 } from '@nestjs/common';
+import { CalculatorClientService } from 'src/calculator-client/calculator-client.service';
+import { calculateEdssScore } from './utils/edss-calculator';
 
 describe('PatientsService', () => {
   let service: PatientsService;
@@ -76,6 +78,16 @@ describe('PatientsService', () => {
     warn: jest.fn(),
   };
 
+  // Stands in for the real gRPC call to the Python calculator service - it
+  // delegates to the same pure scoring function the calculator was ported
+  // from, so every existing EDSS value assertion below still holds without
+  // needing a live gRPC server in tests.
+  const mockCalculatorClientService = {
+    calculateEdssScore: jest.fn(async (scores, ambulation) =>
+      calculateEdssScore(scores, ambulation),
+    ),
+  };
+
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -106,6 +118,10 @@ describe('PatientsService', () => {
         },
         { provide: getRepositoryToken(User), useValue: mockUserRepository },
         { provide: PinoLogger, useValue: mockLogger },
+        {
+          provide: CalculatorClientService,
+          useValue: mockCalculatorClientService,
+        },
       ],
     }).compile();
 

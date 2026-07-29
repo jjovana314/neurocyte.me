@@ -13,7 +13,7 @@
 - **Patient Records** – Create and manage patients (name, date of birth, gender, phone, email, free-text notes), each owned by the doctor who created it.
 - **Medical History Tracking** – Log prior disorders per patient (disorder, description, diagnosis date, severity, medications).
 - **Family History Tracking** – Log hereditary/neurological conditions in relatives (disease type, relation, severity, notes).
-- **EDSS Disability Assessments** – Record Kurtzke Expanded Disability Status Scale assessments (7 functional-system scores + ambulation details); the total score is derived server-side by an EDSS scoring algorithm, never supplied by the client.
+- **EDSS Disability Assessments** – Record Kurtzke Expanded Disability Status Scale assessments (7 functional-system scores + ambulation details); the total score is derived server-side by the dedicated `calculator` gRPC service, never supplied by the client.
 - **Migraine Logs** – Track individual migraine episodes (date/time, duration, pain severity 1–10, aura, triggers, symptoms, medication taken, notes).
 - **Seizure Logs** – Record seizure events with onset vector (focal aware, focal impaired awareness, generalized), motor features (tonic, clonic, atonic, automatisms), ictus start/end (active duration computed server-side), postictal recovery time, and environmental triggers (sleep deprivation, missed dose, high stress, illness).
 - **CSV Export & Import** – Export all patient + history data to CSV, or bulk-import patients and their history from a CSV file in the same column layout.
@@ -27,6 +27,7 @@
 
 - **Frontend:** React 19, TypeScript, Vite, React Router, TanStack Query, Axios
 - **Backend:** NestJS, TypeORM, MySQL
+- **Calculator service:** Python, gRPC (`grpcio`) — hosts clinical scoring algorithms (currently EDSS) behind a language-agnostic RPC contract, called by the API over gRPC
 - **Auth:** Passport (JWT strategy), bcrypt password hashing
 - **Other:** pdfkit (PDF generation), Nodemailer (transactional email), nestjs-pino (structured logging)
 
@@ -34,14 +35,22 @@
 
 ## 📦 Installation & Setup
 
-This repository contains both the backend API (`api/`) and the frontend application (`frontend/`).
+This repository contains the backend API (`api/`), the frontend application (`frontend/`), and the `calculator` gRPC service (`calculator/`) that the API calls out to for clinical scoring.
 
 ### 1. Prerequisites
 - **Node.js** (v18+ recommended) and npm
+- **Python 3** (for the `calculator` service)
 - A running **MySQL** instance
 
-### 2. Backend Setup
-Copy `api/env.example` to `api/.env` and fill in your database, JWT, and mail settings (`DATABASE_URL`, `DATABASE_NAME`, `DATABASE_USERNAME`, `DATABASE_PASSWORD`, `DATABASE_PORT`, `SECRET_KEY`, `ACCESS_TOKEN_TIME`, `REFRESH_TOKEN_TIME`, `MAIL_HOST`, `MAIL_PORT`, `MAIL_USER`, `MAIL_PASS`, `MAIL_FROM`, `APP_URL`, `FRONTEND_URL`), then:
+### 2. Calculator Service Setup (Python + gRPC)
+```sh
+npm run setup:calculator   # creates calculator/.venv and installs grpcio/grpcio-tools
+npm run start:calculator   # starts the gRPC server on :50051
+```
+The API talks to this service over gRPC using the contract in `calculator/proto/calculator.proto`; the generated stubs live in `calculator/generated/` (regenerate them with `grpc_tools.protoc` if the `.proto` changes — see the comment at the top of that file). The API's `CALCULATOR_GRPC_URL` env var (default `localhost:50051`) points at it — the calculator service must be running before the API can create/update EDSS assessments.
+
+### 3. Backend Setup
+Copy `api/env.example` to `api/.env` and fill in your database, JWT, and mail settings (`DATABASE_URL`, `DATABASE_NAME`, `DATABASE_USERNAME`, `DATABASE_PASSWORD`, `DATABASE_PORT`, `SECRET_KEY`, `ACCESS_TOKEN_TIME`, `REFRESH_TOKEN_TIME`, `MAIL_HOST`, `MAIL_PORT`, `MAIL_USER`, `MAIL_PASS`, `MAIL_FROM`, `APP_URL`, `FRONTEND_URL`, `CALCULATOR_GRPC_URL`), then:
 ```sh
 cd api
 npm install
@@ -52,7 +61,7 @@ npm run start:dev
 
 Roles (`Doctor`, `Support Engineer`, `admin`) can be seeded with `npx ts-node scripts/seed.ts` (see `api/scripts`).
 
-### 3. Frontend Setup (React + Vite + TypeScript)
+### 4. Frontend Setup (React + Vite + TypeScript)
 ```sh
 cd frontend
 npm install
@@ -60,7 +69,7 @@ npm run dev
 ```
 
 ### 💡 Additional Scripts
-- **Root convenience scripts** (from the repo root): `npm run start` (runs both API and frontend dev servers), `npm run build` (builds both)
+- **Root convenience scripts** (from the repo root): `npm run start` (runs the calculator service, API, and frontend dev servers together), `npm run build` (builds API + frontend), `npm run setup:calculator` / `npm run start:calculator` (calculator service)
 - **Backend:** `npm run test` / `npm run test:cov` (unit tests), `npm run test:e2e` (end-to-end tests), `npm run lint`, `npm run format`
 - **Frontend:** `npm run build` (type-check + production bundle), `npm run lint`, `npm run preview` (serve the production build locally)
 

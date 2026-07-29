@@ -14,4 +14,5 @@ export interface Config {
   FRONTEND_URL: string;
   ACCESS_TOKEN_TIME: string;
   REFRESH_TOKEN_TIME: string;
+  CALCULATOR_GRPC_URL: string;
 }

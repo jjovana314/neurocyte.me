@@ -63,6 +63,10 @@ export const config = createProfiguration<Config>(
       default: '',
       env: 'REFRESH_TOKEN_TIME',
     },
+    CALCULATOR_GRPC_URL: {
+      default: '',
+      env: 'CALCULATOR_GRPC_URL',
+    },
   },
   {
     strict: true,
