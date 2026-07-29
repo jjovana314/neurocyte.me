@@ -20,7 +20,6 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { CalculatorClientService } from 'src/calculator-client/calculator-client.service';
-import { calculateEdssScore } from './utils/edss-calculator';
 
 describe('PatientsService', () => {
   let service: PatientsService;
@@ -78,20 +77,23 @@ describe('PatientsService', () => {
     warn: jest.fn(),
   };
 
-  // Stands in for the real gRPC call to the Python calculator service - it
-  // delegates to the same pure scoring function the calculator was ported
-  // from, so every existing EDSS value assertion below still holds without
-  // needing a live gRPC server in tests.
+  // Stands in for the real gRPC call to the Python calculator service.
+  // Scoring math lives entirely in calculator/edss_calculator.py now (tested
+  // there, not here), so tests configure this mock's resolved/rejected value
+  // per case and only assert on PatientsService's orchestration - that it
+  // sends the right request shape and persists whatever score comes back.
   const mockCalculatorClientService = {
-    calculateEdssScore: jest.fn(async (scores, ambulation) =>
-      calculateEdssScore(scores, ambulation),
-    ),
+    calculateEdssScore: jest.fn(),
   };
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         PatientsService,
+        {
+          provide: CalculatorClientService,
+          useValue: mockCalculatorClientService,
+        },
         {
           provide: getRepositoryToken(Patient),
           useValue: mockPatientRepository,
@@ -118,10 +120,6 @@ describe('PatientsService', () => {
         },
         { provide: getRepositoryToken(User), useValue: mockUserRepository },
         { provide: PinoLogger, useValue: mockLogger },
-        {
-          provide: CalculatorClientService,
-          useValue: mockCalculatorClientService,
-        },
       ],
     }).compile();
 
@@ -207,11 +205,24 @@ describe('PatientsService', () => {
     });
 
     it('should derive and persist an EDSS assessment linked to the new patient', async () => {
+      mockCalculatorClientService.calculateEdssScore.mockResolvedValueOnce(3.0);
+
       await service.createPatient(doctorId, {
         ...baseCreateDto,
         edss: { ...zeroEdss, pyramidalSystem: 3 },
       });
 
+      expect(
+        mockCalculatorClientService.calculateEdssScore,
+      ).toHaveBeenCalledWith(
+        expect.objectContaining({
+          ...zeroEdss,
+          pyramidalSystem: 3,
+          requiresUnilateralAid: false,
+          requiresBilateralAid: false,
+          wheelchairBound: false,
+        }),
+      );
       expect(mockEdssAssessmentRepository.save).toHaveBeenCalledWith(
         expect.objectContaining({
           patientId: 42,
@@ -316,6 +327,12 @@ describe('PatientsService', () => {
     });
 
     it('should reject an invalid EDSS assessment and not create the patient at all', async () => {
+      mockCalculatorClientService.calculateEdssScore.mockRejectedValueOnce(
+        new BadRequestException(
+          'pyramidalSystem must be an integer between 0 and 6',
+        ),
+      );
+
       await expect(
         service.createPatient(doctorId, {
           ...baseCreateDto,
@@ -325,117 +342,6 @@ describe('PatientsService', () => {
 
       expect(mockPatientRepository.save).not.toHaveBeenCalled();
       expect(mockEdssAssessmentRepository.save).not.toHaveBeenCalled();
-    });
-
-    describe('EDSS scoring bands derived from FSS combinations (fully ambulatory)', () => {
-      it.each([
-        ['all FS at grade 0', {}, 0.0],
-        ['a single FS at grade 1', { sensorySystem: 1 }, 1.0],
-        ['two FS at grade 1', { sensorySystem: 1, visualSystem: 1 }, 1.5],
-        ['a single FS at grade 2', { cerebellarSystem: 2 }, 2.0],
-        ['two FS at grade 2', { cerebellarSystem: 2, sensorySystem: 2 }, 2.5],
-        ['a single FS at grade 3', { pyramidalSystem: 3 }, 3.0],
-        [
-          'three FS at grade 2',
-          { pyramidalSystem: 2, cerebellarSystem: 2, sensorySystem: 2 },
-          3.0,
-        ],
-        ['two FS at grade 3', { pyramidalSystem: 3, cerebellarSystem: 3 }, 3.5],
-        [
-          'five FS at grade 2',
-          {
-            pyramidalSystem: 2,
-            cerebellarSystem: 2,
-            brainstemSystem: 2,
-            sensorySystem: 2,
-            bowelBladderSystem: 2,
-          },
-          3.5,
-        ],
-        [
-          'three FS at grade 3',
-          {
-            pyramidalSystem: 3,
-            cerebellarSystem: 3,
-            brainstemSystem: 3,
-          },
-          4.0,
-        ],
-        ['a single FS at grade 4', { pyramidalSystem: 4 }, 4.0],
-        ['two FS at grade 4', { pyramidalSystem: 4, cerebellarSystem: 4 }, 4.5],
-      ])('should score %s as %s', async (_desc, overrides, expected) => {
-        await service.createPatient(doctorId, {
-          ...baseCreateDto,
-          edss: { ...zeroEdss, ...overrides },
-        });
-
-        expect(mockEdssAssessmentRepository.save).toHaveBeenCalledWith(
-          expect.objectContaining({ totalScore: expected }),
-        );
-      });
-    });
-
-    describe('EDSS scoring bands derived from ambulation metrics', () => {
-      it.each([
-        [
-          'unaided distance of 1000m (no impairment)',
-          { unassistedWalkingDistanceMeters: 1000 },
-          0.0,
-        ],
-        [
-          'unaided distance just above the 500m threshold',
-          { unassistedWalkingDistanceMeters: 501 },
-          0.0,
-        ],
-        [
-          'unaided distance of 500m',
-          { unassistedWalkingDistanceMeters: 500 },
-          4.0,
-        ],
-        [
-          'unaided distance of 300m',
-          { unassistedWalkingDistanceMeters: 300 },
-          4.5,
-        ],
-        [
-          'unaided distance of 200m',
-          { unassistedWalkingDistanceMeters: 200 },
-          5.0,
-        ],
-        [
-          'unaided distance of 100m',
-          { unassistedWalkingDistanceMeters: 100 },
-          5.5,
-        ],
-        [
-          'unaided distance of 20m',
-          { unassistedWalkingDistanceMeters: 20 },
-          5.5,
-        ],
-        ['requiring a unilateral aid', { requiresUnilateralAid: true }, 6.0],
-        ['requiring a bilateral aid', { requiresBilateralAid: true }, 6.5],
-        ['being wheelchair-bound', { wheelchairBound: true }, 7.0],
-      ])('should score %s as %s', async (_desc, overrides, expected) => {
-        await service.createPatient(doctorId, {
-          ...baseCreateDto,
-          edss: { ...zeroEdss, ...overrides },
-        });
-
-        expect(mockEdssAssessmentRepository.save).toHaveBeenCalledWith(
-          expect.objectContaining({ totalScore: expected }),
-        );
-      });
-
-      it('should use the more severe of the FSS-derived and ambulation-derived scores', async () => {
-        await service.createPatient(doctorId, {
-          ...baseCreateDto,
-          edss: { ...zeroEdss, mentalSystem: 2, wheelchairBound: true },
-        });
-
-        expect(mockEdssAssessmentRepository.save).toHaveBeenCalledWith(
-          expect.objectContaining({ totalScore: 7.0 }),
-        );
-      });
     });
   });
 
@@ -474,6 +380,8 @@ describe('PatientsService', () => {
     });
 
     it('should derive and persist an EDSS assessment linked to the patient', async () => {
+      mockCalculatorClientService.calculateEdssScore.mockResolvedValueOnce(6.5);
+
       await service.updatePatientNotes(doctorId, patientId, {
         notes: 'Updated',
         edss: { ...zeroEdss, requiresBilateralAid: true },
@@ -485,6 +393,12 @@ describe('PatientsService', () => {
     });
 
     it('should reject an invalid EDSS assessment and not update the patient at all', async () => {
+      mockCalculatorClientService.calculateEdssScore.mockRejectedValueOnce(
+        new BadRequestException(
+          'pyramidalSystem must be an integer between 0 and 6',
+        ),
+      );
+
       await expect(
         service.updatePatientNotes(doctorId, patientId, {
           notes: 'Updated',

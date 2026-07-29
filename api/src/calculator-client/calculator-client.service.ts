@@ -8,10 +8,6 @@ import { ClientGrpc } from '@nestjs/microservices';
 import { status as GrpcStatus } from '@grpc/grpc-js';
 import { firstValueFrom, Observable } from 'rxjs';
 import { CALCULATOR_PACKAGE } from './calculator-client.constants';
-import {
-  EdssAmbulationMetrics,
-  EdssFunctionalScores,
-} from '../patients/utils/edss-calculator';
 
 interface EdssRequest {
   pyramidalSystem: number;
@@ -51,34 +47,10 @@ export class CalculatorClientService implements OnModuleInit {
       this.client.getService<CalculatorServiceClient>('CalculatorService');
   }
 
-  async calculateEdssScore(
-    scores: EdssFunctionalScores,
-    ambulation: EdssAmbulationMetrics,
-  ): Promise<number> {
-    const hasDistance =
-      ambulation.unassistedWalkingDistanceMeters !== undefined &&
-      ambulation.unassistedWalkingDistanceMeters !== null;
-
+  async calculateEdssScore(scores: EdssRequest): Promise<number> {
     try {
       const response = await firstValueFrom(
-        this.calculatorService.calculateEdss({
-          pyramidalSystem: scores.pyramidalSystem,
-          cerebellarSystem: scores.cerebellarSystem,
-          brainstemSystem: scores.brainstemSystem,
-          sensorySystem: scores.sensorySystem,
-          bowelBladderSystem: scores.bowelBladderSystem,
-          visualSystem: scores.visualSystem,
-          mentalSystem: scores.mentalSystem,
-          ...(hasDistance
-            ? {
-                unassistedWalkingDistanceMeters:
-                  ambulation.unassistedWalkingDistanceMeters,
-              }
-            : {}),
-          requiresUnilateralAid: ambulation.requiresUnilateralAid || false,
-          requiresBilateralAid: ambulation.requiresBilateralAid || false,
-          wheelchairBound: ambulation.wheelchairBound || false,
-        }),
+        this.calculatorService.calculateEdss({ ...scores }),
       );
       return response.totalScore;
     } catch (error) {

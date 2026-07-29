@@ -453,18 +453,16 @@ export class PatientsService {
       wheelchairBound: data.wheelchairBound || false,
     };
 
-    const totalScore = await this.calculatorClient.calculateEdssScore(
-      {
-        pyramidalSystem: data.pyramidalSystem,
-        cerebellarSystem: data.cerebellarSystem,
-        brainstemSystem: data.brainstemSystem,
-        sensorySystem: data.sensorySystem,
-        bowelBladderSystem: data.bowelBladderSystem,
-        visualSystem: data.visualSystem,
-        mentalSystem: data.mentalSystem,
-      },
-      ambulation,
-    );
+    const totalScore = await this.calculatorClient.calculateEdssScore({
+      pyramidalSystem: data.pyramidalSystem,
+      cerebellarSystem: data.cerebellarSystem,
+      brainstemSystem: data.brainstemSystem,
+      sensorySystem: data.sensorySystem,
+      bowelBladderSystem: data.bowelBladderSystem,
+      visualSystem: data.visualSystem,
+      mentalSystem: data.mentalSystem,
+      ...ambulation,
+    });
 
     const assessment = new EdssAssesment();
     assessment.pyramidalSystem = data.pyramidalSystem;
