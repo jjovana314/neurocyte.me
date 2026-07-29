@@ -43,11 +43,19 @@ This repository contains the backend API (`api/`), the frontend application (`fr
 - A running **MySQL** instance
 
 ### 2. Calculator Service Setup (Python + gRPC)
+One-time setup, from the repo root:
 ```sh
 npm run setup:calculator   # creates calculator/.venv and installs grpcio/grpcio-tools
+```
+Then, every time you work on the app, **start the calculator service first** — the API talks to it over gRPC and will error on any EDSS create/update until it's reachable:
+```sh
 npm run start:calculator   # starts the gRPC server on :50051
 ```
-The API talks to this service over gRPC using the contract in `calculator/proto/calculator.proto`; the generated stubs live in `calculator/generated/` (regenerate them with `grpc_tools.protoc` if the `.proto` changes — see the comment at the top of that file). The API's `CALCULATOR_GRPC_URL` env var (default `localhost:50051`) points at it — the calculator service must be running before the API can create/update EDSS assessments.
+You should see `Calculator gRPC server listening on port 50051`. Leave it running, then start the API (and frontend) as usual — or use `npm run start` from the repo root, which launches the calculator, API, and frontend together in one command.
+
+The service listens on port `50051` by default (override with the `CALCULATOR_GRPC_PORT` env var). On the API side, `CALCULATOR_GRPC_URL` in `api/.env` must point at that same host:port (e.g. `localhost:50051`) — it has **no built-in default**, so it must be set explicitly, and it must match the calculator's actual port or the API will fail with a `UNAVAILABLE: ... ECONNREFUSED` error.
+
+The gRPC contract lives in `calculator/proto/calculator.proto`; the generated stubs live in `calculator/generated/` (regenerate them with `grpc_tools.protoc` if the `.proto` changes — see the comment at the top of that file).
 
 ### 3. Backend Setup
 Copy `api/env.example` to `api/.env` and fill in your database, JWT, and mail settings (`DATABASE_URL`, `DATABASE_NAME`, `DATABASE_USERNAME`, `DATABASE_PASSWORD`, `DATABASE_PORT`, `SECRET_KEY`, `ACCESS_TOKEN_TIME`, `REFRESH_TOKEN_TIME`, `MAIL_HOST`, `MAIL_PORT`, `MAIL_USER`, `MAIL_PASS`, `MAIL_FROM`, `APP_URL`, `FRONTEND_URL`, `CALCULATOR_GRPC_URL`), then:
