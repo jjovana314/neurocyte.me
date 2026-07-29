@@ -44,3 +44,9 @@ api/node_modules/
 calculator/.venv/
 calculator/**/__pycache__/
 calculator/.env
+
+# Generated gRPC stubs - build artifacts from calculator/proto/calculator.proto,
+# regenerate with `npm run generate:proto` from the repo root.
+calculator/generated/*
+!calculator/generated/__init__.py
+api/src/calculator/generated/

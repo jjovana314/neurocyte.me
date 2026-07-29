@@ -13,7 +13,8 @@
     "debug:frontend": "npm run --prefix frontend dev -- --debug",
     "debug:backend": "npm run --prefix api start:debug",
     "setup:calculator": "python3 -m venv calculator/.venv && calculator/.venv/bin/pip install -r calculator/requirements.txt",
-    "start:calculator": "calculator/.venv/bin/python calculator/app.py"
+    "start:calculator": "calculator/.venv/bin/python calculator/app.py",
+    "generate:proto": "node scripts/generate-proto.js"
   },
   "dependencies": {
     "@golevelup/profiguration": "^0.2.1",

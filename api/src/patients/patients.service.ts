@@ -1,11 +1,16 @@
 import {
+  Inject,
   Injectable,
   NotFoundException,
   BadRequestException,
+  OnModuleInit,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { PinoLogger } from 'nestjs-pino';
+import { ClientGrpc } from '@nestjs/microservices';
+import { status as GrpcStatus } from '@grpc/grpc-js';
+import { firstValueFrom } from 'rxjs';
 import { errorHandler } from './decorators/error-handler-decorator';
 import { Patient } from './entities/patient.entity';
 import { PatientHistory } from './entities/patient-history.entity';
@@ -31,7 +36,11 @@ import {
   UpdatePatientNotesDto,
 } from './dtos';
 import { maskString } from './utils/masking';
-import { CalculatorClientService } from 'src/calculator-client/calculator-client.service';
+import { CALCULATOR_PACKAGE } from 'src/calculator/calculator.module';
+import {
+  CALCULATOR_SERVICE_NAME,
+  CalculatorServiceClient,
+} from 'src/calculator/generated/calculator';
 import {
   PatientCreateForbiddenException,
   UserNotFoundException,
@@ -41,7 +50,9 @@ import {
 import { dateValidation } from './utils/validation';
 
 @Injectable()
-export class PatientsService {
+export class PatientsService implements OnModuleInit {
+  private calculatorService: CalculatorServiceClient;
+
   constructor(
     @InjectRepository(Patient) private patientRepository: Repository<Patient>,
     @InjectRepository(PatientHistory)
@@ -56,8 +67,15 @@ export class PatientsService {
     private seizureLogRepository: Repository<SeizureLog>,
     @InjectRepository(User) private userRepository: Repository<User>,
     private readonly logger: PinoLogger,
-    private readonly calculatorClient: CalculatorClientService,
+    @Inject(CALCULATOR_PACKAGE) private readonly calculatorClient: ClientGrpc,
   ) {}
+
+  onModuleInit() {
+    this.calculatorService =
+      this.calculatorClient.getService<CalculatorServiceClient>(
+        CALCULATOR_SERVICE_NAME,
+      );
+  }
 
   @errorHandler
   async createPatient(
@@ -453,16 +471,27 @@ export class PatientsService {
       wheelchairBound: data.wheelchairBound || false,
     };
 
-    const totalScore = await this.calculatorClient.calculateEdssScore({
-      pyramidalSystem: data.pyramidalSystem,
-      cerebellarSystem: data.cerebellarSystem,
-      brainstemSystem: data.brainstemSystem,
-      sensorySystem: data.sensorySystem,
-      bowelBladderSystem: data.bowelBladderSystem,
-      visualSystem: data.visualSystem,
-      mentalSystem: data.mentalSystem,
-      ...ambulation,
-    });
+    let totalScore: number;
+    try {
+      const response = await firstValueFrom(
+        this.calculatorService.calculateEdss({
+          pyramidalSystem: data.pyramidalSystem,
+          cerebellarSystem: data.cerebellarSystem,
+          brainstemSystem: data.brainstemSystem,
+          sensorySystem: data.sensorySystem,
+          bowelBladderSystem: data.bowelBladderSystem,
+          visualSystem: data.visualSystem,
+          mentalSystem: data.mentalSystem,
+          ...ambulation,
+        }),
+      );
+      totalScore = response.totalScore;
+    } catch (error) {
+      if (error?.code === GrpcStatus.INVALID_ARGUMENT) {
+        throw new BadRequestException(error.details);
+      }
+      throw error;
+    }
 
     const assessment = new EdssAssesment();
     assessment.pyramidalSystem = data.pyramidalSystem;

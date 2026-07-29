@@ -1,7 +1,8 @@
-// This contract is duplicated at api/proto/calculator.proto so the Node API
-// doesn't need filesystem access to this directory at build/run time. If you
-// change this file, update BOTH copies, then regenerate the (gitignored,
-// not committed) stubs for both services with one command from the repo root:
+// This is a copy of calculator/proto/calculator.proto (repo root) - kept
+// local so the api/ service is self-contained and doesn't need filesystem
+// access to its sibling directory at build/run time. If you change the
+// contract, update BOTH copies, then regenerate the (gitignored, not
+// committed) stubs for both services with one command from the repo root:
 //   npm run generate:proto
 // See scripts/generate-proto.js for what that actually runs on each side.
 syntax = "proto3";

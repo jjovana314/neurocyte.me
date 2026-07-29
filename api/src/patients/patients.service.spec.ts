@@ -19,7 +19,10 @@ import {
   ForbiddenException,
   NotFoundException,
 } from '@nestjs/common';
-import { CalculatorClientService } from 'src/calculator-client/calculator-client.service';
+import { of, throwError } from 'rxjs';
+import { status as GrpcStatus } from '@grpc/grpc-js';
+import { CALCULATOR_PACKAGE } from 'src/calculator/calculator.module';
+import { CALCULATOR_SERVICE_NAME } from 'src/calculator/generated/calculator';
 
 describe('PatientsService', () => {
   let service: PatientsService;
@@ -77,13 +80,17 @@ describe('PatientsService', () => {
     warn: jest.fn(),
   };
 
-  // Stands in for the real gRPC call to the Python calculator service.
+  // Stands in for the generated gRPC client's CalculatorService stub.
   // Scoring math lives entirely in calculator/edss_calculator.py now (tested
-  // there, not here), so tests configure this mock's resolved/rejected value
+  // there, not here), so tests configure calculateEdss's emitted value/error
   // per case and only assert on PatientsService's orchestration - that it
   // sends the right request shape and persists whatever score comes back.
-  const mockCalculatorClientService = {
-    calculateEdssScore: jest.fn(),
+  const mockCalculatorServiceClient = {
+    calculateEdss: jest.fn(),
+  };
+
+  const mockCalculatorClientGrpc = {
+    getService: jest.fn().mockReturnValue(mockCalculatorServiceClient),
   };
 
   beforeEach(async () => {
@@ -91,8 +98,8 @@ describe('PatientsService', () => {
       providers: [
         PatientsService,
         {
-          provide: CalculatorClientService,
-          useValue: mockCalculatorClientService,
+          provide: CALCULATOR_PACKAGE,
+          useValue: mockCalculatorClientGrpc,
         },
         {
           provide: getRepositoryToken(Patient),
@@ -124,6 +131,7 @@ describe('PatientsService', () => {
     }).compile();
 
     service = module.get<PatientsService>(PatientsService);
+    await module.init();
   });
 
   afterEach(() => {
@@ -132,6 +140,9 @@ describe('PatientsService', () => {
 
   it('should be defined', () => {
     expect(service).toBeDefined();
+    expect(mockCalculatorClientGrpc.getService).toHaveBeenCalledWith(
+      CALCULATOR_SERVICE_NAME,
+    );
   });
 
   describe('createPatient', () => {
@@ -205,16 +216,16 @@ describe('PatientsService', () => {
     });
 
     it('should derive and persist an EDSS assessment linked to the new patient', async () => {
-      mockCalculatorClientService.calculateEdssScore.mockResolvedValueOnce(3.0);
+      mockCalculatorServiceClient.calculateEdss.mockReturnValueOnce(
+        of({ totalScore: 3.0 }),
+      );
 
       await service.createPatient(doctorId, {
         ...baseCreateDto,
         edss: { ...zeroEdss, pyramidalSystem: 3 },
       });
 
-      expect(
-        mockCalculatorClientService.calculateEdssScore,
-      ).toHaveBeenCalledWith(
+      expect(mockCalculatorServiceClient.calculateEdss).toHaveBeenCalledWith(
         expect.objectContaining({
           ...zeroEdss,
           pyramidalSystem: 3,
@@ -327,10 +338,11 @@ describe('PatientsService', () => {
     });
 
     it('should reject an invalid EDSS assessment and not create the patient at all', async () => {
-      mockCalculatorClientService.calculateEdssScore.mockRejectedValueOnce(
-        new BadRequestException(
-          'pyramidalSystem must be an integer between 0 and 6',
-        ),
+      mockCalculatorServiceClient.calculateEdss.mockReturnValueOnce(
+        throwError(() => ({
+          code: GrpcStatus.INVALID_ARGUMENT,
+          details: 'pyramidalSystem must be an integer between 0 and 6',
+        })),
       );
 
       await expect(
@@ -380,7 +392,9 @@ describe('PatientsService', () => {
     });
 
     it('should derive and persist an EDSS assessment linked to the patient', async () => {
-      mockCalculatorClientService.calculateEdssScore.mockResolvedValueOnce(6.5);
+      mockCalculatorServiceClient.calculateEdss.mockReturnValueOnce(
+        of({ totalScore: 6.5 }),
+      );
 
       await service.updatePatientNotes(doctorId, patientId, {
         notes: 'Updated',
@@ -393,10 +407,11 @@ describe('PatientsService', () => {
     });
 
     it('should reject an invalid EDSS assessment and not update the patient at all', async () => {
-      mockCalculatorClientService.calculateEdssScore.mockRejectedValueOnce(
-        new BadRequestException(
-          'pyramidalSystem must be an integer between 0 and 6',
-        ),
+      mockCalculatorServiceClient.calculateEdss.mockReturnValueOnce(
+        throwError(() => ({
+          code: GrpcStatus.INVALID_ARGUMENT,
+          details: 'pyramidalSystem must be an integer between 0 and 6',
+        })),
       );
 
       await expect(
