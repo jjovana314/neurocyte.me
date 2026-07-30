@@ -296,7 +296,6 @@ describe('PatientsService', () => {
         }),
       );
     });
-    // comment
 
     it('should reject an invalid seizure log and not create the patient at all', async () => {
       await expect(
