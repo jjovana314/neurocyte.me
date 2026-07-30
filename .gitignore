@@ -50,3 +50,4 @@ calculator/.env
 calculator/generated/*
 !calculator/generated/__init__.py
 api/src/calculator-client/generated/
+.git-credentials
