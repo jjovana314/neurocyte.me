@@ -472,6 +472,8 @@ export class PatientsService implements OnModuleInit {
     };
 
     let totalScore: number;
+
+    // todo: fix this, add error handler and parser for errors from other service
     try {
       const response = await firstValueFrom(
         this.calculatorService.calculateEdss({
