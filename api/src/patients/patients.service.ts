@@ -36,11 +36,10 @@ import {
   UpdatePatientNotesDto,
 } from './dtos';
 import { maskString } from './utils/masking';
-import { CALCULATOR_PACKAGE } from 'src/calculator/calculator.module';
 import {
   CALCULATOR_SERVICE_NAME,
   CalculatorServiceClient,
-} from 'src/calculator/generated/calculator';
+} from 'src/calculator-client/generated/calculator';
 import {
   PatientCreateForbiddenException,
   UserNotFoundException,
@@ -67,7 +66,7 @@ export class PatientsService implements OnModuleInit {
     private seizureLogRepository: Repository<SeizureLog>,
     @InjectRepository(User) private userRepository: Repository<User>,
     private readonly logger: PinoLogger,
-    @Inject(CALCULATOR_PACKAGE) private readonly calculatorClient: ClientGrpc,
+    @Inject('CALCULATOR_PACKAGE') private readonly calculatorClient: ClientGrpc,
   ) {}
 
   onModuleInit() {

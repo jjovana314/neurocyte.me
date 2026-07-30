@@ -10,7 +10,10 @@ import { MigraineLog } from './entities/migraine-log.entity';
 import { SeizureLog } from './entities/seizure-log.entity';
 import { User } from 'src/auth/entites/user.entity';
 import { UserModule } from 'src/user/user.module';
-import { CalculatorModule } from 'src/calculator/calculator.module';
+import { ClientsModule, Transport } from '@nestjs/microservices';
+import { join } from 'path';
+import { config } from 'src/config/config';
+import { CALCULATOR_PACKAGE_NAME } from 'src/calculator-client/generated/calculator';
 
 @Module({
   imports: [
@@ -23,11 +26,21 @@ import { CalculatorModule } from 'src/calculator/calculator.module';
       SeizureLog,
       User,
     ]),
+    ClientsModule.register([
+      {
+        name: 'CALCULATOR_PACKAGE',
+        transport: Transport.GRPC,
+        options: {
+          package: CALCULATOR_PACKAGE_NAME,
+          protoPath: join(process.cwd(), 'proto', 'calculator.proto'),
+          url: config.get().CALCULATOR_GRPC_URL,
+        },
+      },
+    ]),
     UserModule,
-    CalculatorModule,
   ],
   controllers: [PatientsController],
   providers: [PatientsService],
-  exports: [PatientsService],
+  exports: [PatientsService, ClientsModule],
 })
 export class PatientsModule {}

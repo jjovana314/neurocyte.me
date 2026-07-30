@@ -21,8 +21,7 @@ import {
 } from '@nestjs/common';
 import { of, throwError } from 'rxjs';
 import { status as GrpcStatus } from '@grpc/grpc-js';
-import { CALCULATOR_PACKAGE } from 'src/calculator/calculator.module';
-import { CALCULATOR_SERVICE_NAME } from 'src/calculator/generated/calculator';
+import { CALCULATOR_SERVICE_NAME } from 'src/calculator-client/generated/calculator';
 
 describe('PatientsService', () => {
   let service: PatientsService;
@@ -98,7 +97,7 @@ describe('PatientsService', () => {
       providers: [
         PatientsService,
         {
-          provide: CALCULATOR_PACKAGE,
+          provide: 'CALCULATOR_PACKAGE',
           useValue: mockCalculatorClientGrpc,
         },
         {
