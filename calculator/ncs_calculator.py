@@ -120,14 +120,14 @@ def _validate_ncs_input(ncs: NcsInput) -> None:
 
 def _apply_temperature_correction(ncs: NcsInput) -> NcsInput:
     """
-    Cold limbs slow down nerve signals (~5% slowing or ~1.5 m/s drop per °C below 32°C).
-    Normalizes distal latency if skin temperature < 32°C.
+    Cold limbs slow down nerve signals (~5% slowing or ~1.5 m/s drop per C below 32 C).
+    Normalizes distal latency if skin temperature < 32 C.
     """
     if ncs.skin_temperature_celsius is None or ncs.skin_temperature_celsius >= 32.0:
         return ncs
 
     temp_diff = 32.0 - ncs.skin_temperature_celsius
-    # Correct distal latency: ~0.2 ms deduction per °C below 32°C
+    # Correct distal latency: ~0.2 ms deduction per  C below 32 C
     corrected_distal_latency = max(0.1, ncs.distal_site.latency_ms - (0.2 * temp_diff))
 
     corrected_distal = NcsSegmentMeasurement(
