@@ -89,6 +89,7 @@ npm run dev
 ### 💡 Additional Scripts
 - **Root convenience scripts** (from the repo root): `npm run start` (runs the calculator service, API, and frontend dev servers together), `npm run build` (builds API + frontend), `npm run setup:calculator` / `npm run start:calculator` (calculator service), `npm run generate:proto` (regenerate the gRPC stubs for both services from the `.proto` files)
 - **Backend:** `npm run test` / `npm run test:cov` (unit tests), `npm run test:e2e` (end-to-end tests), `npm run lint`, `npm run format`
+- **Calculator:** `npm run test:calculator` (from the repo root) runs the Python unit tests under `calculator/tests` with pytest
 - **Frontend:** `npm run build` (type-check + production bundle), `npm run lint`, `npm run preview` (serve the production build locally)
 
 ---

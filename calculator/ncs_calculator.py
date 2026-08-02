@@ -2,7 +2,6 @@ from dataclasses import dataclass
 from enum import Enum
 from typing import Dict, Optional
 
-# todo: test this part
 
 class InvalidActionPotentialError(ValueError):
     """Raised when electrophysiological parameters fail physiological validation."""
