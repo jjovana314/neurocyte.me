@@ -1,20 +1,22 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import type { Patient } from '../api/types';
-import { updatePatient } from '../api/patients';
+import type { ImportCsvResponse, Patient } from '../api/types';
+import { importNcsStudiesCsv, updatePatient } from '../api/patients';
 import { getErrorMessage } from '../api/errors';
 import { EDSS_FSS_FIELDS } from '../constants/edss';
 import EdssAssessmentForm from './EdssAssessmentForm';
 import MigraineLogForm from './MigraineLogForm';
 import SeizureLogForm from './SeizureLogForm';
 import NcsStudyForm from './NcsStudyForm';
+import NcsCsvImportResult from './NcsCsvImportResult';
 import {
   EMPTY_EDSS_FORM_STATE,
   edssFormStateToInput,
   type EdssFormState,
 } from '../utils/edssForm';
 import { MOTOR_FEATURE_OPTIONS, SEIZURE_TRIGGER_OPTIONS } from '../constants/seizure';
-import { NCS_STUDY_TYPE_OPTIONS } from '../constants/ncs';
+import { NCS_CSV_IMPORT_HINT, NCS_STUDY_TYPE_OPTIONS } from '../constants/ncs';
+import { sortNcsStudies } from '../utils/ncsStudySort';
 
 const NCS_STUDY_TYPE_LABELS = Object.fromEntries(
   NCS_STUDY_TYPE_OPTIONS.map((opt) => [opt.value, opt.label]),
@@ -71,16 +73,22 @@ export default function ExpandedRow({ patient }: Props) {
   const [addingMigraineLog, setAddingMigraineLog] = useState(false);
   const [addingSeizureLog, setAddingSeizureLog] = useState(false);
   const [addingNcsStudy, setAddingNcsStudy] = useState(false);
+  const ncsFileRef = useRef<HTMLInputElement>(null);
+  const [ncsImportResult, setNcsImportResult] = useState<ImportCsvResponse | null>(null);
 
   const mutation = useMutation({
-    mutationFn: () =>
-      updatePatient(patient.id, {
+    mutationFn: async () => {
+      await updatePatient(patient.id, {
         notes,
         edss: edssFormStateToInput(edssForm),
-      }),
-    onSuccess: () => {
+      });
+      const ncsFile = ncsFileRef.current?.files?.[0];
+      return ncsFile ? importNcsStudiesCsv(patient.id, ncsFile) : null;
+    },
+    onSuccess: (ncsResult) => {
       queryClient.invalidateQueries({ queryKey: ['patients'] });
       setEdssForm(EMPTY_EDSS_FORM_STATE);
+      setNcsImportResult(ncsResult);
       setEditing(false);
     },
   });
@@ -88,6 +96,7 @@ export default function ExpandedRow({ patient }: Props) {
   function startEditing() {
     setNotes(patient.notes ?? '');
     setEdssForm(EMPTY_EDSS_FORM_STATE);
+    setNcsImportResult(null);
     setEditing(true);
   }
 
@@ -111,9 +120,7 @@ export default function ExpandedRow({ patient }: Props) {
   const seizureLogs = [...(patient.seizureLogs ?? [])].sort(
     (a, b) => new Date(b.ictusStart).getTime() - new Date(a.ictusStart).getTime(),
   );
-  const ncsStudies = [...(patient.ncsStudies ?? [])].sort(
-    (a, b) => new Date(b.recordedAt).getTime() - new Date(a.recordedAt).getTime(),
-  );
+  const ncsStudies = sortNcsStudies(patient.ncsStudies ?? []);
 
   const hasDemographics = patient.dateOfBirth || patient.gender || patient.phone || patient.email;
 
@@ -126,6 +133,8 @@ export default function ExpandedRow({ patient }: Props) {
           </button>
         )}
       </div>
+
+      {!editing && ncsImportResult && <NcsCsvImportResult result={ncsImportResult} />}
 
       {editing && (
         <div className="expanded-section">
@@ -145,6 +154,18 @@ export default function ExpandedRow({ patient }: Props) {
               onChange={setEdssForm}
               idPrefix={`edit-${patient.id}`}
             />
+            <div className="form-group">
+              <label htmlFor={`edit-ncs-file-${patient.id}`}>
+                Nerve conduction study results (CSV)
+              </label>
+              <input
+                id={`edit-ncs-file-${patient.id}`}
+                ref={ncsFileRef}
+                type="file"
+                accept=".csv,text/csv"
+              />
+              <p className="hint">{NCS_CSV_IMPORT_HINT}</p>
+            </div>
             {mutation.error && (
               <p className="form-error">{getErrorMessage(mutation.error)}</p>
             )}

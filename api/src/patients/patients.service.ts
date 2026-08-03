@@ -415,6 +415,137 @@ export class PatientsService implements OnModuleInit {
     });
   }
 
+  // Each CSV row is sent through the same calculator path as a manually
+  // entered study - rows that fail validation or calculation are recorded
+  // as errors rather than aborting the whole import.
+  @errorHandler
+  async importNcsStudiesCsv(
+    doctorId: number,
+    patientId: number,
+    fileBuffer: Buffer,
+  ): Promise<ImportCsvResponseDto> {
+    const patient = await this.patientRepository.findOne({
+      where: { id: patientId },
+    });
+    if (!patient) {
+      throw new PatientNotFoundException(patientId);
+    }
+    if (patient.doctorId !== doctorId) {
+      throw new AccessToPatientForbiddenException();
+    }
+
+    const lines = fileBuffer
+      .toString('utf8')
+      .split('\n')
+      .map((l) => l.trim())
+      .filter((l) => l.length > 0);
+
+    const result = new ImportCsvResponseDto();
+    result.imported = 0;
+    result.skipped = 0;
+    result.errors = [];
+
+    if (lines.length < 2) {
+      result.errors.push({
+        row: 0,
+        reason: 'CSV file is empty or has no data rows',
+      });
+      return result;
+    }
+
+    const dataRows = lines.slice(1);
+
+    for (const [i, row] of dataRows.entries()) {
+      const rowNum = i + 2;
+      const dto = this.parseNcsStudyCsvRow(row);
+      if (!dto) {
+        result.skipped++;
+        result.errors.push({
+          row: rowNum,
+          reason:
+            'Missing or invalid required field(s): nerveName, studyType (MOTOR/SENSORY), distanceMm, distalLatencyMs, distalAmplitude',
+        });
+        continue;
+      }
+
+      try {
+        const ncsStudy = await this.buildNcsStudy(dto);
+        ncsStudy.patientId = patientId;
+        await this.ncsStudyRepository.save(ncsStudy);
+        result.imported++;
+      } catch (err) {
+        result.skipped++;
+        result.errors.push({
+          row: rowNum,
+          reason: `Failed to import NCS study (nerve: ${dto.nerveName}): ${(err as Error).message}`,
+        });
+      }
+    }
+
+    this.logger.info(
+      `NCS CSV import for patient ${patientId} by doctor ${doctorId}: ${result.imported} studies imported, ${result.skipped} rows skipped`,
+    );
+
+    return result;
+  }
+
+  // Expected columns (header row is skipped, not validated by name):
+  // nerveName,studyType,distanceMm,distalLatencyMs,distalAmplitude,
+  // distalDurationMs,proximalLatencyMs,proximalAmplitude,proximalDurationMs,
+  // skinTemperatureCelsius
+  private parseNcsStudyCsvRow(
+    line: string,
+  ): Omit<CreateNcsStudyDto, 'patientId'> | null {
+    const cols = this.parseCsvLine(line);
+    const nerveName = cols[0]?.trim() ?? '';
+    const studyTypeRaw = cols[1]?.trim().toUpperCase() ?? '';
+    const distanceMm = parseFloat(cols[2]);
+    const distalLatencyMs = parseFloat(cols[3]);
+    const distalAmplitude = parseFloat(cols[4]);
+
+    if (
+      !nerveName ||
+      (studyTypeRaw !== NcsStudyType.MOTOR &&
+        studyTypeRaw !== NcsStudyType.SENSORY) ||
+      isNaN(distanceMm) ||
+      isNaN(distalLatencyMs) ||
+      isNaN(distalAmplitude)
+    ) {
+      return null;
+    }
+
+    const distalDurationMs = parseFloat(cols[5]);
+    const proximalLatencyMs = parseFloat(cols[6]);
+    const proximalAmplitude = parseFloat(cols[7]);
+    const proximalDurationMs = parseFloat(cols[8]);
+    const skinTemperatureCelsius = parseFloat(cols[9]);
+
+    const dto: Omit<CreateNcsStudyDto, 'patientId'> = {
+      nerveName,
+      studyType: studyTypeRaw as NcsStudyType,
+      distanceMm,
+      distalSite: {
+        latencyMs: distalLatencyMs,
+        amplitude: distalAmplitude,
+        durationMs: isNaN(distalDurationMs) ? undefined : distalDurationMs,
+      },
+    };
+
+    if (!isNaN(proximalLatencyMs) && !isNaN(proximalAmplitude)) {
+      dto.proximalSite = {
+        latencyMs: proximalLatencyMs,
+        amplitude: proximalAmplitude,
+        durationMs: isNaN(proximalDurationMs) ? undefined : proximalDurationMs,
+      };
+    }
+
+    if (!isNaN(skinTemperatureCelsius)) {
+      dto.skinTemperatureCelsius = skinTemperatureCelsius;
+    }
+
+    return dto;
+  }
+
   // Sends the raw electrophysiological measurements to the calculator
   // service and stores both the input and the derived diagnostic result -
   // the client never supplies the derived fields directly.

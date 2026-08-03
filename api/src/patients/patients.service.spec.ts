@@ -1071,6 +1071,139 @@ describe('PatientsService', () => {
     });
   });
 
+  describe('importNcsStudiesCsv', () => {
+    const doctorId = 1;
+    const patientId = 5;
+    const header =
+      'nerveName,studyType,distanceMm,distalLatencyMs,distalAmplitude,distalDurationMs,proximalLatencyMs,proximalAmplitude,proximalDurationMs,skinTemperatureCelsius';
+    const mockCalcResult = {
+      nerveName: 'Median',
+      conductionVelocityMPerS: 55.5,
+      amplitudeDropPercent: 10,
+      temporalDispersionPercent: 5,
+      isNormal: true,
+      axonalLoss: false,
+      demyelination: false,
+      conductionBlock: false,
+      diagnosticSummary: 'Normal MOTOR conduction parameters for Median nerve.',
+    };
+
+    beforeEach(() => {
+      mockPatientRepository.findOne.mockResolvedValue({
+        id: patientId,
+        doctorId,
+      });
+      mockCalculatorServiceClient.calculateNcs.mockReturnValue(
+        of(mockCalcResult),
+      );
+      mockNcsStudyRepository.save.mockImplementation((s) =>
+        Promise.resolve({ id: 1, ...s }),
+      );
+    });
+
+    it('should import every valid row and report the count', async () => {
+      const csv = Buffer.from(
+        `${header}\nMedian,MOTOR,200,3.2,8.5,,,,,\nUlnar,SENSORY,140,2.1,15,,,,,`,
+      );
+
+      const result = await service.importNcsStudiesCsv(
+        doctorId,
+        patientId,
+        csv,
+      );
+
+      expect(result.imported).toBe(2);
+      expect(result.skipped).toBe(0);
+      expect(result.errors).toEqual([]);
+      expect(mockNcsStudyRepository.save).toHaveBeenCalledTimes(2);
+    });
+
+    it('should parse optional proximal site and skin temperature columns', async () => {
+      const csv = Buffer.from(
+        `${header}\nMedian,MOTOR,200,3.2,8.5,4,7.1,7.9,6,28`,
+      );
+
+      await service.importNcsStudiesCsv(doctorId, patientId, csv);
+
+      expect(mockCalculatorServiceClient.calculateNcs).toHaveBeenCalledWith(
+        expect.objectContaining({
+          distalSite: { latencyMs: 3.2, amplitude: 8.5, durationMs: 4 },
+          proximalSite: { latencyMs: 7.1, amplitude: 7.9, durationMs: 6 },
+          skinTemperatureCelsius: 28,
+        }),
+      );
+    });
+
+    it('should skip rows missing required fields and record an error', async () => {
+      const csv = Buffer.from(`${header}\n,MOTOR,200,3.2,8.5,,,,,`);
+
+      const result = await service.importNcsStudiesCsv(
+        doctorId,
+        patientId,
+        csv,
+      );
+
+      expect(result.imported).toBe(0);
+      expect(result.skipped).toBe(1);
+      expect(result.errors).toEqual([expect.objectContaining({ row: 2 })]);
+      expect(mockNcsStudyRepository.save).not.toHaveBeenCalled();
+    });
+
+    it('should record calculator errors per row without aborting the import', async () => {
+      mockCalculatorServiceClient.calculateNcs
+        .mockReturnValueOnce(
+          throwError(() => ({
+            code: GrpcStatus.INVALID_ARGUMENT,
+            details: 'Conduction distance_mm must be strictly positive.',
+          })),
+        )
+        .mockReturnValueOnce(of(mockCalcResult));
+      const csv = Buffer.from(
+        `${header}\nMedian,MOTOR,-1,3.2,8.5,,,,,\nUlnar,SENSORY,140,2.1,15,,,,,`,
+      );
+
+      const result = await service.importNcsStudiesCsv(
+        doctorId,
+        patientId,
+        csv,
+      );
+
+      expect(result.imported).toBe(1);
+      expect(result.skipped).toBe(1);
+      expect(result.errors).toEqual([expect.objectContaining({ row: 2 })]);
+    });
+
+    it('should report an error for an empty CSV file', async () => {
+      const result = await service.importNcsStudiesCsv(
+        doctorId,
+        patientId,
+        Buffer.from(header),
+      );
+
+      expect(result.imported).toBe(0);
+      expect(result.errors).toEqual([expect.objectContaining({ row: 0 })]);
+    });
+
+    it('should throw NotFoundException when patient does not exist', async () => {
+      mockPatientRepository.findOne.mockResolvedValue(null);
+
+      await expect(
+        service.importNcsStudiesCsv(doctorId, patientId, Buffer.from(header)),
+      ).rejects.toThrow(NotFoundException);
+    });
+
+    it('should throw ForbiddenException when doctor does not own the patient', async () => {
+      mockPatientRepository.findOne.mockResolvedValue({
+        id: patientId,
+        doctorId: 999,
+      });
+
+      await expect(
+        service.importNcsStudiesCsv(doctorId, patientId, Buffer.from(header)),
+      ).rejects.toThrow(ForbiddenException);
+    });
+  });
+
   describe('getPatient', () => {
     it('should request the migraineLogs and seizureLogs relations when fetching a patient', async () => {
       const doctorId = 1;

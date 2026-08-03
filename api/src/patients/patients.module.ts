@@ -36,6 +36,9 @@ import { CALCULATOR_PACKAGE_NAME } from 'src/calculator-client/generated/calcula
           package: CALCULATOR_PACKAGE_NAME,
           protoPath: join(process.cwd(), 'proto', 'calculator.proto'),
           url: config.get().CALCULATOR_GRPC_URL,
+          loader: {
+            defaults: true,
+          },
         },
       },
     ]),

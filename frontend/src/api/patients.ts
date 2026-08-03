@@ -113,3 +113,17 @@ export async function importCsv(file: File): Promise<ImportCsvResponse> {
   });
   return data;
 }
+
+export async function importNcsStudiesCsv(
+  patientId: number,
+  file: File,
+): Promise<ImportCsvResponse> {
+  const formData = new FormData();
+  formData.append('file', file);
+  const { data } = await client.post<ImportCsvResponse>(
+    `/patients/${patientId}/ncs-studies/import`,
+    formData,
+    { headers: { 'Content-Type': 'multipart/form-data' } },
+  );
+  return data;
+}

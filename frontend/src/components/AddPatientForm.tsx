@@ -1,11 +1,13 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { createPatient } from '../api/patients';
+import { createPatient, importNcsStudiesCsv } from '../api/patients';
+import type { ImportCsvResponse } from '../api/types';
 import { getErrorMessage } from '../api/errors';
 import EdssAssessmentForm from './EdssAssessmentForm';
 import Disclosure from './Disclosure';
 import MigraineLogFields from './MigraineLogFields';
 import SeizureLogFields from './SeizureLogFields';
+import NcsCsvImportResult from './NcsCsvImportResult';
 import {
   EMPTY_EDSS_FORM_STATE,
   edssFormStateToInput,
@@ -22,6 +24,7 @@ import {
   type SeizureLogFormState,
 } from '../utils/seizureLogForm';
 import { todayDateString } from '../utils/dateLimits';
+import { NCS_CSV_IMPORT_HINT } from '../constants/ncs';
 
 const GENDER_OPTIONS = ['Male', 'Female', 'Non-binary', 'Prefer not to say'];
 
@@ -41,10 +44,12 @@ export default function AddPatientForm() {
     EMPTY_SEIZURE_LOG_FORM_STATE,
   );
   const [success, setSuccess] = useState(false);
+  const ncsFileRef = useRef<HTMLInputElement>(null);
+  const [ncsImportResult, setNcsImportResult] = useState<ImportCsvResponse | null>(null);
 
   const mutation = useMutation({
-    mutationFn: () =>
-      createPatient({
+    mutationFn: async () => {
+      const patient = await createPatient({
         name,
         dateOfBirth: dateOfBirth,
         gender: gender,
@@ -54,8 +59,12 @@ export default function AddPatientForm() {
         edss: edssFormStateToInput(edssForm),
         migraineLog: migraineLogFormStateToInput(migraineLogForm),
         seizureLog: seizureLogFormStateToInput(seizureLogForm),
-      }),
-    onSuccess: () => {
+      });
+      const ncsFile = ncsFileRef.current?.files?.[0];
+      const ncsResult = ncsFile ? await importNcsStudiesCsv(patient.id, ncsFile) : null;
+      return { patient, ncsResult };
+    },
+    onSuccess: ({ ncsResult }) => {
       queryClient.invalidateQueries({ queryKey: ['patients'] });
       setName('');
       setDateOfBirth('');
@@ -66,6 +75,8 @@ export default function AddPatientForm() {
       setEdssForm(EMPTY_EDSS_FORM_STATE);
       setMigraineLogForm(EMPTY_MIGRAINE_LOG_FORM_STATE);
       setSeizureLogForm(EMPTY_SEIZURE_LOG_FORM_STATE);
+      if (ncsFileRef.current) ncsFileRef.current.value = '';
+      setNcsImportResult(ncsResult);
       setSuccess(true);
       setTimeout(() => setSuccess(false), 3000);
     },
@@ -74,6 +85,7 @@ export default function AddPatientForm() {
   function handleSubmit(e: React.SubmitEvent) {
     e.preventDefault();
     setSuccess(false);
+    setNcsImportResult(null);
     mutation.mutate();
   }
 
@@ -170,10 +182,16 @@ export default function AddPatientForm() {
             idPrefix="add-patient-seizure"
           />
         </Disclosure>
+        <div className="form-group">
+          <label htmlFor="add-patient-ncs-file">Nerve conduction study results (CSV)</label>
+          <input id="add-patient-ncs-file" ref={ncsFileRef} type="file" accept=".csv,text/csv" />
+          <p className="hint">{NCS_CSV_IMPORT_HINT}</p>
+        </div>
         {mutation.error && (
           <p className="form-error">{getErrorMessage(mutation.error)}</p>
         )}
         {success && <p className="form-success">Patient created successfully.</p>}
+        {ncsImportResult && <NcsCsvImportResult result={ncsImportResult} />}
         <button className="btn btn-primary" type="submit" disabled={mutation.isPending}>
           {mutation.isPending ? 'Creating…' : 'Create Patient'}
         </button>

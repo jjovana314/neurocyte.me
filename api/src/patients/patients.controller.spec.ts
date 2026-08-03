@@ -29,6 +29,7 @@ describe('PatientsController', () => {
     getPatientSeizureLogs: jest.fn(),
     addNcsStudy: jest.fn(),
     getPatientNcsStudies: jest.fn(),
+    importNcsStudiesCsv: jest.fn(),
   };
 
   const mockUserService = {
@@ -480,49 +481,6 @@ describe('PatientsController', () => {
     });
   });
 
-  describe('addNcsStudy', () => {
-    it('should call patientsService.addNcsStudy with user id and dto', async () => {
-      const dto = {
-        nerveName: 'Median',
-        studyType: 'MOTOR',
-        distanceMm: 200,
-        distalSite: { latencyMs: 3.2, amplitude: 8.5 },
-        patientId: 0,
-      } as any;
-      const mockStudy = {
-        id: 1,
-        patientId: 5,
-        nerveName: 'Median',
-      } as any;
-      mockPatientsService.addNcsStudy.mockResolvedValue(mockStudy);
-
-      const result = await controller.addNcsStudy(mockUser, '5', dto);
-
-      expect(mockPatientsService.addNcsStudy).toHaveBeenCalledWith(1, {
-        ...dto,
-        patientId: 5,
-      });
-      expect(result).toBe(mockStudy);
-    });
-
-    it('should propagate BadRequestException thrown by the service for an invalid payload', async () => {
-      mockPatientsService.addNcsStudy.mockRejectedValue(
-        new BadRequestException(
-          'Conduction distance_mm must be strictly positive.',
-        ),
-      );
-
-      await expect(
-        controller.addNcsStudy(mockUser, '5', {
-          nerveName: 'Median',
-          studyType: 'MOTOR',
-          distanceMm: -1,
-          distalSite: { latencyMs: 3.2, amplitude: 8.5 },
-        } as any),
-      ).rejects.toThrow(BadRequestException);
-    });
-  });
-
   describe('getPatientNcsStudies', () => {
     it('should call patientsService.getPatientNcsStudies with user id and patient id', async () => {
       const mockStudies = [{ id: 1, nerveName: 'Median' }] as any[];
@@ -543,6 +501,33 @@ describe('PatientsController', () => {
       const result = await controller.getPatientNcsStudies(mockUser, '5');
 
       expect(result).toEqual([]);
+    });
+  });
+
+  describe('importNcsStudies', () => {
+    it('should call patientsService.importNcsStudiesCsv with user id, patient id and file buffer', async () => {
+      const buffer = Buffer.from(
+        'nerveName,studyType,distanceMm,distalLatencyMs,distalAmplitude\nMedian,MOTOR,200,3.2,8.5',
+      );
+      const file = Object.assign(new MultipartFile(), {
+        fieldname: 'file',
+        originalname: 'ncs-studies.csv',
+        encoding: '7bit',
+        mimetype: 'text/csv',
+        buffer,
+        size: buffer.length,
+      });
+      const mockResponse = { imported: 1, skipped: 0, errors: [] };
+      mockPatientsService.importNcsStudiesCsv.mockResolvedValue(mockResponse);
+
+      const result = await controller.importNcsStudies(mockUser, '5', file);
+
+      expect(mockPatientsService.importNcsStudiesCsv).toHaveBeenCalledWith(
+        1,
+        5,
+        buffer,
+      );
+      expect(result).toBe(mockResponse);
     });
   });
 

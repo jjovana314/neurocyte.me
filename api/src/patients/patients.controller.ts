@@ -26,7 +26,6 @@ import {
   CreateFamilyHistoryDto,
   CreateMigraineLogDto,
   CreateSeizureLogDto,
-  CreateNcsStudyDto,
   ImportCsvResponseDto,
   UpdatePatientNotesDto,
 } from './dtos';
@@ -312,23 +311,6 @@ export class PatientsController {
   }
 
   /**
-   * Record a nerve conduction study (NCS) for a patient. Latency/amplitude
-   * measurements are sent to the calculator service, which derives the
-   * conduction velocity and diagnostic classification.
-   * POST /patients/:id/ncs-studies
-   */
-  @Post(':id/ncs-studies')
-  @HttpCode(HttpStatus.CREATED)
-  async addNcsStudy(
-    @CurrentUser() user: JwtUser,
-    @Param('id') patientId: string,
-    @Body() createNcsStudyDto: CreateNcsStudyDto,
-  ): Promise<NcsStudy> {
-    createNcsStudyDto.patientId = parseInt(patientId, 10);
-    return this.patientsService.addNcsStudy(user.id, createNcsStudyDto);
-  }
-
-  /**
    * Get a patient's nerve conduction study history
    * GET /patients/:id/ncs-studies
    */
@@ -340,6 +322,34 @@ export class PatientsController {
     return this.patientsService.getPatientNcsStudies(
       user.id,
       parseInt(patientId, 10),
+    );
+  }
+
+  /**
+   * Bulk-import nerve conduction studies for a patient from a CSV file.
+   * Each row is sent to the calculator service just like a manually
+   * entered study.
+   * POST /patients/:id/ncs-studies/import
+   */
+  @Post(':id/ncs-studies/import')
+  @HttpCode(HttpStatus.OK)
+  @UseInterceptors(FileInterceptor('file'))
+  async importNcsStudies(
+    @CurrentUser() user: JwtUser,
+    @Param('id') patientId: string,
+    @UploadedFile(
+      new ParseFilePipe({
+        validators: [
+          new FileTypeValidator({ fileType: 'csv', fallbackToMimetype: true }),
+        ],
+      }),
+    )
+    file: MultipartFile,
+  ): Promise<ImportCsvResponseDto> {
+    return this.patientsService.importNcsStudiesCsv(
+      user.id,
+      parseInt(patientId, 10),
+      file.buffer,
     );
   }
 }
