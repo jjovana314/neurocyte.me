@@ -259,6 +259,21 @@ td {
   background: #ffe4e6;
   color: #be123c;
 }
+.ncs-diagnosis-badge {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 12px;
+  font-size: 11px;
+  font-weight: 600;
+}
+.ncs-diagnosis-badge.ncs-normal {
+  background: #dcfce7;
+  color: #166534;
+}
+.ncs-diagnosis-badge.ncs-abnormal {
+  background: #fee2e2;
+  color: #991b1b;
+}
 .section-header {
   display: flex;
   align-items: center;

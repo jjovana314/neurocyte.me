@@ -23,6 +23,7 @@ import {
   MotorFeature,
   SeizureTrigger,
 } from './entities/seizure-log.entity';
+import { NcsStudy, NcsStudyType } from './entities/ncs-study.entity';
 import { User } from 'src/auth/entites/user.entity';
 import PDFDocument from 'pdfkit';
 import {
@@ -31,6 +32,7 @@ import {
   CreateFamilyHistoryDto,
   CreateMigraineLogDto,
   CreateSeizureLogDto,
+  CreateNcsStudyDto,
   EdssAssessmentDataDto,
   ImportCsvResponseDto,
   UpdatePatientNotesDto,
@@ -39,6 +41,8 @@ import { maskString } from './utils/masking';
 import {
   CALCULATOR_SERVICE_NAME,
   CalculatorServiceClient,
+  NcsResponse,
+  StudyType as GrpcStudyType,
 } from 'src/calculator-client/generated/calculator';
 import {
   PatientCreateForbiddenException,
@@ -64,6 +68,8 @@ export class PatientsService implements OnModuleInit {
     private migraineLogRepository: Repository<MigraineLog>,
     @InjectRepository(SeizureLog)
     private seizureLogRepository: Repository<SeizureLog>,
+    @InjectRepository(NcsStudy)
+    private ncsStudyRepository: Repository<NcsStudy>,
     @InjectRepository(User) private userRepository: Repository<User>,
     private readonly logger: PinoLogger,
     @Inject('CALCULATOR_PACKAGE') private readonly calculatorClient: ClientGrpc,
@@ -355,6 +361,127 @@ export class PatientsService implements OnModuleInit {
   }
 
   @errorHandler
+  async addNcsStudy(
+    doctorId: number,
+    createNcsStudyDto: CreateNcsStudyDto,
+  ): Promise<NcsStudy> {
+    // Verify patient exists
+    const patient = await this.patientRepository.findOne({
+      where: { id: createNcsStudyDto.patientId },
+    });
+    if (!patient) {
+      throw new PatientNotFoundException(createNcsStudyDto.patientId);
+    }
+
+    // Verify that the requester is the doctor who created this patient
+    if (patient.doctorId !== doctorId) {
+      this.logger.warn(
+        `Doctor ${doctorId} attempted to access patient ${createNcsStudyDto.patientId} created by doctor ${patient.doctorId}`,
+      );
+      throw new AccessToPatientForbiddenException();
+    }
+
+    const ncsStudy = await this.buildNcsStudy(createNcsStudyDto);
+    ncsStudy.patientId = createNcsStudyDto.patientId;
+
+    const savedNcsStudy = await this.ncsStudyRepository.save(ncsStudy);
+    this.logger.info(
+      `NCS study (${createNcsStudyDto.nerveName}) added to patient ${createNcsStudyDto.patientId}`,
+    );
+
+    return savedNcsStudy;
+  }
+
+  @errorHandler
+  async getPatientNcsStudies(
+    doctorId: number,
+    patientId: number,
+  ): Promise<NcsStudy[]> {
+    // Verify permissions first
+    const patient = await this.patientRepository.findOne({
+      where: { id: patientId },
+    });
+    if (!patient) {
+      throw new PatientNotFoundException(patientId);
+    }
+
+    if (patient.doctorId !== doctorId) {
+      throw new AccessToPatientForbiddenException();
+    }
+
+    return this.ncsStudyRepository.find({
+      where: { patientId },
+      order: { recordedAt: 'DESC' },
+    });
+  }
+
+  // Sends the raw electrophysiological measurements to the calculator
+  // service and stores both the input and the derived diagnostic result -
+  // the client never supplies the derived fields directly.
+  private async buildNcsStudy(
+    dto: Omit<CreateNcsStudyDto, 'patientId'>,
+  ): Promise<NcsStudy> {
+    const grpcStudyType =
+      dto.studyType === NcsStudyType.MOTOR
+        ? GrpcStudyType.MOTOR
+        : GrpcStudyType.SENSORY;
+
+    let response: NcsResponse;
+
+    // todo: fix this, add error handler and parser for errors from other service
+    try {
+      response = await firstValueFrom(
+        this.calculatorService.calculateNcs({
+          nerveName: dto.nerveName,
+          studyType: grpcStudyType,
+          distanceMm: dto.distanceMm,
+          distalSite: {
+            latencyMs: dto.distalSite.latencyMs,
+            amplitude: dto.distalSite.amplitude,
+            durationMs: dto.distalSite.durationMs,
+          },
+          proximalSite: dto.proximalSite
+            ? {
+                latencyMs: dto.proximalSite.latencyMs,
+                amplitude: dto.proximalSite.amplitude,
+                durationMs: dto.proximalSite.durationMs,
+              }
+            : undefined,
+          skinTemperatureCelsius: dto.skinTemperatureCelsius,
+        }),
+      );
+    } catch (error) {
+      if (error?.code === GrpcStatus.INVALID_ARGUMENT) {
+        throw new BadRequestException(error.details);
+      }
+      throw error;
+    }
+
+    const ncsStudy = new NcsStudy();
+    ncsStudy.nerveName = dto.nerveName;
+    ncsStudy.studyType = dto.studyType;
+    ncsStudy.distanceMm = dto.distanceMm;
+    ncsStudy.distalLatencyMs = dto.distalSite.latencyMs;
+    ncsStudy.distalAmplitude = dto.distalSite.amplitude;
+    ncsStudy.distalDurationMs = dto.distalSite.durationMs ?? null;
+    ncsStudy.proximalLatencyMs = dto.proximalSite?.latencyMs ?? null;
+    ncsStudy.proximalAmplitude = dto.proximalSite?.amplitude ?? null;
+    ncsStudy.proximalDurationMs = dto.proximalSite?.durationMs ?? null;
+    ncsStudy.skinTemperatureCelsius = dto.skinTemperatureCelsius ?? null;
+    ncsStudy.conductionVelocityMPerS = response.conductionVelocityMPerS ?? null;
+    ncsStudy.amplitudeDropPercent = response.amplitudeDropPercent ?? null;
+    ncsStudy.temporalDispersionPercent =
+      response.temporalDispersionPercent ?? null;
+    ncsStudy.isNormal = response.isNormal;
+    ncsStudy.axonalLoss = response.axonalLoss;
+    ncsStudy.demyelination = response.demyelination;
+    ncsStudy.conductionBlock = response.conductionBlock;
+    ncsStudy.diagnosticSummary = response.diagnosticSummary;
+
+    return ncsStudy;
+  }
+
+  @errorHandler
   async getPatient(doctorId: number, patientId: number): Promise<Patient> {
     const patient = await this.patientRepository.findOne({
       where: { id: patientId },
@@ -364,6 +491,7 @@ export class PatientsService implements OnModuleInit {
         'edssAssessments',
         'migraineLogs',
         'seizureLogs',
+        'ncsStudies',
         'doctor',
       ],
     });
@@ -396,6 +524,7 @@ export class PatientsService implements OnModuleInit {
         'edssAssessments',
         'migraineLogs',
         'seizureLogs',
+        'ncsStudies',
       ],
       order: { createdAt: 'DESC' },
     });
@@ -693,6 +822,7 @@ export class PatientsService implements OnModuleInit {
     await this.familyHistoryRepository.delete({ patientId });
     await this.migraineLogRepository.delete({ patientId });
     await this.seizureLogRepository.delete({ patientId });
+    await this.ncsStudyRepository.delete({ patientId });
     await this.patientRepository.delete({ id: patientId });
 
     this.logger.info(`Patient ${patientId} deleted by doctor ${doctorId}`);

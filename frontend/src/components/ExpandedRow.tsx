@@ -7,12 +7,27 @@ import { EDSS_FSS_FIELDS } from '../constants/edss';
 import EdssAssessmentForm from './EdssAssessmentForm';
 import MigraineLogForm from './MigraineLogForm';
 import SeizureLogForm from './SeizureLogForm';
+import NcsStudyForm from './NcsStudyForm';
 import {
   EMPTY_EDSS_FORM_STATE,
   edssFormStateToInput,
   type EdssFormState,
 } from '../utils/edssForm';
 import { MOTOR_FEATURE_OPTIONS, SEIZURE_TRIGGER_OPTIONS } from '../constants/seizure';
+import { NCS_STUDY_TYPE_OPTIONS } from '../constants/ncs';
+
+const NCS_STUDY_TYPE_LABELS = Object.fromEntries(
+  NCS_STUDY_TYPE_OPTIONS.map((opt) => [opt.value, opt.label]),
+);
+
+function ncsDiagnosisSummary(study: Patient['ncsStudies'][number]): string {
+  if (study.isNormal) return 'Normal';
+  const findings: string[] = [];
+  if (study.demyelination) findings.push('Demyelination');
+  if (study.axonalLoss) findings.push('Axonal loss');
+  if (study.conductionBlock) findings.push('Conduction block');
+  return findings.join(', ') || 'Abnormal';
+}
 
 const MOTOR_FEATURE_LABELS = Object.fromEntries(
   MOTOR_FEATURE_OPTIONS.map((opt) => [opt.value, opt.label]),
@@ -55,6 +70,7 @@ export default function ExpandedRow({ patient }: Props) {
   const [edssForm, setEdssForm] = useState<EdssFormState>(EMPTY_EDSS_FORM_STATE);
   const [addingMigraineLog, setAddingMigraineLog] = useState(false);
   const [addingSeizureLog, setAddingSeizureLog] = useState(false);
+  const [addingNcsStudy, setAddingNcsStudy] = useState(false);
 
   const mutation = useMutation({
     mutationFn: () =>
@@ -94,6 +110,9 @@ export default function ExpandedRow({ patient }: Props) {
   );
   const seizureLogs = [...(patient.seizureLogs ?? [])].sort(
     (a, b) => new Date(b.ictusStart).getTime() - new Date(a.ictusStart).getTime(),
+  );
+  const ncsStudies = [...(patient.ncsStudies ?? [])].sort(
+    (a, b) => new Date(b.recordedAt).getTime() - new Date(a.recordedAt).getTime(),
   );
 
   const hasDemographics = patient.dateOfBirth || patient.gender || patient.phone || patient.email;
@@ -321,6 +340,71 @@ export default function ExpandedRow({ patient }: Props) {
                       {log.triggers.length > 0
                         ? log.triggers.map((t) => SEIZURE_TRIGGER_LABELS[t] ?? t).join(', ')
                         : '—'}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+
+      <div className="expanded-section">
+        <div className="section-header">
+          <h4>Nerve Conduction Studies</h4>
+          {!addingNcsStudy && (
+            <button className="btn btn-sm" onClick={() => setAddingNcsStudy(true)}>
+              Add NCS study
+            </button>
+          )}
+        </div>
+
+        {addingNcsStudy && (
+          <NcsStudyForm
+            patientId={patient.id}
+            idPrefix={`ncs-${patient.id}`}
+            onDone={() => setAddingNcsStudy(false)}
+          />
+        )}
+
+        {ncsStudies.length === 0 ? (
+          <p className="empty-note">No nerve conduction studies recorded.</p>
+        ) : (
+          <div className="table-scroll">
+            <table className="inner-table">
+              <thead>
+                <tr>
+                  <th>Recorded</th>
+                  <th>Nerve</th>
+                  <th>Type</th>
+                  <th>Conduction Velocity</th>
+                  <th>Amplitude Drop</th>
+                  <th>Diagnosis</th>
+                </tr>
+              </thead>
+              <tbody>
+                {ncsStudies.map((study) => (
+                  <tr key={study.id}>
+                    <td>{new Date(study.recordedAt).toLocaleDateString()}</td>
+                    <td>{study.nerveName}</td>
+                    <td>{NCS_STUDY_TYPE_LABELS[study.studyType] ?? study.studyType}</td>
+                    <td>
+                      {study.conductionVelocityMPerS != null
+                        ? `${study.conductionVelocityMPerS} m/s`
+                        : '—'}
+                    </td>
+                    <td>
+                      {study.amplitudeDropPercent != null
+                        ? `${study.amplitudeDropPercent}%`
+                        : '—'}
+                    </td>
+                    <td>
+                      <span
+                        className={`ncs-diagnosis-badge ${study.isNormal ? 'ncs-normal' : 'ncs-abnormal'}`}
+                        title={study.diagnosticSummary}
+                      >
+                        {ncsDiagnosisSummary(study)}
+                      </span>
                     </td>
                   </tr>
                 ))}

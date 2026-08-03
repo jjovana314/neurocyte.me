@@ -27,6 +27,8 @@ describe('PatientsController', () => {
     getPatientMigraineLogs: jest.fn(),
     addSeizureLog: jest.fn(),
     getPatientSeizureLogs: jest.fn(),
+    addNcsStudy: jest.fn(),
+    getPatientNcsStudies: jest.fn(),
   };
 
   const mockUserService = {
@@ -473,6 +475,72 @@ describe('PatientsController', () => {
       mockPatientsService.getPatientSeizureLogs.mockResolvedValue([]);
 
       const result = await controller.getPatientSeizureLogs(mockUser, '5');
+
+      expect(result).toEqual([]);
+    });
+  });
+
+  describe('addNcsStudy', () => {
+    it('should call patientsService.addNcsStudy with user id and dto', async () => {
+      const dto = {
+        nerveName: 'Median',
+        studyType: 'MOTOR',
+        distanceMm: 200,
+        distalSite: { latencyMs: 3.2, amplitude: 8.5 },
+        patientId: 0,
+      } as any;
+      const mockStudy = {
+        id: 1,
+        patientId: 5,
+        nerveName: 'Median',
+      } as any;
+      mockPatientsService.addNcsStudy.mockResolvedValue(mockStudy);
+
+      const result = await controller.addNcsStudy(mockUser, '5', dto);
+
+      expect(mockPatientsService.addNcsStudy).toHaveBeenCalledWith(1, {
+        ...dto,
+        patientId: 5,
+      });
+      expect(result).toBe(mockStudy);
+    });
+
+    it('should propagate BadRequestException thrown by the service for an invalid payload', async () => {
+      mockPatientsService.addNcsStudy.mockRejectedValue(
+        new BadRequestException(
+          'Conduction distance_mm must be strictly positive.',
+        ),
+      );
+
+      await expect(
+        controller.addNcsStudy(mockUser, '5', {
+          nerveName: 'Median',
+          studyType: 'MOTOR',
+          distanceMm: -1,
+          distalSite: { latencyMs: 3.2, amplitude: 8.5 },
+        } as any),
+      ).rejects.toThrow(BadRequestException);
+    });
+  });
+
+  describe('getPatientNcsStudies', () => {
+    it('should call patientsService.getPatientNcsStudies with user id and patient id', async () => {
+      const mockStudies = [{ id: 1, nerveName: 'Median' }] as any[];
+      mockPatientsService.getPatientNcsStudies.mockResolvedValue(mockStudies);
+
+      const result = await controller.getPatientNcsStudies(mockUser, '5');
+
+      expect(mockPatientsService.getPatientNcsStudies).toHaveBeenCalledWith(
+        1,
+        5,
+      );
+      expect(result).toBe(mockStudies);
+    });
+
+    it('should return an empty array when the patient has no NCS studies yet', async () => {
+      mockPatientsService.getPatientNcsStudies.mockResolvedValue([]);
+
+      const result = await controller.getPatientNcsStudies(mockUser, '5');
 
       expect(result).toEqual([]);
     });

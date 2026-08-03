@@ -12,6 +12,7 @@ import {
   MotorFeature,
   SeizureTrigger,
 } from './entities/seizure-log.entity';
+import { NcsStudy, NcsStudyType } from './entities/ncs-study.entity';
 import { User } from 'src/auth/entites/user.entity';
 import { PinoLogger } from 'nestjs-pino';
 import {
@@ -69,6 +70,13 @@ describe('PatientsService', () => {
     delete: jest.fn(),
   };
 
+  const mockNcsStudyRepository = {
+    findOne: jest.fn(),
+    find: jest.fn(),
+    save: jest.fn(),
+    delete: jest.fn(),
+  };
+
   const mockUserRepository = {
     findOne: jest.fn(),
   };
@@ -86,6 +94,7 @@ describe('PatientsService', () => {
   // sends the right request shape and persists whatever score comes back.
   const mockCalculatorServiceClient = {
     calculateEdss: jest.fn(),
+    calculateNcs: jest.fn(),
   };
 
   const mockCalculatorClientGrpc = {
@@ -123,6 +132,10 @@ describe('PatientsService', () => {
         {
           provide: getRepositoryToken(SeizureLog),
           useValue: mockSeizureLogRepository,
+        },
+        {
+          provide: getRepositoryToken(NcsStudy),
+          useValue: mockNcsStudyRepository,
         },
         { provide: getRepositoryToken(User), useValue: mockUserRepository },
         { provide: PinoLogger, useValue: mockLogger },
@@ -890,6 +903,170 @@ describe('PatientsService', () => {
 
       await expect(
         service.getPatientSeizureLogs(doctorId, patientId),
+      ).rejects.toThrow(ForbiddenException);
+    });
+  });
+
+  describe('addNcsStudy', () => {
+    const doctorId = 1;
+    const patientId = 5;
+    const baseDto = {
+      patientId,
+      nerveName: 'Median',
+      studyType: NcsStudyType.MOTOR,
+      distanceMm: 200,
+      distalSite: { latencyMs: 3.2, amplitude: 8.5 },
+    };
+    const mockCalcResult = {
+      nerveName: 'Median',
+      conductionVelocityMPerS: 55.5,
+      amplitudeDropPercent: 10,
+      temporalDispersionPercent: 5,
+      isNormal: true,
+      axonalLoss: false,
+      demyelination: false,
+      conductionBlock: false,
+      diagnosticSummary: 'Normal MOTOR conduction parameters for Median nerve.',
+    };
+
+    beforeEach(() => {
+      mockPatientRepository.findOne.mockResolvedValue({
+        id: patientId,
+        doctorId,
+      });
+      mockCalculatorServiceClient.calculateNcs.mockReturnValue(
+        of(mockCalcResult),
+      );
+      mockNcsStudyRepository.save.mockImplementation((s) =>
+        Promise.resolve({ id: 1, ...s }),
+      );
+    });
+
+    it('should send the measurements to the calculator and persist the derived result', async () => {
+      const result = await service.addNcsStudy(doctorId, baseDto);
+
+      expect(mockCalculatorServiceClient.calculateNcs).toHaveBeenCalledWith(
+        expect.objectContaining({
+          nerveName: 'Median',
+          studyType: 1, // GrpcStudyType.MOTOR
+          distanceMm: 200,
+          distalSite: { latencyMs: 3.2, amplitude: 8.5, durationMs: undefined },
+        }),
+      );
+      expect(mockNcsStudyRepository.save).toHaveBeenCalledWith(
+        expect.objectContaining({
+          patientId,
+          nerveName: 'Median',
+          conductionVelocityMPerS: 55.5,
+          isNormal: true,
+        }),
+      );
+      expect(result).toEqual(expect.objectContaining({ nerveName: 'Median' }));
+    });
+
+    it('should include the proximal site and skin temperature when provided', async () => {
+      await service.addNcsStudy(doctorId, {
+        ...baseDto,
+        proximalSite: { latencyMs: 7.1, amplitude: 7.9, durationMs: 6 },
+        skinTemperatureCelsius: 28,
+      });
+
+      expect(mockCalculatorServiceClient.calculateNcs).toHaveBeenCalledWith(
+        expect.objectContaining({
+          proximalSite: { latencyMs: 7.1, amplitude: 7.9, durationMs: 6 },
+          skinTemperatureCelsius: 28,
+        }),
+      );
+      expect(mockNcsStudyRepository.save).toHaveBeenCalledWith(
+        expect.objectContaining({
+          proximalLatencyMs: 7.1,
+          proximalAmplitude: 7.9,
+          proximalDurationMs: 6,
+          skinTemperatureCelsius: 28,
+        }),
+      );
+    });
+
+    it('should map SENSORY study type to the corresponding gRPC enum value', async () => {
+      await service.addNcsStudy(doctorId, {
+        ...baseDto,
+        studyType: NcsStudyType.SENSORY,
+      });
+
+      expect(mockCalculatorServiceClient.calculateNcs).toHaveBeenCalledWith(
+        expect.objectContaining({ studyType: 2 }), // GrpcStudyType.SENSORY
+      );
+    });
+
+    it('should throw NotFoundException when patient does not exist', async () => {
+      mockPatientRepository.findOne.mockResolvedValue(null);
+
+      await expect(service.addNcsStudy(doctorId, baseDto)).rejects.toThrow(
+        NotFoundException,
+      );
+      expect(mockNcsStudyRepository.save).not.toHaveBeenCalled();
+    });
+
+    it('should throw ForbiddenException when doctor does not own the patient', async () => {
+      mockPatientRepository.findOne.mockResolvedValue({
+        id: patientId,
+        doctorId: 999,
+      });
+
+      await expect(service.addNcsStudy(doctorId, baseDto)).rejects.toThrow(
+        ForbiddenException,
+      );
+    });
+
+    it('should surface calculator INVALID_ARGUMENT errors as BadRequestException and not persist', async () => {
+      mockCalculatorServiceClient.calculateNcs.mockReturnValueOnce(
+        throwError(() => ({
+          code: GrpcStatus.INVALID_ARGUMENT,
+          details: 'Conduction distance_mm must be strictly positive.',
+        })),
+      );
+
+      await expect(
+        service.addNcsStudy(doctorId, { ...baseDto, distanceMm: -1 }),
+      ).rejects.toThrow(BadRequestException);
+
+      expect(mockNcsStudyRepository.save).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('getPatientNcsStudies', () => {
+    const doctorId = 1;
+    const patientId = 5;
+
+    it('should return the NCS study history ordered by most recent', async () => {
+      mockPatientRepository.findOne.mockResolvedValue({
+        id: patientId,
+        doctorId,
+      });
+      const mockStudies = [{ id: 1, nerveName: 'Median' }];
+      mockNcsStudyRepository.find.mockResolvedValue(mockStudies);
+
+      const result = await service.getPatientNcsStudies(doctorId, patientId);
+
+      expect(result).toEqual(mockStudies);
+    });
+
+    it('should throw NotFoundException when patient does not exist', async () => {
+      mockPatientRepository.findOne.mockResolvedValue(null);
+
+      await expect(
+        service.getPatientNcsStudies(doctorId, patientId),
+      ).rejects.toThrow(NotFoundException);
+    });
+
+    it('should throw ForbiddenException when doctor does not own the patient', async () => {
+      mockPatientRepository.findOne.mockResolvedValue({
+        id: patientId,
+        doctorId: 999,
+      });
+
+      await expect(
+        service.getPatientNcsStudies(doctorId, patientId),
       ).rejects.toThrow(ForbiddenException);
     });
   });

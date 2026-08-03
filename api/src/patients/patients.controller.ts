@@ -26,6 +26,7 @@ import {
   CreateFamilyHistoryDto,
   CreateMigraineLogDto,
   CreateSeizureLogDto,
+  CreateNcsStudyDto,
   ImportCsvResponseDto,
   UpdatePatientNotesDto,
 } from './dtos';
@@ -35,6 +36,7 @@ import { FamilyHistory } from './entities/family-history.entity';
 import { EdssAssesment } from './entities/edss-assesment.entity';
 import { MigraineLog } from './entities/migraine-log.entity';
 import { SeizureLog } from './entities/seizure-log.entity';
+import { NcsStudy } from './entities/ncs-study.entity';
 import { CurrentUser } from 'src/auth/decorators/current-user.decorator';
 import { JwtUser } from 'src/auth/classes/jwt-user.class';
 import { MultipartFile } from 'src/common/multipart-file';
@@ -304,6 +306,38 @@ export class PatientsController {
     @Param('id') patientId: string,
   ): Promise<SeizureLog[]> {
     return this.patientsService.getPatientSeizureLogs(
+      user.id,
+      parseInt(patientId, 10),
+    );
+  }
+
+  /**
+   * Record a nerve conduction study (NCS) for a patient. Latency/amplitude
+   * measurements are sent to the calculator service, which derives the
+   * conduction velocity and diagnostic classification.
+   * POST /patients/:id/ncs-studies
+   */
+  @Post(':id/ncs-studies')
+  @HttpCode(HttpStatus.CREATED)
+  async addNcsStudy(
+    @CurrentUser() user: JwtUser,
+    @Param('id') patientId: string,
+    @Body() createNcsStudyDto: CreateNcsStudyDto,
+  ): Promise<NcsStudy> {
+    createNcsStudyDto.patientId = parseInt(patientId, 10);
+    return this.patientsService.addNcsStudy(user.id, createNcsStudyDto);
+  }
+
+  /**
+   * Get a patient's nerve conduction study history
+   * GET /patients/:id/ncs-studies
+   */
+  @Get(':id/ncs-studies')
+  async getPatientNcsStudies(
+    @CurrentUser() user: JwtUser,
+    @Param('id') patientId: string,
+  ): Promise<NcsStudy[]> {
+    return this.patientsService.getPatientNcsStudies(
       user.id,
       parseInt(patientId, 10),
     );

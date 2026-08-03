@@ -8,6 +8,7 @@ import { FamilyHistory } from './entities/family-history.entity';
 import { EdssAssesment } from './entities/edss-assesment.entity';
 import { MigraineLog } from './entities/migraine-log.entity';
 import { SeizureLog } from './entities/seizure-log.entity';
+import { NcsStudy } from './entities/ncs-study.entity';
 import { User } from 'src/auth/entites/user.entity';
 import { UserModule } from 'src/user/user.module';
 import { ClientsModule, Transport } from '@nestjs/microservices';
@@ -24,6 +25,7 @@ import { CALCULATOR_PACKAGE_NAME } from 'src/calculator-client/generated/calcula
       EdssAssesment,
       MigraineLog,
       SeizureLog,
+      NcsStudy,
       User,
     ]),
     ClientsModule.register([

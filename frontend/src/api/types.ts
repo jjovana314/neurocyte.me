@@ -124,6 +124,48 @@ export interface CreateSeizureLogDto {
   notes?: string;
 }
 
+export type NcsStudyType = 'MOTOR' | 'SENSORY';
+
+export interface NcsSegmentMeasurement {
+  latencyMs: number;
+  amplitude: number; // mV for Motor (CMAP), uV for Sensory (SNAP)
+  durationMs?: number | null;
+}
+
+export interface NcsStudy {
+  id: number;
+  patientId: number;
+  nerveName: string;
+  studyType: NcsStudyType;
+  distanceMm: number;
+  distalLatencyMs: number;
+  distalAmplitude: number;
+  distalDurationMs: number | null;
+  proximalLatencyMs: number | null;
+  proximalAmplitude: number | null;
+  proximalDurationMs: number | null;
+  skinTemperatureCelsius: number | null;
+  conductionVelocityMPerS: number | null;
+  amplitudeDropPercent: number | null;
+  temporalDispersionPercent: number | null;
+  isNormal: boolean;
+  axonalLoss: boolean;
+  demyelination: boolean;
+  conductionBlock: boolean;
+  diagnosticSummary: string;
+  recordedAt: string;
+}
+
+export interface CreateNcsStudyDto {
+  patientId?: number;
+  nerveName: string;
+  studyType: NcsStudyType;
+  distanceMm: number;
+  distalSite: NcsSegmentMeasurement;
+  proximalSite?: NcsSegmentMeasurement;
+  skinTemperatureCelsius?: number;
+}
+
 export interface Patient {
   id: number;
   doctorId: number;
@@ -140,6 +182,7 @@ export interface Patient {
   edssAssessments: EdssAssessment[];
   migraineLogs: MigraineLog[];
   seizureLogs: SeizureLog[];
+  ncsStudies: NcsStudy[];
 }
 
 export interface CreatePatientDto {

@@ -7,10 +7,12 @@ import type {
   CreateFamilyHistoryDto,
   CreateMigraineLogDto,
   CreateSeizureLogDto,
+  CreateNcsStudyDto,
   PatientHistory,
   FamilyHistory,
   MigraineLog,
   SeizureLog,
+  NcsStudy,
   ImportCsvResponse,
 } from './types';
 
@@ -70,6 +72,14 @@ export async function addSeizureLog(
   dto: CreateSeizureLogDto,
 ): Promise<SeizureLog> {
   const { data } = await client.post<SeizureLog>(`/patients/${patientId}/seizures`, dto);
+  return data;
+}
+
+export async function addNcsStudy(
+  patientId: number,
+  dto: CreateNcsStudyDto,
+): Promise<NcsStudy> {
+  const { data } = await client.post<NcsStudy>(`/patients/${patientId}/ncs-studies`, dto);
   return data;
 }
 
