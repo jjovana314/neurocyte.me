@@ -6,7 +6,7 @@ import {
   OnModuleInit,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Brackets, Repository } from 'typeorm';
 import { PinoLogger } from 'nestjs-pino';
 import { ClientGrpc } from '@nestjs/microservices';
 import { status as GrpcStatus } from '@grpc/grpc-js';
@@ -51,6 +51,8 @@ import {
   AccessToPatientForbiddenException,
 } from 'src/common/exceptions';
 import { dateValidation } from './utils/validation';
+import { SearchPatientDto } from './dtos/search-patient.dto';
+import { PatientSearchResult } from './interfaces/search-result.interface';
 
 @Injectable()
 export class PatientsService implements OnModuleInit {
@@ -148,6 +150,70 @@ export class PatientsService implements OnModuleInit {
     }
 
     return savedPatient;
+  }
+
+  // Free-text search bar: matches a single query term against name, email
+  // and phone with OR semantics (any field matching is a hit), scoped to
+  // the requesting doctor's own patients unless they're a Support Engineer.
+  @errorHandler
+  async search(
+    doctorId: number,
+    roleName: string,
+    searchPatient: SearchPatientDto,
+  ): Promise<PatientSearchResult> {
+    const page =
+      searchPatient.options?.page && searchPatient.options.page > 0
+        ? searchPatient.options.page
+        : 1;
+    const pageSize =
+      searchPatient.options?.pageSize && searchPatient.options.pageSize > 0
+        ? searchPatient.options.pageSize
+        : 20;
+
+    const qb = this.patientRepository.createQueryBuilder('patient');
+
+    if (roleName !== 'Support Engineer') {
+      qb.andWhere('patient.doctorId = :doctorId', { doctorId });
+    }
+
+    const term = searchPatient.query?.trim();
+    if (term) {
+      qb.andWhere(
+        new Brackets((qb2) => {
+          qb2
+            .where('patient.name LIKE :term', { term: `%${term}%` })
+            .orWhere('patient.email LIKE :term', { term: `%${term}%` })
+            .orWhere('patient.phone LIKE :term', { term: `%${term}%` });
+
+          const numericId = Number(term);
+          if (Number.isInteger(numericId)) {
+            qb2.orWhere('patient.id = :id', { id: numericId });
+          }
+        }),
+      );
+    }
+
+    const sortColumn = this.resolveSearchSortColumn(searchPatient.options?.sortBy);
+    const sortOrder = searchPatient.options?.order === 'ASC' ? 'ASC' : 'DESC';
+
+    const [patients, total] = await qb
+      .orderBy(`patient.${sortColumn}`, sortOrder)
+      .skip((page - 1) * pageSize)
+      .take(pageSize)
+      .getManyAndCount();
+
+    this.logger.info(
+      `Patient search by user ${doctorId} (role: ${roleName}): "${term ?? ''}" matched ${total} result(s)`,
+    );
+
+    return { patients, total };
+  }
+
+  // orderBy() takes a raw column name, so the sort field must come from an
+  // allowlist rather than being interpolated directly from user input.
+  private resolveSearchSortColumn(sort?: string): string {
+    const allowedColumns = ['name', 'email', 'createdAt', 'updatedAt', 'dateOfBirth'];
+    return sort && allowedColumns.includes(sort) ? sort : 'createdAt';
   }
 
   async findUserById(userId: number): Promise<User> {
@@ -640,30 +706,6 @@ export class PatientsService implements OnModuleInit {
     }
 
     return patient;
-  }
-
-  @errorHandler
-  async getDoctorPatients(
-    doctorId: number,
-    roleName: string,
-  ): Promise<Patient[]> {
-    const patients = await this.patientRepository.find({
-      where: roleName === 'Support Engineer' ? {} : { doctorId },
-      relations: [
-        'medicalHistory',
-        'familyHistory',
-        'edssAssessments',
-        'migraineLogs',
-        'seizureLogs',
-        'ncsStudies',
-      ],
-      order: { createdAt: 'DESC' },
-    });
-
-    this.logger.info(
-      `Retrieved ${patients.length} patients for user ${doctorId} (role: ${roleName})`,
-    );
-    return patients;
   }
 
   @errorHandler

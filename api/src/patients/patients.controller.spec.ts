@@ -11,7 +11,7 @@ describe('PatientsController', () => {
 
   const mockPatientsService = {
     createPatient: jest.fn(),
-    getDoctorPatients: jest.fn(),
+    search: jest.fn(),
     exportPatientDataCsv: jest.fn(),
     exportPatientPdf: jest.fn(),
     importCsvData: jest.fn(),
@@ -127,18 +127,55 @@ describe('PatientsController', () => {
     });
   });
 
-  describe('getMyPatients', () => {
-    it('should call patientsService.getDoctorPatients with user id', async () => {
-      const mockPatients = [{ id: 1 }, { id: 2 }] as any[];
-      mockPatientsService.getDoctorPatients.mockResolvedValue(mockPatients);
+  describe('searchPatients', () => {
+    it('should call patientsService.search with user id, role name and the parsed query params', async () => {
+      const mockResult = { patients: [{ id: 1 }, { id: 2 }], total: 2 } as any;
+      mockPatientsService.search.mockResolvedValue(mockResult);
 
-      const result = await controller.getMyPatients(mockUser);
-
-      expect(mockPatientsService.getDoctorPatients).toHaveBeenCalledWith(
-        1,
-        'Doctor',
+      const result = await controller.searchPatients(
+        mockUser,
+        'jane',
+        '2',
+        '10',
+        'name',
+        'ASC',
       );
-      expect(result).toBe(mockPatients);
+
+      expect(mockPatientsService.search).toHaveBeenCalledWith(1, 'Doctor', {
+        query: 'jane',
+        options: {
+          page: 2,
+          pageSize: 10,
+          sortBy: 'name',
+          order: 'ASC',
+        },
+      });
+      expect(result).toBe(mockResult);
+    });
+
+    it('should still call the service when no query params are provided', async () => {
+      const mockResult = { patients: [], total: 0 } as any;
+      mockPatientsService.search.mockResolvedValue(mockResult);
+
+      const result = await controller.searchPatients(
+        mockUser,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+      );
+
+      expect(mockPatientsService.search).toHaveBeenCalledWith(1, 'Doctor', {
+        query: undefined,
+        options: {
+          page: NaN,
+          pageSize: NaN,
+          sortBy: undefined,
+          order: undefined,
+        },
+      });
+      expect(result).toBe(mockResult);
     });
   });
 

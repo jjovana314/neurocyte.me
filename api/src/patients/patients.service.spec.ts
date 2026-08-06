@@ -1,4 +1,5 @@
 import { Test, TestingModule } from '@nestjs/testing';
+import { Brackets } from 'typeorm';
 import { PatientsService } from './patients.service';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { Patient } from './entities/patient.entity';
@@ -33,6 +34,7 @@ describe('PatientsService', () => {
     save: jest.fn(),
     create: jest.fn(),
     delete: jest.fn(),
+    createQueryBuilder: jest.fn(),
   };
 
   const mockPatientHistoryRepository = {
@@ -1229,29 +1231,145 @@ describe('PatientsService', () => {
     });
   });
 
-  describe('getDoctorPatients', () => {
-    it('should request the migraineLogs and seizureLogs relations for the doctor patient list', async () => {
-      const doctorId = 1;
-      mockPatientRepository.find.mockResolvedValue([
-        {
-          id: 5,
-          doctorId,
-          migraineLogs: [{ id: 1, painSeverity: 7 }],
-          seizureLogs: [{ id: 1, onsetVector: OnsetVector.GENERALIZED }],
-        },
-      ]);
+  describe('search', () => {
+    let mockQueryBuilder: {
+      andWhere: jest.Mock;
+      orderBy: jest.Mock;
+      skip: jest.Mock;
+      take: jest.Mock;
+      getManyAndCount: jest.Mock;
+    };
 
-      const result = await service.getDoctorPatients(doctorId, 'Doctor');
-
-      expect(mockPatientRepository.find).toHaveBeenCalledWith(
-        expect.objectContaining({
-          relations: expect.arrayContaining(['migraineLogs', 'seizureLogs']),
-        }),
+    const getBracketsWhereFactory = (): ((qb: any) => any) => {
+      const call = mockQueryBuilder.andWhere.mock.calls.find(
+        ([arg]) => arg instanceof Brackets,
       );
-      expect(result[0].migraineLogs).toEqual([{ id: 1, painSeverity: 7 }]);
-      expect(result[0].seizureLogs).toEqual([
-        { id: 1, onsetVector: OnsetVector.GENERALIZED },
-      ]);
+      expect(call).toBeDefined();
+      return (call![0] as Brackets).whereFactory;
+    };
+
+    beforeEach(() => {
+      mockQueryBuilder = {
+        andWhere: jest.fn().mockReturnThis(),
+        orderBy: jest.fn().mockReturnThis(),
+        skip: jest.fn().mockReturnThis(),
+        take: jest.fn().mockReturnThis(),
+        getManyAndCount: jest.fn().mockResolvedValue([[], 0]),
+      };
+      mockPatientRepository.createQueryBuilder = jest
+        .fn()
+        .mockReturnValue(mockQueryBuilder);
+    });
+
+    it('scopes results to the doctor unless the caller is a Support Engineer', async () => {
+      await service.search(1, 'Doctor', {});
+
+      expect(mockQueryBuilder.andWhere).toHaveBeenCalledWith(
+        'patient.doctorId = :doctorId',
+        { doctorId: 1 },
+      );
+    });
+
+    it('does not scope by doctor for a Support Engineer', async () => {
+      await service.search(1, 'Support Engineer', {});
+
+      expect(mockQueryBuilder.andWhere).not.toHaveBeenCalledWith(
+        'patient.doctorId = :doctorId',
+        expect.anything(),
+      );
+    });
+
+    it('ORs the search term across name, email and phone', async () => {
+      await service.search(1, 'Doctor', { query: 'jane' });
+
+      const whereFactory = getBracketsWhereFactory();
+      const innerQb = {
+        where: jest.fn().mockReturnThis(),
+        orWhere: jest.fn().mockReturnThis(),
+      };
+      whereFactory(innerQb);
+
+      expect(innerQb.where).toHaveBeenCalledWith('patient.name LIKE :term', {
+        term: '%jane%',
+      });
+      expect(innerQb.orWhere).toHaveBeenCalledWith(
+        'patient.email LIKE :term',
+        { term: '%jane%' },
+      );
+      expect(innerQb.orWhere).toHaveBeenCalledWith(
+        'patient.phone LIKE :term',
+        { term: '%jane%' },
+      );
+    });
+
+    it('also matches by id when the query term is numeric', async () => {
+      await service.search(1, 'Doctor', { query: '42' });
+
+      const whereFactory = getBracketsWhereFactory();
+      const innerQb = {
+        where: jest.fn().mockReturnThis(),
+        orWhere: jest.fn().mockReturnThis(),
+      };
+      whereFactory(innerQb);
+
+      expect(innerQb.orWhere).toHaveBeenCalledWith('patient.id = :id', {
+        id: 42,
+      });
+    });
+
+    it('does not add a search clause when no query term is given', async () => {
+      await service.search(1, 'Doctor', {});
+
+      const bracketsCall = mockQueryBuilder.andWhere.mock.calls.find(
+        ([arg]) => arg instanceof Brackets,
+      );
+      expect(bracketsCall).toBeUndefined();
+    });
+
+    it('paginates using defaults when no options are given', async () => {
+      await service.search(1, 'Doctor', {});
+
+      expect(mockQueryBuilder.skip).toHaveBeenCalledWith(0);
+      expect(mockQueryBuilder.take).toHaveBeenCalledWith(20);
+    });
+
+    it('applies the requested page and pageSize', async () => {
+      await service.search(1, 'Doctor', {
+        options: { page: 3, pageSize: 10 } as any,
+      });
+
+      expect(mockQueryBuilder.skip).toHaveBeenCalledWith(20);
+      expect(mockQueryBuilder.take).toHaveBeenCalledWith(10);
+    });
+
+    it('falls back to createdAt when the requested sort column is not allowlisted', async () => {
+      await service.search(1, 'Doctor', {
+        options: { sortBy: 'notAColumn' } as any,
+      });
+
+      expect(mockQueryBuilder.orderBy).toHaveBeenCalledWith(
+        'patient.createdAt',
+        'DESC',
+      );
+    });
+
+    it('sorts by the requested column and order when valid', async () => {
+      await service.search(1, 'Doctor', {
+        options: { sortBy: 'name', order: 'ASC' } as any,
+      });
+
+      expect(mockQueryBuilder.orderBy).toHaveBeenCalledWith(
+        'patient.name',
+        'ASC',
+      );
+    });
+
+    it('returns the patients and total count from the query', async () => {
+      mockQueryBuilder.getManyAndCount.mockResolvedValue([[{ id: 7 }], 1]);
+
+      const result = await service.search(1, 'Doctor', {});
+
+      expect(result).toEqual({ patients: [{ id: 7 }], total: 1 });
     });
   });
 

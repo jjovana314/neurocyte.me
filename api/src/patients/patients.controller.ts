@@ -6,6 +6,7 @@ import {
   Delete,
   Body,
   Param,
+  Query,
   UseGuards,
   HttpCode,
   HttpStatus,
@@ -29,6 +30,8 @@ import {
   ImportCsvResponseDto,
   UpdatePatientNotesDto,
 } from './dtos';
+import { SearchPatientDto } from './dtos/search-patient.dto';
+import { PatientSearchResult } from './interfaces/search-result.interface';
 import { Patient } from './entities/patient.entity';
 import { PatientHistory } from './entities/patient-history.entity';
 import { FamilyHistory } from './entities/family-history.entity';
@@ -59,15 +62,6 @@ export class PatientsController {
     @Body() createPatientDto: CreatePatientDto,
   ): Promise<Patient> {
     return this.patientsService.createPatient(user.id, createPatientDto);
-  }
-
-  /**
-   * Get all patients created by the authenticated doctor
-   * GET /patients/my-patients
-   */
-  @Get('my-patients')
-  async getMyPatients(@CurrentUser() user: JwtUser): Promise<Patient[]> {
-    return this.patientsService.getDoctorPatients(user.id, user.role.name);
   }
 
   /**
@@ -125,6 +119,37 @@ export class PatientsController {
     file: MultipartFile,
   ): Promise<ImportCsvResponseDto> {
     return this.patientsService.importCsvData(user.id, file.buffer);
+  }
+
+  /**
+   * Search patients by a free-text term matched against name, email and
+   * phone (OR semantics). Scoped to the authenticated doctor's own
+   * patients, unless the caller is a Support Engineer.
+   * GET /patients/search
+   */
+  @Get('search')
+  async searchPatients(
+    @CurrentUser() user: JwtUser,
+    @Query('query') query: string,
+    @Query('page') page: string,
+    @Query('pageSize') pageSize: string,
+    @Query('sortBy') sortBy: string,
+    @Query('order') order: 'ASC' | 'DESC',
+  ): Promise<PatientSearchResult> {
+    const searchPatientDto: SearchPatientDto = {
+      query,
+      options: {
+        page: parseInt(page, 10),
+        pageSize: parseInt(pageSize, 10),
+        sortBy,
+        order
+      },
+    };
+    return this.patientsService.search(
+      user.id,
+      user.role.name,
+      searchPatientDto,
+    );
   }
 
   /**
