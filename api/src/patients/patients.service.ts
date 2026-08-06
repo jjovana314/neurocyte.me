@@ -193,7 +193,9 @@ export class PatientsService implements OnModuleInit {
       );
     }
 
-    const sortColumn = this.resolveSearchSortColumn(searchPatient.options?.sortBy);
+    const sortColumn = this.resolveSearchSortColumn(
+      searchPatient.options?.sortBy,
+    );
     const sortOrder = searchPatient.options?.order === 'ASC' ? 'ASC' : 'DESC';
 
     const [patients, total] = await qb
@@ -212,7 +214,13 @@ export class PatientsService implements OnModuleInit {
   // orderBy() takes a raw column name, so the sort field must come from an
   // allowlist rather than being interpolated directly from user input.
   private resolveSearchSortColumn(sort?: string): string {
-    const allowedColumns = ['name', 'email', 'createdAt', 'updatedAt', 'dateOfBirth'];
+    const allowedColumns = [
+      'name',
+      'email',
+      'createdAt',
+      'updatedAt',
+      'dateOfBirth',
+    ];
     return sort && allowedColumns.includes(sort) ? sort : 'createdAt';
   }
 

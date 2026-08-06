@@ -1292,14 +1292,12 @@ describe('PatientsService', () => {
       expect(innerQb.where).toHaveBeenCalledWith('patient.name LIKE :term', {
         term: '%jane%',
       });
-      expect(innerQb.orWhere).toHaveBeenCalledWith(
-        'patient.email LIKE :term',
-        { term: '%jane%' },
-      );
-      expect(innerQb.orWhere).toHaveBeenCalledWith(
-        'patient.phone LIKE :term',
-        { term: '%jane%' },
-      );
+      expect(innerQb.orWhere).toHaveBeenCalledWith('patient.email LIKE :term', {
+        term: '%jane%',
+      });
+      expect(innerQb.orWhere).toHaveBeenCalledWith('patient.phone LIKE :term', {
+        term: '%jane%',
+      });
     });
 
     it('also matches by id when the query term is numeric', async () => {

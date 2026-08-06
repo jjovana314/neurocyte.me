@@ -142,7 +142,7 @@ export class PatientsController {
         page: parseInt(page, 10),
         pageSize: parseInt(pageSize, 10),
         sortBy,
-        order
+        order,
       },
     };
     return this.patientsService.search(
