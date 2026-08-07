@@ -170,7 +170,14 @@ export class PatientsService implements OnModuleInit {
         ? searchPatient.options.pageSize
         : 20;
 
-    const qb = this.patientRepository.createQueryBuilder('patient');
+    const qb = this.patientRepository
+      .createQueryBuilder('patient')
+      .leftJoinAndSelect('patient.medicalHistory', 'medicalHistory')
+      .leftJoinAndSelect('patient.familyHistory', 'familyHistory')
+      .leftJoinAndSelect('patient.edssAssessments', 'edssAssessments')
+      .leftJoinAndSelect('patient.migraineLogs', 'migraineLogs')
+      .leftJoinAndSelect('patient.seizureLogs', 'seizureLogs')
+      .leftJoinAndSelect('patient.ncsStudies', 'ncsStudies');
 
     if (roleName !== 'Support Engineer') {
       qb.andWhere('patient.doctorId = :doctorId', { doctorId });

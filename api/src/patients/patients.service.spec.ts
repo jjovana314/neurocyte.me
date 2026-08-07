@@ -1233,6 +1233,7 @@ describe('PatientsService', () => {
 
   describe('search', () => {
     let mockQueryBuilder: {
+      leftJoinAndSelect: jest.Mock;
       andWhere: jest.Mock;
       orderBy: jest.Mock;
       skip: jest.Mock;
@@ -1250,6 +1251,7 @@ describe('PatientsService', () => {
 
     beforeEach(() => {
       mockQueryBuilder = {
+        leftJoinAndSelect: jest.fn().mockReturnThis(),
         andWhere: jest.fn().mockReturnThis(),
         orderBy: jest.fn().mockReturnThis(),
         skip: jest.fn().mockReturnThis(),

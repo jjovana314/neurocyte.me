@@ -224,3 +224,16 @@ export interface ImportCsvResponse {
   skipped: number;
   errors: { row: number; reason: string }[];
 }
+
+export interface SearchPatientsParams {
+  query?: string;
+  page?: number;
+  pageSize?: number;
+  sortBy?: string;
+  order?: 'ASC' | 'DESC';
+}
+
+export interface PatientSearchResult {
+  patients: Patient[];
+  total: number;
+}

@@ -1,8 +1,11 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import axios from 'axios';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { deletePatient, exportCsv, exportPatientPdf, getMyPatients } from '../api/patients';
+import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { deletePatient, exportCsv, exportPatientPdf, searchPatients } from '../api/patients';
 import ExpandedRow from './ExpandedRow';
+
+const PAGE_SIZE = 20;
+const SEARCH_DEBOUNCE_MS = 300;
 
 async function parseExportError(err: unknown): Promise<string> {
   if (axios.isAxiosError(err)) {
@@ -31,10 +34,26 @@ export default function PatientTable({ role }: Props) {
   const [exportingCsv, setExportingCsv] = useState(false);
   const [csvExportError, setCsvExportError] = useState<string | null>(null);
   const [pdfExportError, setPdfExportError] = useState<string | null>(null);
+  const [search, setSearch] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
+  const [page, setPage] = useState(1);
 
-  const { data: patients, isLoading, error } = useQuery({
-    queryKey: ['patients'],
-    queryFn: getMyPatients,
+  // Debounce the search bar so we don't fire a request on every keystroke.
+  // Resetting the page happens once the debounced term actually changes
+  // (not on every keystroke), so it's bundled into the same timer.
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearch(search);
+      setPage(1);
+    }, SEARCH_DEBOUNCE_MS);
+    return () => clearTimeout(timer);
+  }, [search]);
+
+  const { data, isLoading, isFetching, error } = useQuery({
+    queryKey: ['patients', debouncedSearch, page],
+    queryFn: () =>
+      searchPatients({ query: debouncedSearch || undefined, page, pageSize: PAGE_SIZE }),
+    placeholderData: keepPreviousData,
   });
 
   const deleteMutation = useMutation({
@@ -80,17 +99,31 @@ export default function PatientTable({ role }: Props) {
   if (isLoading) return <p className="status-msg">Loading patients…</p>;
   if (error) return <p className="status-msg error">Failed to load patients.</p>;
 
-  const list = patients ?? [];
+  const list = data?.patients ?? [];
+  const total = data?.total ?? 0;
+  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
 
   return (
     <div>
       <div className="table-toolbar">
-        <span className="patient-count">{list.length} patient{list.length !== 1 ? 's' : ''}</span>
+        <div className="search-bar">
+          <input
+            type="text"
+            className="search-input"
+            placeholder="Search by name, email or phone."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+          />
+          <span className="patient-count">
+            {total} patient{total !== 1 ? 's' : ''}
+            {isFetching && !isLoading ? '…' : ''}
+          </span>
+        </div>
         <div className="export-csv-wrap">
           <button
             className="btn btn-secondary"
             onClick={handleExportCsv}
-            disabled={exportingCsv || list.length === 0}
+            disabled={exportingCsv || total === 0}
           >
             {exportingCsv ? 'Exporting…' : 'Export all CSV'}
           </button>
@@ -172,6 +205,27 @@ export default function PatientTable({ role }: Props) {
             ))}
           </tbody>
         </table>
+      )}
+      {totalPages > 1 && (
+        <div className="pagination">
+          <button
+            className="btn btn-sm btn-secondary"
+            disabled={page <= 1}
+            onClick={() => setPage((p) => p - 1)}
+          >
+            Prev
+          </button>
+          <span className="pagination-status">
+            Page {page} of {totalPages}
+          </span>
+          <button
+            className="btn btn-sm btn-secondary"
+            disabled={page >= totalPages}
+            onClick={() => setPage((p) => p + 1)}
+          >
+            Next
+          </button>
+        </div>
       )}
       {pdfExportError && <p className="status-msg error">{pdfExportError}</p>}
     </div>

@@ -14,10 +14,16 @@ import type {
   SeizureLog,
   NcsStudy,
   ImportCsvResponse,
+  SearchPatientsParams,
+  PatientSearchResult,
 } from './types';
 
-export async function getMyPatients(): Promise<Patient[]> {
-  const { data } = await client.get<Patient[]>('/patients/my-patients');
+export async function searchPatients(
+  params: SearchPatientsParams = {},
+): Promise<PatientSearchResult> {
+  const { data } = await client.get<PatientSearchResult>('/patients/search', {
+    params,
+  });
   return data;
 }
 

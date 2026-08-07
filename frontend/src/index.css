@@ -133,6 +133,27 @@ body {
 .patient-count {
   font-size: 13px;
   color: #666;
+  white-space: nowrap;
+}
+.search-bar {
+  width: 350px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.search-input {
+  width: 400px;
+}
+.pagination {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  margin-top: 16px;
+}
+.pagination-status {
+  font-size: 13px;
+  color: #666;
 }
 
 table {
