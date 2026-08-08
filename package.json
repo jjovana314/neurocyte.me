@@ -8,8 +8,9 @@
   "scripts": {
     "start": "npm run start:calculator & npm run --prefix api start:dev & npm run --prefix frontend dev",
     "build": "npm run --prefix api build & npm run --prefix frontend build",
-    "test": "npm run test:backend && npm run test:calculator",
+    "test": "npm run test:backend && npm run test:calculator && npm run test:frontend",
     "test:backend": "npm test --prefix api",
+    "test:frontend": "npm test --prefix frontend",
     "test:calculator": "calculator/.venv/bin/python -m pytest calculator/tests",
     "debug:frontend": "npm run --prefix frontend dev -- --debug",
     "debug:backend": "npm run --prefix api start:debug",
