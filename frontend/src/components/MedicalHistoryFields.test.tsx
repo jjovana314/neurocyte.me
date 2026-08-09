@@ -67,4 +67,46 @@ describe('MedicalHistoryFields', () => {
       expect.objectContaining({ description: 'Relapsing-remitting' }),
     );
   });
+
+  it('handles multiple changes', async () => {
+    const user = userEvent.setup();
+    const onChange = vi.fn();
+    render(<Harness onChange={onChange} />);
+
+    await user.type(screen.getByLabelText(/disorder/i), 'Migraine');
+    await user.selectOptions(screen.getByLabelText(/severity/i), 'severe');
+
+    expect(onChange).toHaveBeenLastCalledWith(
+      expect.objectContaining({ disorder: 'Migraine', severity: 'severe' }),
+    );
+  });
+
+  it('displays error message when input is invalid', async () => {
+    const user = userEvent.setup();
+    const onChange = vi.fn();
+    render(<Harness onChange={onChange} />);
+
+    await user.type(screen.getByLabelText(/description/i), 'Invalid input');
+
+    expect(screen.getByText(/Invalid input/)).toBeInTheDocument();
+  });
+
+  it('handles complex scenarios', async () => {
+    const user = userEvent.setup();
+    const onChange = vi.fn();
+    render(<Harness onChange={onChange} />);
+
+    await user.type(screen.getByLabelText(/disorder/i), 'Migraine');
+    await user.selectOptions(screen.getByLabelText(/severity/i), 'severe');
+
+    await user.type(screen.getByLabelText(/description/i), 'Relapsing-remitting');
+
+    expect(onChange).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        disorder: 'Migraine',
+        severity: 'severe',
+        description: 'Relapsing-remitting',
+      }),
+    );
+  });
 });
