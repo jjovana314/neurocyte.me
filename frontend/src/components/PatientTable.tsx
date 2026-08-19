@@ -236,29 +236,29 @@ export default function PatientTable({ role }: Props) {
           className="modal-backdrop"
           onClick={() => setPatientToDelete(null)}
           style={{
-            position: 'fixed',    // Fiksirano u odnosu na ekran
+            position: 'fixed',
             top: 0,
             left: 0,
-            width: '100vw',       // Puna širina ekrana
-            height: '100vh',      // Puna visina ekrana
-            backgroundColor: 'rgba(0, 0, 0, 0.5)', // Tamna prozirna pozadina
-            display: 'flex',       // Koristimo Flexbox za centriranje
-            alignItems: 'center', // Vertikalno centriranje
-            justifyContent: 'center', // Horizontalno centriranje
-            zIndex: 9999,         // Osigurava da je iznad svega
+            width: '100vw',
+            height: '100vh',
+            backgroundColor: 'rgba(0, 0, 0, 0.5)',
+            display: 'flex',
+            alignItems: 'center', 
+            justifyContent: 'center',
+            zIndex: 9999,
           }}
         >
           <div
             className="modal-card"
-            onClick={(e) => e.stopPropagation()} // Sprečava zatvaranje kad se klikne unutar modala
+            onClick={(e) => e.stopPropagation()}
             style={{
               background: 'white',
               padding: '30px',
               borderRadius: '12px',
               boxShadow: '0 10px 25px rgba(0,0,0,0.2)',
               maxWidth: '450px',
-              width: '90%',         // Responzivno na mobilnim
-              position: 'relative', // Za svaki slučaj
+              width: '90%',
+              position: 'relative',
               border: 'none'
             }}
           >
@@ -293,7 +293,7 @@ export default function PatientTable({ role }: Props) {
                 disabled={deleteMutation.isPending}
                 style={{
                   padding: '8px 16px',
-                  backgroundColor: '#d9534f', // Crvena boja za brisanje
+                  backgroundColor: '#d9534f',
                   color: 'white',
                   border: 'none',
                   borderRadius: '4px',
