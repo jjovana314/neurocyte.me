@@ -3,6 +3,7 @@ import axios from 'axios';
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { deletePatient, exportCsv, exportPatientPdf, searchPatients } from '../api/patients';
 import ExpandedRow from './ExpandedRow';
+import React from 'react';
 
 const PAGE_SIZE = 20;
 const SEARCH_DEBOUNCE_MS = 300;
@@ -38,9 +39,8 @@ export default function PatientTable({ role }: Props) {
   const [debouncedSearch, setDebouncedSearch] = useState('');
   const [page, setPage] = useState(1);
 
-  // Debounce the search bar so we don't fire a request on every keystroke.
-  // Resetting the page happens once the debounced term actually changes
-  // (not on every keystroke), so it's bundled into the same timer.
+  const [patientToDelete, setPatientToDelete] = useState<{ id: number; name: string } | null>(null);
+
   useEffect(() => {
     const timer = setTimeout(() => {
       setDebouncedSearch(search);
@@ -58,7 +58,10 @@ export default function PatientTable({ role }: Props) {
 
   const deleteMutation = useMutation({
     mutationFn: deletePatient,
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['patients'] }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['patients'] });
+      setPatientToDelete(null); // Zatvori modal nakon uspešnog brisanja
+    },
   });
 
   async function handleExportCsv() {
@@ -85,11 +88,10 @@ export default function PatientTable({ role }: Props) {
     }
   }
 
-  function handleDelete(patientId: number, name: string) {
-    if (!window.confirm(`Delete patient "${name || `#${patientId}`}"? This cannot be undone.`)) {
-      return;
+  function confirmDelete() {
+    if (patientToDelete) {
+      deleteMutation.mutate(patientToDelete.id);
     }
-    deleteMutation.mutate(patientId);
   }
 
   function toggleExpand(id: number) {
@@ -148,9 +150,8 @@ export default function PatientTable({ role }: Props) {
           </thead>
           <tbody>
             {list.map((patient) => (
-              <>
+              <React.Fragment key={patient.id}>
                 <tr
-                  key={patient.id}
                   className={`patient-row${expandedId === patient.id ? ' expanded' : ''}`}
                   onClick={() => toggleExpand(patient.id)}
                 >
@@ -187,7 +188,7 @@ export default function PatientTable({ role }: Props) {
                       <button
                         className="btn btn-sm btn-danger"
                         disabled={deleteMutation.isPending}
-                        onClick={() => handleDelete(patient.id, patient.name)}
+                        onClick={() => setPatientToDelete({ id: patient.id, name: patient.name })}
                       >
                         Delete
                       </button>
@@ -195,17 +196,18 @@ export default function PatientTable({ role }: Props) {
                   </td>
                 </tr>
                 {expandedId === patient.id && (
-                  <tr key={`${patient.id}-expanded`} className="expanded-tr">
+                  <tr className="expanded-tr">
                     <td colSpan={7} style={{ padding: 0 }}>
                       <ExpandedRow patient={patient} />
                     </td>
                   </tr>
                 )}
-              </>
+              </React.Fragment>
             ))}
           </tbody>
         </table>
       )}
+
       {totalPages > 1 && (
         <div className="pagination">
           <button
@@ -228,6 +230,82 @@ export default function PatientTable({ role }: Props) {
         </div>
       )}
       {pdfExportError && <p className="status-msg error">{pdfExportError}</p>}
+
+{patientToDelete && (
+        <div
+          className="modal-backdrop"
+          onClick={() => setPatientToDelete(null)}
+          style={{
+            position: 'fixed',    // Fiksirano u odnosu na ekran
+            top: 0,
+            left: 0,
+            width: '100vw',       // Puna širina ekrana
+            height: '100vh',      // Puna visina ekrana
+            backgroundColor: 'rgba(0, 0, 0, 0.5)', // Tamna prozirna pozadina
+            display: 'flex',       // Koristimo Flexbox za centriranje
+            alignItems: 'center', // Vertikalno centriranje
+            justifyContent: 'center', // Horizontalno centriranje
+            zIndex: 9999,         // Osigurava da je iznad svega
+          }}
+        >
+          <div
+            className="modal-card"
+            onClick={(e) => e.stopPropagation()} // Sprečava zatvaranje kad se klikne unutar modala
+            style={{
+              background: 'white',
+              padding: '30px',
+              borderRadius: '12px',
+              boxShadow: '0 10px 25px rgba(0,0,0,0.2)',
+              maxWidth: '450px',
+              width: '90%',         // Responzivno na mobilnim
+              position: 'relative', // Za svaki slučaj
+              border: 'none'
+            }}
+          >
+            <h3 style={{ marginTop: 0, color: '#333' }}>Delete Patient</h3>
+            <p style={{ margin: '15px 0', color: '#555' }}>
+              Are you sure you want to delete{' '}
+              <strong>{patientToDelete.name || `#${patientToDelete.id}`}</strong>?
+            </p>
+            <p className="modal-warning" style={{ color: '#d9534f', fontSize: '0.9em', fontWeight: 'bold' }}>
+              This action cannot be undone.
+            </p>
+            <div
+              className="modal-actions"
+              style={{
+                display: 'flex',
+                justifyContent: 'flex-end',
+                gap: '12px',
+                marginTop: '25px',
+              }}
+            >
+              <button
+                className="btn btn-secondary"
+                onClick={() => setPatientToDelete(null)}
+                disabled={deleteMutation.isPending}
+                style={{ padding: '8px 16px' }}
+              >
+                Cancel
+              </button>
+              <button
+                className="btn btn-danger"
+                onClick={confirmDelete}
+                disabled={deleteMutation.isPending}
+                style={{
+                  padding: '8px 16px',
+                  backgroundColor: '#d9534f', // Crvena boja za brisanje
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '4px',
+                  cursor: 'pointer'
+                }}
+              >
+                {deleteMutation.isPending ? 'Deleting…' : 'Delete'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
