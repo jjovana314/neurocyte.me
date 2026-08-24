@@ -222,6 +222,7 @@ export class PatientsService implements OnModuleInit {
   // allowlist rather than being interpolated directly from user input.
   private resolveSearchSortColumn(sort?: string): string {
     const allowedColumns = [
+      'id',
       'name',
       'email',
       'createdAt',

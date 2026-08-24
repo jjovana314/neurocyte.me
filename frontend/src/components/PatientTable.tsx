@@ -8,6 +8,14 @@ import React from 'react';
 const PAGE_SIZE = 20;
 const SEARCH_DEBOUNCE_MS = 300;
 
+type SortableColumn = 'id' | 'name' | 'createdAt';
+
+const SORT_COLUMNS: { key: SortableColumn; label: string }[] = [
+  { key: 'id', label: 'ID' },
+  { key: 'name', label: 'Name' },
+  { key: 'createdAt', label: 'Created' },
+];
+
 async function parseExportError(err: unknown): Promise<string> {
   if (axios.isAxiosError(err)) {
     const data = err.response?.data;
@@ -38,6 +46,8 @@ export default function PatientTable({ role }: Props) {
   const [search, setSearch] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
   const [page, setPage] = useState(1);
+  const [sortBy, setSortBy] = useState<SortableColumn>('createdAt');
+  const [order, setOrder] = useState<'ASC' | 'DESC'>('DESC');
 
   const [patientToDelete, setPatientToDelete] = useState<{ id: number; name: string } | null>(null);
 
@@ -50,11 +60,27 @@ export default function PatientTable({ role }: Props) {
   }, [search]);
 
   const { data, isLoading, isFetching, error } = useQuery({
-    queryKey: ['patients', debouncedSearch, page],
+    queryKey: ['patients', debouncedSearch, page, sortBy, order],
     queryFn: () =>
-      searchPatients({ query: debouncedSearch || undefined, page, pageSize: PAGE_SIZE }),
+      searchPatients({
+        query: debouncedSearch || undefined,
+        page,
+        pageSize: PAGE_SIZE,
+        sortBy,
+        order,
+      }),
     placeholderData: keepPreviousData,
   });
+
+  function handleSort(column: SortableColumn) {
+    if (sortBy === column) {
+      setOrder((prev) => (prev === 'ASC' ? 'DESC' : 'ASC'));
+    } else {
+      setSortBy(column);
+      setOrder('ASC');
+    }
+    setPage(1);
+  }
 
   const deleteMutation = useMutation({
     mutationFn: deletePatient,
@@ -140,11 +166,23 @@ export default function PatientTable({ role }: Props) {
           <thead>
             <tr>
               <th style={{ width: 32 }} />
-              <th>Name</th>
+              {SORT_COLUMNS.map(({ key, label }) => (
+                <th key={key} style={key === 'id' ? { width: 64 } : undefined}>
+                  <button
+                    type="button"
+                    className="sortable-th"
+                    onClick={() => handleSort(key)}
+                  >
+                    {label}
+                    <span className="sort-icon">
+                      {sortBy === key ? (order === 'ASC' ? '▲' : '▼') : ''}
+                    </span>
+                  </button>
+                </th>
+              ))}
               <th>Notes</th>
               <th>Medical History</th>
               <th>Family History</th>
-              <th>Created</th>
               <th>Actions</th>
             </tr>
           </thead>
@@ -158,7 +196,9 @@ export default function PatientTable({ role }: Props) {
                   <td className="expand-cell">
                     <span className="expand-icon">{expandedId === patient.id ? '▾' : '▸'}</span>
                   </td>
+                  <td className="muted">#{patient.id}</td>
                   <td>{patient.name || <span className="muted">—</span>}</td>
+                  <td>{new Date(patient.createdAt).toLocaleDateString()}</td>
                   <td className="notes-cell">
                     {patient.notes ? (
                       <span title={patient.notes}>
@@ -172,7 +212,6 @@ export default function PatientTable({ role }: Props) {
                   </td>
                   <td>{(patient.medicalHistory ?? []).length} record(s)</td>
                   <td>{(patient.familyHistory ?? []).length} record(s)</td>
-                  <td>{new Date(patient.createdAt).toLocaleDateString()}</td>
                   <td
                     className="actions-cell"
                     onClick={(e) => e.stopPropagation()}
@@ -197,7 +236,7 @@ export default function PatientTable({ role }: Props) {
                 </tr>
                 {expandedId === patient.id && (
                   <tr className="expanded-tr">
-                    <td colSpan={7} style={{ padding: 0 }}>
+                    <td colSpan={8} style={{ padding: 0 }}>
                       <ExpandedRow patient={patient} />
                     </td>
                   </tr>

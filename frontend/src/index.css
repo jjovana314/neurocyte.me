@@ -177,6 +177,27 @@ td {
   border-bottom: 1px solid #f0f0f0;
   vertical-align: middle;
 }
+.sortable-th {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: none;
+  border: none;
+  padding: 0;
+  margin: 0;
+  font: inherit;
+  font-weight: 500;
+  color: #555;
+  cursor: pointer;
+}
+.sortable-th:hover {
+  color: #222;
+}
+.sort-icon {
+  font-size: 10px;
+  width: 8px;
+  display: inline-block;
+}
 .patient-row {
   cursor: pointer;
 }
