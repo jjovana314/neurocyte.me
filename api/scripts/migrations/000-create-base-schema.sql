@@ -26,7 +26,7 @@ CREATE TABLE IF NOT EXISTS `user` (
   `roleId` int NOT NULL,
   `deactivationToken` varchar(255) DEFAULT NULL,
   `resetPasswordToken` varchar(255) DEFAULT NULL,
-  `resetPasswordExpires` bigint DEFAULT NULL;
+  `resetPasswordExpires` bigint DEFAULT NULL,
   PRIMARY KEY (`id`),
   UNIQUE KEY `UQ_user_email` (`email`),
   KEY `FK_user_roleId` (`roleId`),
