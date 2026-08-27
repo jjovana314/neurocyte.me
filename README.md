@@ -8,7 +8,7 @@
 
 ---
 
-## 🚀 Features
+## Features
 
 - **Patient Records** – Create and manage patients (name, date of birth, gender, phone, email, free-text notes), each owned by the doctor who created it.
 - **Medical History Tracking** – Log prior disorders per patient (disorder, description, diagnosis date, severity, medications).
@@ -23,7 +23,7 @@
 
 ---
 
-## 🛠️ Tech Stack
+## Tech Stack
 
 - **Frontend:** React 19, TypeScript, Vite, React Router, TanStack Query, Axios
 - **Backend:** NestJS, TypeORM, MySQL, gRPC (`@nestjs/microservices`, `@grpc/grpc-js`) with generated TypeScript client stubs (`ts-proto`) for calling the calculator service
@@ -33,7 +33,7 @@
 
 ---
 
-## 📦 Installation & Setup
+## Installation & Setup
 
 This repository contains the backend API (`api/`), the frontend application (`frontend/`), and the `calculator` gRPC service (`calculator/`) that the API calls out to for clinical scoring.
 
@@ -93,7 +93,7 @@ docker compose up --build
 ```
 This builds `api/Dockerfile` (a multi-stage build that generates the gRPC stubs, compiles the API, then installs production-only dependencies) and starts it alongside a `mysql:8.4` container, applying pending migrations on every start before the API boots (see `api/docker-entrypoint.sh`). The API container reaches the host-run calculator via `host.docker.internal:50051`. It reuses `api/.env` for app secrets (`SECRET_KEY`, mail, token lifetimes) — copy `api/env.example` first if you haven't (step 3) — while the database connection is pointed at the containerized `db` service regardless of what `api/.env` has configured for host-based dev. See the comments in `docker-compose.yml` for details.
 
-### 💡 Additional Scripts
+### Additional Scripts
 - **Root convenience scripts** (from the repo root): `npm run start` (runs the calculator service, API, and frontend dev servers together), `npm run build` (builds API + frontend), `npm run setup:calculator` / `npm run start:calculator` (calculator service), `npm run generate:proto` (regenerate the gRPC stubs for both services from the `.proto` files)
 - **Backend:** `npm run test` / `npm run test:cov` (unit tests), `npm run test:e2e` (end-to-end tests), `npm run lint`, `npm run format`
 - **Calculator:** `npm run test:calculator` (from the repo root) runs the Python unit tests under `calculator/tests` with pytest
@@ -101,7 +101,7 @@ This builds `api/Dockerfile` (a multi-stage build that generates the gRPC stubs,
 
 ---
 
-## 📡 API Overview
+## API Overview
 
 All `/patients` and most `/user` routes require a `Bearer` JWT obtained from `/auth/login` or `/auth/register`.
 
@@ -128,7 +128,7 @@ All `/patients` and most `/user` routes require a `Bearer` JWT obtained from `/a
 
 ---
 
-## 🧪 Testing
+## Testing
 
 The backend has unit tests (Jest) for the auth, user, and patient services/controllers, plus the EDSS scoring algorithm, and a minimal end-to-end smoke test. Run them from `api/`:
 ```sh
