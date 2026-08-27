@@ -86,6 +86,13 @@ npm install
 npm run dev
 ```
 
+### 7. Docker (Backend)
+The API and its MySQL database can be run in Docker instead of steps 3-5 above. The calculator service and frontend aren't containerized yet, so start the calculator on the host first (step 2/4), then from the repo root:
+```sh
+docker compose up --build
+```
+This builds `api/Dockerfile` (a multi-stage build that generates the gRPC stubs, compiles the API, then installs production-only dependencies) and starts it alongside a `mysql:8.4` container, applying pending migrations on every start before the API boots (see `api/docker-entrypoint.sh`). The API container reaches the host-run calculator via `host.docker.internal:50051`. It reuses `api/.env` for app secrets (`SECRET_KEY`, mail, token lifetimes) — copy `api/env.example` first if you haven't (step 3) — while the database connection is pointed at the containerized `db` service regardless of what `api/.env` has configured for host-based dev. See the comments in `docker-compose.yml` for details.
+
 ### 💡 Additional Scripts
 - **Root convenience scripts** (from the repo root): `npm run start` (runs the calculator service, API, and frontend dev servers together), `npm run build` (builds API + frontend), `npm run setup:calculator` / `npm run start:calculator` (calculator service), `npm run generate:proto` (regenerate the gRPC stubs for both services from the `.proto` files)
 - **Backend:** `npm run test` / `npm run test:cov` (unit tests), `npm run test:e2e` (end-to-end tests), `npm run lint`, `npm run format`
