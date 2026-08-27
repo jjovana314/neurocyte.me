@@ -1,4 +1,4 @@
-CREATE TABLE `ncs_study` (
+CREATE TABLE IF NOT EXISTS `ncs_study` (
   `id` int NOT NULL AUTO_INCREMENT,
   `patientId` int NOT NULL,
   `nerveName` varchar(255) NOT NULL,

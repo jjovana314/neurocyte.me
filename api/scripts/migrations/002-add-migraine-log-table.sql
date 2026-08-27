@@ -1,4 +1,4 @@
-CREATE TABLE `migraine_log` (
+CREATE TABLE IF NOT EXISTS  `migraine_log` (
   `id` int NOT NULL AUTO_INCREMENT,
   `patientId` int NOT NULL,
   `occurredAt` datetime NOT NULL,

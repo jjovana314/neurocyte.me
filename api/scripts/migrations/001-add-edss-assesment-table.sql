@@ -1,4 +1,4 @@
-CREATE TABLE `edss_assesment` (
+CREATE TABLE IF NOT EXISTS `edss_assesment` (
   `id` int NOT NULL AUTO_INCREMENT,
   `patientId` int NOT NULL,
   `assessedAt` datetime(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),

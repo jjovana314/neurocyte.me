@@ -1,4 +1,4 @@
-CREATE TABLE `seizure_log` (
+CREATE TABLE IF NOT EXISTS `seizure_log` (
   `id` int NOT NULL AUTO_INCREMENT,
   `patientId` int NOT NULL,
   `onsetVector` enum('FOCAL_AWARE','FOCAL_IMPAIRED_AWARENESS','GENERALIZED') NOT NULL,
