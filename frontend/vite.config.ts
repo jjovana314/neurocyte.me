@@ -31,10 +31,10 @@ export default defineConfig({
       reporter: ["text", "html"],
       // Ratchet: raise these as coverage improves; commits fail if it drops below.
       thresholds: {
-        statements: 23,
-        branches: 22,
-        functions: 19,
-        lines: 23,
+        statements: 29,
+        branches: 32,
+        functions: 21,
+        lines: 29,
       },
     },
   },
