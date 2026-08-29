@@ -4,7 +4,7 @@
 	<img src="assets/logo.png" alt="neurocyte.me logo" width="200" />
 </p>
 
-**neurocyte.me** is a neurology patient-management platform that helps doctors record patient demographics, medical and family history, EDSS disability assessments, migraine logs, and seizure logs — with CSV/PDF export and import for reporting and data portability.
+**neurocyte.me** is a neurology patient-management platform that helps doctors record patient demographics, medical and family history, EDSS disability assessments, migraine logs, seizure logs, and nerve conduction studies - with CSV/PDF export and import for reporting and data portability.
 
 ---
 
@@ -16,6 +16,7 @@
 - **EDSS Disability Assessments** – Record Kurtzke Expanded Disability Status Scale assessments (7 functional-system scores + ambulation details); the total score is derived server-side by the dedicated `calculator` gRPC service, never supplied by the client.
 - **Migraine Logs** – Track individual migraine episodes (date/time, duration, pain severity 1–10, aura, triggers, symptoms, medication taken, notes).
 - **Seizure Logs** – Record seizure events with onset vector (focal aware, focal impaired awareness, generalized), motor features (tonic, clonic, atonic, automatisms), ictus start/end (active duration computed server-side), postictal recovery time, and environmental triggers (sleep deprivation, missed dose, high stress, illness).
+- **Nerve Conduction Studies (NCS)** – Record per-nerve electrophysiology studies (nerve name, motor/sensory, conduction distance, distal and optional proximal stimulation-site latency/amplitude/duration, skin temperature). The client submits only the raw bedside measurements - every derived metric and diagnostic flag is computed server-side by the `calculator` gRPC service and stored alongside the inputs. Studies can also be bulk-imported from CSV.
 - **CSV Export & Import** – Export all patient + history data to CSV, or bulk-import patients and their history from a CSV file in the same column layout.
 - **PDF Reports** – Generate a per-patient PDF report (demographics, medical history, family history); sensitive fields (name, phone, email) are masked for the Support Engineer role.
 - **Role-Based Access Control** – `Doctor`, `Support Engineer`, and `admin` roles with JWT-authenticated endpoints; doctors can only access patients they created, Support Engineers get a read-oriented, masked view across all patients.
@@ -27,7 +28,7 @@
 
 - **Frontend:** React 19, TypeScript, Vite, React Router, TanStack Query, Axios
 - **Backend:** NestJS, TypeORM, MySQL, gRPC (`@nestjs/microservices`, `@grpc/grpc-js`) with generated TypeScript client stubs (`ts-proto`) for calling the calculator service
-- **Calculator service:** Python, gRPC (`grpcio`) — hosts clinical scoring algorithms (currently EDSS) behind a language-agnostic RPC contract, called by the API over gRPC
+- **Calculator service:** Python, gRPC (`grpcio`) — hosts clinical scoring algorithms (EDSS scoring and nerve conduction study analysis) behind a language-agnostic RPC contract, called by the API over gRPC
 - **Auth:** Passport (JWT strategy), bcrypt password hashing
 - **Other:** pdfkit (PDF generation), Nodemailer (transactional email), nestjs-pino (structured logging)
 
@@ -48,14 +49,14 @@ npm run setup:calculator   # creates calculator/.venv and installs grpcio/grpcio
 ```
 
 ### 3. Backend Setup
-Copy `api/env.example` to `api/.env` and fill in your database, JWT, and mail settings (`DATABASE_URL`, `DATABASE_NAME`, `DATABASE_USERNAME`, `DATABASE_PASSWORD`, `DATABASE_PORT`, `SECRET_KEY`, `ACCESS_TOKEN_TIME`, `REFRESH_TOKEN_TIME`, `MAIL_HOST`, `MAIL_PORT`, `MAIL_USER`, `MAIL_PASS`, `MAIL_FROM`, `APP_URL`, `FRONTEND_URL`, `CALCULATOR_GRPC_URL`), then:
+Copy `api/env.example` to `api/.env` and fill in your database, JWT, and mail settings, then:
 ```sh
 cd api
 npm install
 ```
 
 ### 4. Generate the gRPC Stubs
-The gRPC contract lives in `calculator/proto/calculator.proto`; `api/` keeps its own copy at `api/proto/calculator.proto` so it doesn't need filesystem access to the sibling `calculator/` directory at build/run time. **The generated stub code for both services is not committed to git** (see `.gitignore`) — build it locally, from the repo root, once steps 2 and 3 above are done:
+The gRPC contract lives in `calculator/proto/calculator.proto`; `api/` keeps its own copy at `api/proto/calculator.proto` so it doesn't need filesystem access to the sibling `calculator/` directory at build/run time, build it locally, from the repo root, once steps 2 and 3 above are done:
 ```sh
 npm run generate:proto
 ```
@@ -77,7 +78,7 @@ npm run start:calculator   # from the repo root, starts the gRPC server on :5005
 ```
 You should see `Calculator gRPC server listening on port 50051`. Or use `npm run start` from the repo root, which launches the calculator, API, and frontend together in one command.
 
-The service listens on port `50051` by default (override with the `CALCULATOR_GRPC_PORT` env var). On the API side, `CALCULATOR_GRPC_URL` in `api/.env` must point at that same host:port (e.g. `localhost:50051`) — it has **no built-in default**, so it must be set explicitly, and it must match the calculator's actual port or the API will fail with a `UNAVAILABLE: ... ECONNREFUSED` error.
+The service listens on port `50051` by default (override with the `CALCULATOR_GRPC_PORT` env var). On the API side, `CALCULATOR_GRPC_URL` in `api/.env` must point at that same host:port (e.g. `localhost:50051`) — it has **no built-in default**, so it must be set explicitly.
 
 ### 6. Frontend Setup (React + Vite + TypeScript)
 ```sh
@@ -91,7 +92,7 @@ The API and its MySQL database can be run in Docker instead of steps 3-5 above. 
 ```sh
 docker compose up --build
 ```
-This builds `api/Dockerfile` (a multi-stage build that generates the gRPC stubs, compiles the API, then installs production-only dependencies) and starts it alongside a `mysql:8.4` container, applying pending migrations on every start before the API boots (see `api/docker-entrypoint.sh`). The API container reaches the host-run calculator via `host.docker.internal:50051`. It reuses `api/.env` for app secrets (`SECRET_KEY`, mail, token lifetimes) — copy `api/env.example` first if you haven't (step 3) — while the database connection is pointed at the containerized `db` service regardless of what `api/.env` has configured for host-based dev. See the comments in `docker-compose.yml` for details.
+This builds `api/Dockerfile` (a multi-stage build that generates the gRPC stubs, compiles the API, then installs production-only dependencies) and starts it alongside a `mysql:8.4` container, applying pending migrations on every start before the API boots (see `api/docker-entrypoint.sh`). The API container reaches the host-run calculator via `host.docker.internal:50051`. It reuses `api/.env` for app secrets. See the comments in `docker-compose.yml` for details.
 
 ### Additional Scripts
 - **Root convenience scripts** (from the repo root): `npm run start` (runs the calculator service, API, and frontend dev servers together), `npm run build` (builds API + frontend), `npm run setup:calculator` / `npm run start:calculator` (calculator service), `npm run generate:proto` (regenerate the gRPC stubs for both services from the `.proto` files)
@@ -114,7 +115,7 @@ All `/patients` and most `/user` routes require a `Bearer` JWT obtained from `/a
 |---|---|
 | `POST /` | Create a patient, optionally with an initial EDSS assessment (doctors only) |
 | `GET /my-patients` | List patients (own patients for doctors, all patients for other roles) |
-| `GET /:id` | Get a patient with full history, EDSS assessments, migraine logs, and seizure logs |
+| `GET /:id` | Get a patient with full history, EDSS assessments, migraine logs, seizure logs, and nerve conduction studies |
 | `PUT /:id` | Update notes, optionally adding a new EDSS assessment |
 | `DELETE /:id` | Delete a patient and all associated records |
 | `POST /:id/history` · `GET /:id/history` | Add / list medical history |
@@ -122,6 +123,8 @@ All `/patients` and most `/user` routes require a `Bearer` JWT obtained from `/a
 | `GET /:id/edss` | List EDSS assessment history |
 | `POST /:id/migraines` · `GET /:id/migraines` | Add / list migraine log entries |
 | `POST /:id/seizures` · `GET /:id/seizures` | Add / list seizure log entries |
+| `POST /:id/ncs-studies` · `GET /:id/ncs-studies` | Add / list nerve conduction studies; on add, the raw measurements are sent to the calculator service and the derived metrics + diagnostic flags are stored (returns the updated patient) |
+| `POST /:id/ncs-studies/import` | Bulk-import nerve conduction studies for one patient from a CSV file (each row scored via the calculator service) |
 | `GET /export/csv` | Export all accessible patients + history as CSV |
 | `POST /import/csv` | Bulk-import patients + history from a CSV file |
 | `GET /:id/export/pdf` | Generate a PDF report for one patient |
