@@ -1,1 +1,1 @@
-cd api && npm run lint && npm test
+cd api && npm run lint && cd .. && npm run test
