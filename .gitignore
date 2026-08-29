@@ -51,3 +51,4 @@ calculator/generated/*
 !calculator/generated/__init__.py
 api/src/calculator-client/generated/
 .git-credentials
+calculator/.pytest_cache
