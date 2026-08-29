@@ -323,7 +323,7 @@ export class PatientsController {
   }
 
   /**
-   * 
+   *
    * @param user user ID
    * @param patientId patient ID
    * @param createNcsStudy NCS data
