@@ -1,1 +1,8 @@
-cd api && npm run lint && cd .. && npm run test
+cd api && npm run lint && cd ..
+
+# Run the full test suite with coverage gates (ratchet thresholds).
+# Backend:    api/package.json  -> jest coverageThreshold
+# Frontend:   frontend/vite.config.ts -> test.coverage.thresholds
+# Calculator: calculator/pytest.ini   -> --cov-fail-under
+# A commit is aborted if coverage drops below the configured level.
+npm run test:cov

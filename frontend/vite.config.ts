@@ -18,5 +18,24 @@ export default defineConfig({
     environment: "jsdom",
     globals: true,
     setupFiles: ["./src/test/setup.ts"],
+    coverage: {
+      provider: "v8",
+      all: true,
+      include: ["src/**/*.{ts,tsx}"],
+      exclude: [
+        "src/**/*.test.{ts,tsx}",
+        "src/**/*.d.ts",
+        "src/main.tsx",
+        "src/test/**",
+      ],
+      reporter: ["text", "html"],
+      // Ratchet: raise these as coverage improves; commits fail if it drops below.
+      thresholds: {
+        statements: 23,
+        branches: 22,
+        functions: 19,
+        lines: 23,
+      },
+    },
   },
 });

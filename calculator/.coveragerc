@@ -1,0 +1,10 @@
+[run]
+# Coverage is scoped (via --cov=calculator) to the calculation package.
+# Exclude the gRPC server wiring and generated protobuf code, which have no unit tests.
+omit =
+    calculator/app.py
+    calculator/generated/*
+    calculator/tests/*
+
+[report]
+show_missing = True

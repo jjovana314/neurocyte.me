@@ -52,3 +52,9 @@ calculator/generated/*
 api/src/calculator-client/generated/
 .git-credentials
 calculator/.pytest_cache
+
+# Test coverage artifacts
+.coverage
+coverage/
+frontend/coverage/
+htmlcov/
