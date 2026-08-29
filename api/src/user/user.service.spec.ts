@@ -79,7 +79,9 @@ describe('UserService', () => {
       mockUserRepository.findOne.mockResolvedValue(user);
 
       expect(await service.findUserById(7)).toEqual(user);
-      expect(mockUserRepository.findOne).toHaveBeenCalledWith({ where: { id: 7 } });
+      expect(mockUserRepository.findOne).toHaveBeenCalledWith({
+        where: { id: 7 },
+      });
     });
   });
 
@@ -92,7 +94,10 @@ describe('UserService', () => {
     });
 
     it('returns null when the password does not match', async () => {
-      mockUserRepository.findOne.mockResolvedValue({ email: 'a@b.c', password: 'hash' } as User);
+      mockUserRepository.findOne.mockResolvedValue({
+        email: 'a@b.c',
+        password: 'hash',
+      } as User);
       (bcrypt.compare as jest.Mock).mockResolvedValue(false);
 
       expect(await service.validateUser('a@b.c', 'wrong')).toBeNull();
@@ -137,7 +142,9 @@ describe('UserService', () => {
     it('throws NotFoundException when the user is missing', async () => {
       mockUserRepository.findOne.mockResolvedValue(null);
 
-      await expect(service.remove(99)).rejects.toBeInstanceOf(NotFoundException);
+      await expect(service.remove(99)).rejects.toBeInstanceOf(
+        NotFoundException,
+      );
     });
   });
 
@@ -145,11 +152,18 @@ describe('UserService', () => {
     it('throws NotFoundException when the user is missing', async () => {
       mockUserRepository.findOne.mockResolvedValue(null);
 
-      await expect(service.requestDeactivation(1)).rejects.toBeInstanceOf(NotFoundException);
+      await expect(service.requestDeactivation(1)).rejects.toBeInstanceOf(
+        NotFoundException,
+      );
     });
 
     it('stores a token and emails every admin a deactivation link', async () => {
-      const user = { id: 1, firstName: 'Ada', lastName: 'Byron', email: 'ada@x.io' } as User;
+      const user = {
+        id: 1,
+        firstName: 'Ada',
+        lastName: 'Byron',
+        email: 'ada@x.io',
+      } as User;
       mockUserRepository.findOne.mockResolvedValue(user);
       mockUserRepository.find.mockResolvedValue([
         { email: 'admin1@x.io' },
@@ -181,7 +195,9 @@ describe('UserService', () => {
     it('throws NotFoundException for an unknown token', async () => {
       mockUserRepository.findOne.mockResolvedValue(null);
 
-      await expect(service.removeByToken('nope')).rejects.toBeInstanceOf(NotFoundException);
+      await expect(service.removeByToken('nope')).rejects.toBeInstanceOf(
+        NotFoundException,
+      );
     });
   });
 
@@ -196,14 +212,20 @@ describe('UserService', () => {
     });
 
     it('stores a token with a 1-hour expiry and emails the reset link', async () => {
-      const user = { firstName: 'Grace', lastName: 'Hopper', email: 'grace@x.io' } as User;
+      const user = {
+        firstName: 'Grace',
+        lastName: 'Hopper',
+        email: 'grace@x.io',
+      } as User;
       mockUserRepository.findOne.mockResolvedValue(user);
       const before = Date.now();
 
       await service.sendPasswordReset('grace@x.io');
 
       expect(user.resetPasswordToken).toBe('fixed-uuid');
-      expect(user.resetPasswordExpires!.getTime()).toBeGreaterThanOrEqual(before + 59 * 60 * 1000);
+      expect(user.resetPasswordExpires!.getTime()).toBeGreaterThanOrEqual(
+        before + 59 * 60 * 1000,
+      );
       expect(mockMailService.sendPasswordResetEmail).toHaveBeenCalledWith(
         'grace@x.io',
         expect.stringContaining('token=fixed-uuid'),
@@ -216,7 +238,9 @@ describe('UserService', () => {
     it('rejects an unknown token', async () => {
       mockUserRepository.findOne.mockResolvedValue(null);
 
-      await expect(service.resetPassword('bad', 'pw')).rejects.toBeInstanceOf(BadRequestException);
+      await expect(service.resetPassword('bad', 'pw')).rejects.toBeInstanceOf(
+        BadRequestException,
+      );
     });
 
     it('rejects an expired token', async () => {
@@ -225,9 +249,9 @@ describe('UserService', () => {
         resetPasswordExpires: new Date(Date.now() - 1000),
       } as User);
 
-      await expect(service.resetPassword('fixed-uuid', 'pw')).rejects.toBeInstanceOf(
-        BadRequestException,
-      );
+      await expect(
+        service.resetPassword('fixed-uuid', 'pw'),
+      ).rejects.toBeInstanceOf(BadRequestException);
     });
 
     it('hashes the new password and clears the reset fields', async () => {

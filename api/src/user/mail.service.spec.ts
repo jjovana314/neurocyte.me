@@ -17,7 +17,11 @@ describe('MailService', () => {
   });
 
   it('sends a password-reset email addressed to the user with the reset link in the body', async () => {
-    await new MailService().sendPasswordResetEmail('user@x.io', 'https://app/reset?token=abc', 'Ada');
+    await new MailService().sendPasswordResetEmail(
+      'user@x.io',
+      'https://app/reset?token=abc',
+      'Ada',
+    );
 
     expect(sendMail).toHaveBeenCalledTimes(1);
     const message = sendMail.mock.calls[0][0];
@@ -28,7 +32,11 @@ describe('MailService', () => {
   });
 
   it('sends a deactivation email addressed to the admin with the confirmation link', async () => {
-    await new MailService().sendDeactivationEmail('admin@x.io', 'https://app/deactivate/xyz', 'Ada');
+    await new MailService().sendDeactivationEmail(
+      'admin@x.io',
+      'https://app/deactivate/xyz',
+      'Ada',
+    );
 
     const message = sendMail.mock.calls[0][0];
     expect(message.to).toBe('admin@x.io');
