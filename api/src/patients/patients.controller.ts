@@ -384,12 +384,12 @@ export class PatientsController {
   async addNcsStudy(
     @CurrentUser() user: JwtUser,
     @Param('id') patientId: string,
-    @Body() createNcsStudy: CreateNcsStudyDto
+    @Body() createNcsStudy: CreateNcsStudyDto,
   ): Promise<Patient> {
     return this.patientsService.createNcsStudy(
       user.id,
       parseInt(patientId, 10),
-      createNcsStudy
+      createNcsStudy,
     );
   }
 }
