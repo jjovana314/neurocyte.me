@@ -29,6 +29,7 @@ import {
   CreateSeizureLogDto,
   ImportCsvResponseDto,
   UpdatePatientNotesDto,
+  CreateNcsStudyDto,
 } from './dtos';
 import { SearchPatientDto } from './dtos/search-patient.dto';
 import { PatientSearchResult } from './interfaces/search-result.interface';
@@ -375,6 +376,20 @@ export class PatientsController {
       user.id,
       parseInt(patientId, 10),
       file.buffer,
+    );
+  }
+
+  @Post(':id/ncs-studies')
+  @HttpCode(HttpStatus.OK)
+  async addNcsStudy(
+    @CurrentUser() user: JwtUser,
+    @Param('id') patientId: string,
+    @Body() createNcsStudy: CreateNcsStudyDto
+  ): Promise<Patient> {
+    return this.patientsService.createNcsStudy(
+      user.id,
+      parseInt(patientId, 10),
+      createNcsStudy
     );
   }
 }

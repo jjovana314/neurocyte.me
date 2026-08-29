@@ -333,6 +333,37 @@ export class PatientsService implements OnModuleInit {
   }
 
   @errorHandler
+  async createNcsStudy(
+    userId: number,
+    patientId: number,
+    request: CreateNcsStudyDto,
+  ): Promise<Patient> {
+    const patient = await this.patientRepository.findOne({
+      where: { id: patientId },
+    });
+    if (!patient) {
+      throw new PatientNotFoundException(patientId);
+    }
+
+    if (patient.doctorId !== userId) {
+      this.logger.warn(
+        `Doctor ${userId} attempted to access patient ${patientId} created by doctor ${patient.doctorId}`,
+      );
+      throw new AccessToPatientForbiddenException();
+    }
+
+    const ncsStudy = await this.buildNcsStudy(request);
+    ncsStudy.patientId = patientId;
+
+    await this.ncsStudyRepository.save(ncsStudy);
+    this.logger.info(
+      `NCS study (${request.nerveName}) added to patient ${patientId}`,
+    );
+
+    return this.getPatient(userId, patientId);
+  }
+
+  @errorHandler
   async addMigraineLog(
     doctorId: number,
     createMigraineLogDto: CreateMigraineLogDto,
