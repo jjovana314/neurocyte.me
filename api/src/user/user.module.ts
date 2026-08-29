@@ -3,7 +3,7 @@ import { UserService } from './user.service';
 import { UserController } from './user.controller';
 import { MailService } from './mail.service';
 import { TypeOrmModule } from '@nestjs/typeorm';
-import { User } from 'src/auth/entites/user.entity';
+import { User } from '../user/entities/user.entity';
 import { Role } from 'src/auth/entites/role.entity';
 import { LoggerModule } from 'nestjs-pino';
 

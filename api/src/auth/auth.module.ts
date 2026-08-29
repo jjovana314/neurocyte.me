@@ -8,7 +8,7 @@ import { UserModule } from 'src/user/user.module';
 import { LocalAuthGuard } from './local-auth.guard';
 import { JwtStrategy } from './jwt.strategy';
 import { TypeOrmModule } from '@nestjs/typeorm';
-import { User } from './entites/user.entity';
+import { User } from '../user/entities/user.entity';
 import { Role } from './entites/role.entity';
 import { Action } from './entites/action.entity';
 

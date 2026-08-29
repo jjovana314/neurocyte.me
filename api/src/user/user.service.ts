@@ -7,7 +7,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import * as bcrypt from 'bcrypt';
 import { randomUUID } from 'crypto';
 import { PinoLogger } from 'nestjs-pino';
-import { User } from '../auth/entites/user.entity';
+import { User } from './entities/user.entity';
 import { Repository } from 'typeorm';
 import { config } from '../config/config';
 import { MailService } from './mail.service';
@@ -110,7 +110,7 @@ export class UserService {
 
     const token = randomUUID();
     user.resetPasswordToken = token;
-    user.resetPasswordExpires = Date.now() + 60 * 60 * 1000; // 1 hour
+    user.resetPasswordExpires = new Date(Date.now() + 60 * 60 * 1000); // 1 hour
     await this.userRepository.save(user);
 
     const resetLink = `${config.get().FRONTEND_URL}/reset-password?token=${token}`;
@@ -128,7 +128,7 @@ export class UserService {
     if (
       !user ||
       !user.resetPasswordExpires ||
-      user.resetPasswordExpires < Date.now()
+      user.resetPasswordExpires < new Date()
     ) {
       throw new BadRequestException('Invalid or expired password reset token');
     }

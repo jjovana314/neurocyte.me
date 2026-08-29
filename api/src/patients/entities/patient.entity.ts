@@ -7,7 +7,7 @@ import {
   CreateDateColumn,
   JoinColumn,
 } from 'typeorm';
-import { User } from 'src/auth/entites/user.entity';
+import { User } from 'src/user/entities/user.entity';
 import { PatientHistory } from './patient-history.entity';
 import { FamilyHistory } from './family-history.entity';
 import { EdssAssesment } from './edss-assesment.entity';

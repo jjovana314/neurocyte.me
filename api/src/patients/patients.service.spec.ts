@@ -14,7 +14,7 @@ import {
   SeizureTrigger,
 } from './entities/seizure-log.entity';
 import { NcsStudy, NcsStudyType } from './entities/ncs-study.entity';
-import { User } from 'src/auth/entites/user.entity';
+import { User } from 'src/user/entities/user.entity';
 import { PinoLogger } from 'nestjs-pino';
 import {
   BadRequestException,

@@ -8,7 +8,7 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
-import { User } from 'src/auth/entites/user.entity';
+import { User } from 'src/user/entities/user.entity';
 import { Roles } from 'src/patients/decorators/roles.decorator';
 import { RolesGuard } from 'src/patients/decorators/roles.guard';
 import { UserService } from './user.service';

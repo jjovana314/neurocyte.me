@@ -3,7 +3,7 @@ import { AuthService } from './auth.service';
 import { JwtService } from '@nestjs/jwt';
 import { UserService } from 'src/user/user.service';
 import { PinoLogger } from 'nestjs-pino';
-import { User } from './entites/user.entity';
+import { User } from 'src/user/entities/user.entity';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { Role } from './entites/role.entity';
 import { Action } from './entites/action.entity';

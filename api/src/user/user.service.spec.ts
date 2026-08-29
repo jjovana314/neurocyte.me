@@ -1,7 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { UserService } from './user.service';
 import { getRepositoryToken } from '@nestjs/typeorm';
-import { User } from 'src/auth/entites/user.entity';
+import { User } from 'src/user/entities/user.entity';
 import { Role } from 'src/auth/entites/role.entity';
 import { PinoLogger } from 'nestjs-pino';
 import { MailService } from 'src/user/mail.service';

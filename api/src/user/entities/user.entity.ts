@@ -7,7 +7,7 @@ import {
   JoinColumn,
 } from 'typeorm';
 import * as bcrypt from 'bcrypt';
-import { Role } from './role.entity';
+import { Role } from '../../auth/entites/role.entity';
 
 @Entity()
 export class User {
@@ -36,8 +36,8 @@ export class User {
   @Column({ nullable: true, default: null })
   resetPasswordToken: string | null;
 
-  @Column({ nullable: true, default: null, type: 'bigint' })
-  resetPasswordExpires: number | null;
+  @Column({ nullable: true, default: null })
+  resetPasswordExpires: Date | null;
 
   @BeforeInsert()
   async hashPassword(): Promise<void> {

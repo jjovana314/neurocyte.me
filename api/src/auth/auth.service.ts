@@ -5,7 +5,7 @@ import {
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { UserService } from 'src/user/user.service';
-import { User } from './entites/user.entity';
+import { User } from '../user/entities/user.entity';
 import { PinoLogger } from 'nestjs-pino';
 import { IRoles } from './interfaces/roles.interface';
 import { Role } from './entites/role.entity';
