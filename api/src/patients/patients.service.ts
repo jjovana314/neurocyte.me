@@ -694,7 +694,7 @@ export class PatientsService implements OnModuleInit {
           skinTemperatureCelsius: dto.skinTemperatureCelsius,
         }),
       );
-    } catch (error) {
+    } catch (error: any) {
       if (error?.code === GrpcStatus.INVALID_ARGUMENT) {
         throw new BadRequestException(error.details);
       }
@@ -836,7 +836,7 @@ export class PatientsService implements OnModuleInit {
         }),
       );
       totalScore = response.totalScore;
-    } catch (error) {
+    } catch (error: any) {
       if (error?.code === GrpcStatus.INVALID_ARGUMENT) {
         throw new BadRequestException(error.details);
       }

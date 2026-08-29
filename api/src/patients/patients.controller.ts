@@ -49,12 +49,6 @@ import { MultipartFile } from 'src/common/multipart-file';
 export class PatientsController {
   constructor(private readonly patientsService: PatientsService) {}
 
-  /**
-   * Create a new patient record, optionally recording an initial EDSS
-   * assessment in the same request
-   * POST /patients
-   * Only doctors can create patients
-   */
   @Post()
   @UseGuards(RolesGuard)
   @HttpCode(HttpStatus.CREATED)
@@ -65,11 +59,6 @@ export class PatientsController {
     return this.patientsService.createPatient(user.id, createPatientDto);
   }
 
-  /**
-   * Export all patient data as a CSV file
-   * GET /patients/export/csv
-   * Only doctors and researchers can export
-   */
   @Get('export/csv')
   @UseGuards(RolesGuard)
   @Header('Content-Type', 'text/csv')
@@ -78,11 +67,6 @@ export class PatientsController {
     return this.patientsService.exportPatientDataCsv(user.id, user.role.name);
   }
 
-  /**
-   * Export a single patient's full data as a PDF file
-   * GET /patients/:id/export/pdf
-   * Only doctors can export
-   */
   @Get(':id/export/pdf')
   @UseGuards(RolesGuard)
   @Header('Content-Type', 'application/pdf')
@@ -99,11 +83,6 @@ export class PatientsController {
     return new StreamableFile(buffer);
   }
 
-  /**
-   * Import patient data from a CSV file
-   * POST /patients/import/csv
-   * Only doctors can import
-   */
   @Post('import/csv')
   @HttpCode(HttpStatus.OK)
   @UseGuards(RolesGuard)
@@ -122,12 +101,6 @@ export class PatientsController {
     return this.patientsService.importCsvData(user.id, file.buffer);
   }
 
-  /**
-   * Search patients by a free-text term matched against name, email and
-   * phone (OR semantics). Scoped to the authenticated doctor's own
-   * patients, unless the caller is a Support Engineer.
-   * GET /patients/search
-   */
   @Get('search')
   async searchPatients(
     @CurrentUser() user: JwtUser,
@@ -153,11 +126,6 @@ export class PatientsController {
     );
   }
 
-  /**
-   * Get a specific patient record
-   * GET /patients/:id
-   * Only the doctor who created the patient can view it
-   */
   @Get(':id')
   async getPatient(
     @CurrentUser() user: JwtUser,
@@ -167,9 +135,7 @@ export class PatientsController {
   }
 
   /**
-   * Update patient notes, optionally recording a new EDSS assessment in the
-   * same request
-   * PUT /patients/:id
+   * Update patient notes, optionally recording a new EDSS assessment in the same request
    */
   @Put(':id')
   async updatePatientNotes(
@@ -184,10 +150,6 @@ export class PatientsController {
     );
   }
 
-  /**
-   * Delete a patient record
-   * DELETE /patients/:id
-   */
   @Delete(':id')
   @HttpCode(HttpStatus.NO_CONTENT)
   async deletePatient(
@@ -197,10 +159,6 @@ export class PatientsController {
     return this.patientsService.deletePatient(user.id, parseInt(patientId, 10));
   }
 
-  /**
-   * Add medical history to a patient
-   * POST /patients/:id/history
-   */
   @Post(':id/history')
   @HttpCode(HttpStatus.CREATED)
   async addPatientHistory(
@@ -214,7 +172,6 @@ export class PatientsController {
 
   /**
    * Get patient medical history
-   * GET /patients/:id/history
    */
   @Get(':id/history')
   async getPatientHistory(
@@ -229,7 +186,6 @@ export class PatientsController {
 
   /**
    * Add family history to a patient
-   * POST /patients/:id/family-history
    */
   @Post(':id/family-history')
   @HttpCode(HttpStatus.CREATED)
@@ -247,7 +203,6 @@ export class PatientsController {
 
   /**
    * Get patient family history
-   * GET /patients/:id/family-history
    */
   @Get(':id/family-history')
   async getPatientFamilyHistory(
@@ -263,7 +218,6 @@ export class PatientsController {
   /**
    * Get a patient's EDSS assessment history. Assessments themselves are
    * recorded via createPatient/updatePatientNotes, not a dedicated endpoint.
-   * GET /patients/:id/edss
    */
   @Get(':id/edss')
   async getPatientEdssAssessments(
@@ -278,7 +232,6 @@ export class PatientsController {
 
   /**
    * Add a migraine log entry for a patient
-   * POST /patients/:id/migraines
    */
   @Post(':id/migraines')
   @HttpCode(HttpStatus.CREATED)
@@ -293,7 +246,6 @@ export class PatientsController {
 
   /**
    * Get a patient's migraine log history
-   * GET /patients/:id/migraines
    */
   @Get(':id/migraines')
   async getPatientMigraineLogs(
@@ -308,7 +260,6 @@ export class PatientsController {
 
   /**
    * Add a seizure log entry for a patient
-   * POST /patients/:id/seizures
    */
   @Post(':id/seizures')
   @HttpCode(HttpStatus.CREATED)
@@ -323,7 +274,6 @@ export class PatientsController {
 
   /**
    * Get a patient's seizure log history
-   * GET /patients/:id/seizures
    */
   @Get(':id/seizures')
   async getPatientSeizureLogs(
@@ -338,7 +288,6 @@ export class PatientsController {
 
   /**
    * Get a patient's nerve conduction study history
-   * GET /patients/:id/ncs-studies
    */
   @Get(':id/ncs-studies')
   async getPatientNcsStudies(
@@ -351,12 +300,6 @@ export class PatientsController {
     );
   }
 
-  /**
-   * Bulk-import nerve conduction studies for a patient from a CSV file.
-   * Each row is sent to the calculator service just like a manually
-   * entered study.
-   * POST /patients/:id/ncs-studies/import
-   */
   @Post(':id/ncs-studies/import')
   @HttpCode(HttpStatus.OK)
   @UseInterceptors(FileInterceptor('file'))
@@ -379,7 +322,15 @@ export class PatientsController {
     );
   }
 
+  /**
+   * 
+   * @param user user ID
+   * @param patientId patient ID
+   * @param createNcsStudy NCS data
+   * @returns updated patient information
+   */
   @Post(':id/ncs-studies')
+  @HttpCode(HttpStatus.CREATED)
   @HttpCode(HttpStatus.OK)
   async addNcsStudy(
     @CurrentUser() user: JwtUser,
