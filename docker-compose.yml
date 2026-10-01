@@ -6,6 +6,7 @@
 # Usage: copy api/env.example to api/.env (if you haven't already, see
 # README.md) and run `docker compose up --build`.
 services:
+# ! this doesn't work, we need to fix database seed
   db:
     image: mysql:8.4
     restart: unless-stopped
