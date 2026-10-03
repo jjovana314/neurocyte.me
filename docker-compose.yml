@@ -1,12 +1,9 @@
-# Dockerized backend (API + its MySQL database) for now - the calculator
-# gRPC service and the frontend aren't containerized yet, so the API here
-# talks to the calculator running on the host (see `npm run start:calculator`
-# from the repo root) via host.docker.internal.
+# Dockerized app: frontend, API, its MySQL database, and the calculator
+# gRPC service.
 #
 # Usage: copy api/env.example to api/.env (if you haven't already, see
 # README.md) and run `docker compose up --build`.
 services:
-# ! this doesn't work, we need to fix database seed
   db:
     image: mysql:8.4
     restart: unless-stopped
@@ -26,6 +23,15 @@ services:
       timeout: 5s
       retries: 20
 
+  calculator:
+    build:
+      context: ./calculator
+    restart: unless-stopped
+    environment:
+      CALCULATOR_GRPC_PORT: '50051'
+    ports:
+      - '50051:50051'
+
   api:
     build:
       context: ./api
@@ -33,6 +39,8 @@ services:
     depends_on:
       db:
         condition: service_healthy
+      calculator:
+        condition: service_started
     # Picks up SECRET_KEY, MAIL_*, ACCESS_TOKEN_TIME, REFRESH_TOKEN_TIME,
     # FRONTEND_URL, APP_URL, etc. from your existing local dev config.
     env_file:
@@ -45,11 +53,20 @@ services:
       DATABASE_USERNAME: root
       DATABASE_PASSWORD: neurocyte_dev
       DATABASE_NAME: neurocyte
-      CALCULATOR_GRPC_URL: host.docker.internal:50051
+      CALCULATOR_GRPC_URL: calculator:50051
     ports:
       - '3000:3000'
-    extra_hosts:
-      - 'host.docker.internal:host-gateway'
+
+  frontend:
+    build:
+      context: ./frontend
+    restart: unless-stopped
+    depends_on:
+      - api
+    ports:
+      # Host port matches api/.env's FRONTEND_URL (http://localhost:5173),
+      # used in password-reset/deactivation email links.
+      - '5173:80'
 
 volumes:
   db-data:

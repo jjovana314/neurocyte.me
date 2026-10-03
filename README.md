@@ -87,12 +87,12 @@ npm install
 npm run dev
 ```
 
-### 7. Docker (Backend)
-The API and its MySQL database can be run in Docker instead of steps 3-5 above. The calculator service and frontend aren't containerized yet, so start the calculator on the host first (step 2/4), then from the repo root:
+### 7. Docker (Full Stack)
+The frontend, the API, the calculator service, and the MySQL database can all be run in Docker instead of steps 2-6 above. From the repo root:
 ```sh
 docker compose up --build
 ```
-This builds `api/Dockerfile` (a multi-stage build that generates the gRPC stubs, compiles the API, then installs production-only dependencies) and starts it alongside a `mysql:8.4` container, applying pending migrations on every start before the API boots (see `api/docker-entrypoint.sh`). The API container reaches the host-run calculator via `host.docker.internal:50051`. It reuses `api/.env` for app secrets. See the comments in `docker-compose.yml` for details.
+This builds `api/Dockerfile` (a multi-stage build that generates the gRPC stubs, compiles the API, then installs production-only dependencies), `calculator/Dockerfile` (generates the Python gRPC stubs from `calculator/proto/calculator.proto` at build time, same as `npm run generate:proto` does locally), and `frontend/Dockerfile` (builds the Vite app, then serves the static output through nginx), and starts them alongside a `mysql:8.4` container. Migrations are applied and the base roles/actions are seeded on every API start, before it boots (see `api/docker-entrypoint.sh`). The MySQL data is persisted in the `db-data` named volume, so it survives container restarts (`docker compose down -v` removes it). The API reaches the calculator over the docker network at `calculator:50051`; the frontend's nginx reverse-proxies `/auth` and `/patients` to the `api` service (see `frontend/nginx.conf`), the same way `vite.config.ts`'s dev server proxy does for `npm run dev`. The app is served at `http://localhost:5173`, matching `api/.env`'s `FRONTEND_URL`. It reuses `api/.env` for app secrets. See the comments in `docker-compose.yml` for details.
 
 ### Additional Scripts
 - **Root convenience scripts** (from the repo root): `npm run start` (runs the calculator service, API, and frontend dev servers together), `npm run build` (builds API + frontend), `npm run setup:calculator` / `npm run start:calculator` (calculator service), `npm run generate:proto` (regenerate the gRPC stubs for both services from the `.proto` files)
