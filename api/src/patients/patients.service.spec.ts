@@ -1434,6 +1434,50 @@ describe('PatientsService', () => {
       role: { name: 'Doctor' },
     } as any;
 
+    const mockMedicalHistory = [
+      {
+        id: 1,
+        disorder: 'Epilepsy',
+        description: 'Focal seizures',
+        diagnosisDate: '2024-03-15',
+        severity: 'moderate',
+        medications: 'Levetiracetam',
+        recordedAt: new Date('2024-03-15T08:00:00Z'),
+      },
+    ] as any[];
+
+    const mockFamilyHistory = [
+      {
+        id: 1,
+        diseaseType: 'Alzheimer',
+        relation: 'Mother',
+        severity: 'severe',
+        notes: 'Diagnosed at 70',
+        recordedAt: new Date('2024-03-15T08:00:00Z'),
+      },
+    ] as any[];
+
+    const mockSeizureLogs = [
+      {
+        id: 1,
+        onsetVector: 'FOCAL_AWARE',
+        motorFeatures: ['TONIC', 'CLONIC'],
+        ictusStart: new Date('2025-05-01T10:00:00Z'),
+        ictusEnd: new Date('2025-05-01T10:02:00Z'),
+        ictusDurationSeconds: 120,
+        postictalDurationMinutes: 15,
+        triggers: ['SLEEP_DEPRIVATION'],
+        notes: 'Witnessed by spouse',
+        recordedAt: new Date('2025-05-01T12:00:00Z'),
+      },
+    ] as any[];
+
+    beforeEach(() => {
+      mockPatientHistoryRepository.find.mockResolvedValue(mockMedicalHistory);
+      mockFamilyHistoryRepository.find.mockResolvedValue(mockFamilyHistory);
+      mockSeizureLogRepository.find.mockResolvedValue(mockSeizureLogs);
+    });
+
     const mockPatient = {
       id: patientId,
       doctorId,
@@ -1441,27 +1485,6 @@ describe('PatientsService', () => {
       notes: 'Patient notes',
       createdAt: new Date('2025-01-01T10:00:00Z'),
       updatedAt: new Date('2025-06-01T10:00:00Z'),
-      medicalHistory: [
-        {
-          id: 1,
-          disorder: 'Epilepsy',
-          description: 'Focal seizures',
-          diagnosisDate: '2024-03-15',
-          severity: 'moderate',
-          medications: 'Levetiracetam',
-          recordedAt: new Date('2024-03-15T08:00:00Z'),
-        },
-      ],
-      familyHistory: [
-        {
-          id: 1,
-          diseaseType: 'Alzheimer',
-          relation: 'Mother',
-          severity: 'severe',
-          notes: 'Diagnosed at 70',
-          recordedAt: new Date('2024-03-15T08:00:00Z'),
-        },
-      ],
     } as any;
 
     it('should return a Buffer containing a PDF', async () => {
@@ -1476,6 +1499,47 @@ describe('PatientsService', () => {
 
       expect(result).toBeInstanceOf(Buffer);
       // PDF files start with the %PDF magic bytes
+      expect(result.slice(0, 4).toString()).toBe('%PDF');
+    });
+
+    it('should fetch history and seizure logs from their repositories', async () => {
+      mockUserRepository.findOne.mockResolvedValue(mockDoctor);
+      mockPatientRepository.findOne.mockResolvedValue(mockPatient);
+
+      const result = await service.exportPatientPdf(
+        doctorId,
+        patientId,
+        'Doctor',
+      );
+
+      expect(result.slice(0, 4).toString()).toBe('%PDF');
+      expect(mockPatientHistoryRepository.find).toHaveBeenCalledWith({
+        where: { patientId },
+        order: { recordedAt: 'DESC' },
+      });
+      expect(mockFamilyHistoryRepository.find).toHaveBeenCalledWith({
+        where: { patientId },
+        order: { recordedAt: 'DESC' },
+      });
+      expect(mockSeizureLogRepository.find).toHaveBeenCalledWith({
+        where: { patientId },
+        order: { ictusStart: 'DESC' },
+      });
+    });
+
+    it('should allow a Support Engineer to export a patient they do not own', async () => {
+      mockUserRepository.findOne.mockResolvedValue(mockDoctor);
+      mockPatientRepository.findOne.mockResolvedValue({
+        ...mockPatient,
+        doctorId: 999,
+      });
+
+      const result = await service.exportPatientPdf(
+        doctorId,
+        patientId,
+        'Support Engineer',
+      );
+
       expect(result.slice(0, 4).toString()).toBe('%PDF');
     });
 
@@ -1512,9 +1576,10 @@ describe('PatientsService', () => {
       mockUserRepository.findOne.mockResolvedValue(mockDoctor);
       mockPatientRepository.findOne.mockResolvedValue({
         ...mockPatient,
-        medicalHistory: [],
-        familyHistory: [],
       });
+      mockPatientHistoryRepository.find.mockResolvedValue([]);
+      mockFamilyHistoryRepository.find.mockResolvedValue([]);
+      mockSeizureLogRepository.find.mockResolvedValue([]);
 
       const result = await service.exportPatientPdf(
         doctorId,
@@ -1532,9 +1597,10 @@ describe('PatientsService', () => {
         ...mockPatient,
         name: null,
         notes: null,
-        medicalHistory: [],
-        familyHistory: [],
       });
+      mockPatientHistoryRepository.find.mockResolvedValue([]);
+      mockFamilyHistoryRepository.find.mockResolvedValue([]);
+      mockSeizureLogRepository.find.mockResolvedValue([]);
 
       const result = await service.exportPatientPdf(
         doctorId,

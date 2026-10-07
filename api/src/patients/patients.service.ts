@@ -26,6 +26,7 @@ import {
 import { NcsStudy, NcsStudyType } from './entities/ncs-study.entity';
 import { User } from 'src/user/entities/user.entity';
 import PDFDocument from 'pdfkit';
+import { once } from 'events';
 import {
   CreatePatientDto,
   CreatePatientHistoryDto,
@@ -1148,7 +1149,6 @@ export class PatientsService implements OnModuleInit {
 
     const patient = await this.patientRepository.findOne({
       where: { id: patientId },
-      relations: ['medicalHistory', 'familyHistory', 'doctor'],
     });
     if (!patient) {
       throw new PatientNotFoundException(patientId);
@@ -1162,154 +1162,198 @@ export class PatientsService implements OnModuleInit {
 
     const isSupportEngineer = roleName === 'Support Engineer';
 
+    const [medicalHistory, familyHistory, seizureLogs] = await Promise.all([
+      this.patientHistoryRepository.find({
+        where: { patientId },
+        order: { recordedAt: 'DESC' },
+      }),
+      this.getPatientFamilyHistory(patient.doctorId, patientId),
+      this.seizureLogRepository.find({
+        where: { patientId },
+        order: { ictusStart: 'DESC' },
+      }),
+    ]);
+
     const doc = new PDFDocument({ margin: 50 });
     const buffers: Buffer[] = [];
 
     doc.on('data', (chunk: Buffer) => buffers.push(chunk));
+    const docEnded = once(doc, 'end');
 
-    const pdfBuffer = await new Promise<Buffer>((resolve, reject) => {
-      doc.on('end', () => resolve(Buffer.concat(buffers)));
-      doc.on('error', reject);
+    // ─ Header
+    doc
+      .fontSize(22)
+      .font('Helvetica-Bold')
+      .text('Patient Report', { align: 'center' });
+    doc.moveDown(0.5);
+    doc
+      .fontSize(10)
+      .font('Helvetica')
+      .fillColor('#555555')
+      .text(`Generated: ${new Date().toLocaleString()}`, { align: 'center' });
+    doc.moveDown(1);
 
-      // ─ Header
+    // ─ Patient Info
+    doc
+      .fontSize(14)
+      .font('Helvetica-Bold')
+      .fillColor('#000000')
+      .text('Patient Information');
+    doc
+      .moveTo(50, doc.y)
+      .lineTo(doc.page.width - 50, doc.y)
+      .strokeColor('#cccccc')
+      .stroke();
+    doc.moveDown(0.5);
+
+    const doctorFullName = `${doctor.firstName} ${doctor.lastName}`;
+    doc.fontSize(11).font('Helvetica');
+
+    const infoRows: [string, string][] = [
+      ['Patient ID', String(patient.id)],
+      [
+        'Patient Name',
+        isSupportEngineer ? maskString(patient.name) : patient.name || 'N/A',
+      ],
+      [
+        'Date of Birth',
+        patient.dateOfBirth ? patient.dateOfBirth.toDateString() : 'N/A',
+      ],
+      ['Gender', patient.gender || 'N/A'],
+      [
+        'Phone',
+        isSupportEngineer ? maskString(patient.phone) : patient.phone || 'N/A',
+      ],
+      [
+        'Email',
+        isSupportEngineer ? maskString(patient.email) : patient.email || 'N/A',
+      ],
+      ['Attending Doctor', doctorFullName],
+      ['Doctor Email', doctor.email],
+      ['Notes', patient.notes || 'None'],
+      ['Created At', patient.createdAt.toLocaleString()],
+      ['Last Updated', patient.updatedAt.toLocaleString()],
+    ];
+
+    for (const [label, patientData] of infoRows) {
       doc
-        .fontSize(22)
         .font('Helvetica-Bold')
-        .text('Patient Report', { align: 'center' });
-      doc.moveDown(0.5);
-      doc
-        .fontSize(10)
+        .text(`${label}: `, { continued: true })
         .font('Helvetica')
-        .fillColor('#555555')
-        .text(`Generated: ${new Date().toLocaleString()}`, { align: 'center' });
-      doc.moveDown(1);
+        .text(patientData);
+    }
+    doc.moveDown(1);
 
-      // ─ Patient Info
-      doc
-        .fontSize(14)
-        .font('Helvetica-Bold')
-        .fillColor('#000000')
-        .text('Patient Information');
-      doc
-        .moveTo(50, doc.y)
-        .lineTo(doc.page.width - 50, doc.y)
-        .strokeColor('#cccccc')
-        .stroke();
-      doc.moveDown(0.5);
+    // ─ Medical History
+    doc.fontSize(14).font('Helvetica-Bold').text('Medical History');
+    doc
+      .moveTo(50, doc.y)
+      .lineTo(doc.page.width - 50, doc.y)
+      .strokeColor('#cccccc')
+      .stroke();
+    doc.moveDown(0.5);
 
-      const doctorFullName = `${doctor.firstName} ${doctor.lastName}`;
-      doc.fontSize(11).font('Helvetica');
-
-      const infoRows: [string, string][] = [
-        ['Patient ID', String(patient.id)],
-        [
-          'Patient Name',
-          isSupportEngineer ? maskString(patient.name) : patient.name || 'N/A',
-        ],
-        [
-          'Date of Birth',
-          patient.dateOfBirth ? patient.dateOfBirth.toDateString() : 'N/A',
-        ],
-        ['Gender', patient.gender || 'N/A'],
-        [
-          'Phone',
-          isSupportEngineer
-            ? maskString(patient.phone)
-            : patient.phone || 'N/A',
-        ],
-        [
-          'Email',
-          isSupportEngineer
-            ? maskString(patient.email)
-            : patient.email || 'N/A',
-        ],
-        ['Attending Doctor', doctorFullName],
-        ['Doctor Email', doctor.email],
-        ['Notes', patient.notes || 'None'],
-        ['Created At', patient.createdAt.toLocaleString()],
-        ['Last Updated', patient.updatedAt.toLocaleString()],
-      ];
-
-      for (const [label, patientData] of infoRows) {
+    if (medicalHistory.length === 0) {
+      doc.fontSize(11).font('Helvetica').text('No medical history recorded.');
+    } else {
+      for (const [index, record] of medicalHistory.entries()) {
         doc
+          .fontSize(12)
           .font('Helvetica-Bold')
-          .text(`${label}: `, { continued: true })
-          .font('Helvetica')
-          .text(patientData);
+          .text(`${index + 1}. ${record.disorder}`);
+        doc.fontSize(11).font('Helvetica');
+        doc.text(`   Description: ${record.description || 'N/A'}`);
+        doc.text(`   Diagnosis Date: ${record.diagnosisDate || 'N/A'}`);
+        doc.text(`   Severity: ${record.severity || 'N/A'}`);
+        doc.text(`   Medications: ${record.medications || 'N/A'}`);
+        doc.text(`   Recorded At: ${record.recordedAt.toLocaleString()}`);
+        doc.moveDown(0.5);
       }
-      doc.moveDown(1);
+    }
+    doc.moveDown(1);
 
-      // ─ Medical History
-      doc.fontSize(14).font('Helvetica-Bold').text('Medical History');
-      doc
-        .moveTo(50, doc.y)
-        .lineTo(doc.page.width - 50, doc.y)
-        .strokeColor('#cccccc')
-        .stroke();
-      doc.moveDown(0.5);
+    // ─ Family History
+    doc.fontSize(14).font('Helvetica-Bold').text('Family History');
+    doc
+      .moveTo(50, doc.y)
+      .lineTo(doc.page.width - 50, doc.y)
+      .strokeColor('#cccccc')
+      .stroke();
+    doc.moveDown(0.5);
 
-      const medicalHistory = patient.medicalHistory ?? [];
-      if (medicalHistory.length === 0) {
-        doc.fontSize(11).font('Helvetica').text('No medical history recorded.');
-      } else {
-        for (const [index, record] of medicalHistory.entries()) {
-          doc
-            .fontSize(12)
-            .font('Helvetica-Bold')
-            .text(`${index + 1}. ${record.disorder}`);
-          doc.fontSize(11).font('Helvetica');
-          doc.text(`   Description: ${record.description || 'N/A'}`);
-          doc.text(`   Diagnosis Date: ${record.diagnosisDate || 'N/A'}`);
-          doc.text(`   Severity: ${record.severity || 'N/A'}`);
-          doc.text(`   Medications: ${record.medications || 'N/A'}`);
-          doc.text(`   Recorded At: ${record.recordedAt.toLocaleString()}`);
-          doc.moveDown(0.5);
-        }
+    if (familyHistory.length === 0) {
+      doc.fontSize(11).font('Helvetica').text('No family history recorded.');
+    } else {
+      for (const [index, record] of familyHistory.entries()) {
+        doc
+          .fontSize(12)
+          .font('Helvetica-Bold')
+          .text(`${index + 1}. ${record.diseaseType} (${record.relation})`);
+        doc.fontSize(11).font('Helvetica');
+        doc.text(`   Severity: ${record.severity || 'N/A'}`);
+        doc.text(`   Notes: ${record.notes || 'N/A'}`);
+        doc.text(`   Recorded At: ${record.recordedAt.toLocaleString()}`);
+        doc.moveDown(0.5);
       }
-      doc.moveDown(1);
+    }
+    doc.moveDown(1);
+    // ─ Seizure Logs
+    doc.fontSize(14).font('Helvetica-Bold').text('Seizure Logs');
+    doc
+      .moveTo(50, doc.y)
+      .lineTo(doc.page.width - 50, doc.y)
+      .strokeColor('#cccccc')
+      .stroke();
+    doc.moveDown(0.5);
 
-      // ─ Family History
-      doc.fontSize(14).font('Helvetica-Bold').text('Family History');
-      doc
-        .moveTo(50, doc.y)
-        .lineTo(doc.page.width - 50, doc.y)
-        .strokeColor('#cccccc')
-        .stroke();
-      doc.moveDown(0.5);
-
-      const familyHistory = patient.familyHistory ?? [];
-      if (familyHistory.length === 0) {
-        doc.fontSize(11).font('Helvetica').text('No family history recorded.');
-      } else {
-        for (const [index, record] of familyHistory.entries()) {
-          doc
-            .fontSize(12)
-            .font('Helvetica-Bold')
-            .text(`${index + 1}. ${record.diseaseType} (${record.relation})`);
-          doc.fontSize(11).font('Helvetica');
-          doc.text(`   Severity: ${record.severity || 'N/A'}`);
-          doc.text(`   Notes: ${record.notes || 'N/A'}`);
-          doc.text(`   Recorded At: ${record.recordedAt.toLocaleString()}`);
-          doc.moveDown(0.5);
-        }
-      }
-
-      // ─ Footer
-      doc
-        .fontSize(9)
-        .fillColor('#888888')
-        .text(
-          'Confidential – For authorized medical personnel only',
-          50,
-          doc.page.height - 50,
-          {
-            align: 'center',
-            width: doc.page.width - 100,
-          },
+    if (seizureLogs.length === 0) {
+      doc.fontSize(11).font('Helvetica').text('No seizure logs recorded.');
+    } else {
+      for (const [index, record] of seizureLogs.entries()) {
+        doc
+          .fontSize(12)
+          .font('Helvetica-Bold')
+          .text(`${index + 1}. ${record.onsetVector}`);
+        doc.fontSize(11).font('Helvetica');
+        doc.text(`   Ictus Start: ${record.ictusStart.toLocaleString()}`);
+        doc.text(`   Ictus End: ${record.ictusEnd.toLocaleString()}`);
+        doc.text(`   Duration: ${record.ictusDurationSeconds} seconds`);
+        doc.text(
+          `   Postictal Duration: ${
+            record.postictalDurationMinutes != null
+              ? `${record.postictalDurationMinutes} minutes`
+              : 'N/A'
+          }`,
         );
+        doc.text(
+          `   Motor Features: ${record.motorFeatures?.length ? record.motorFeatures.join(', ') : 'None'}`,
+        );
+        doc.text(
+          `   Triggers: ${record.triggers?.length ? record.triggers.join(', ') : 'None'}`,
+        );
+        doc.text(`   Notes: ${record.notes || 'N/A'}`);
+        doc.text(`   Recorded At: ${record.recordedAt.toLocaleString()}`);
+        doc.moveDown(0.5);
+      }
+    }
 
-      doc.end();
-    });
+    // ─ Footer
+    doc
+      .fontSize(9)
+      .fillColor('#888888')
+      .text(
+        'Confidential – For authorized medical personnel only',
+        50,
+        doc.page.height - 50,
+        {
+          align: 'center',
+          width: doc.page.width - 100,
+        },
+      );
+
+    doc.end();
+    await docEnded;
+    const pdfBuffer = Buffer.concat(buffers);
 
     this.logger.info(`Patient ${patientId} PDF exported by doctor ${doctorId}`);
     return pdfBuffer;
