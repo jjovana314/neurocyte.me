@@ -5,6 +5,7 @@ import { PatientsService } from './patients.service';
 import { UserService } from 'src/user/user.service';
 import { JwtUser, JwtUserRole } from 'src/auth/classes/jwt-user.class';
 import { MultipartFile } from 'src/common/multipart-file';
+import { RoleEnum } from 'src/auth/enums/role.enum';
 
 describe('PatientsController', () => {
   let controller: PatientsController;
@@ -39,7 +40,7 @@ describe('PatientsController', () => {
   const mockUser: JwtUser = Object.assign(new JwtUser(), {
     id: 1,
     email: 'doctor@test.com',
-    role: Object.assign(new JwtUserRole(), { id: 1, name: 'Doctor' }),
+    role: Object.assign(new JwtUserRole(), { id: 1, name: RoleEnum.DOCTOR }),
   });
 
   beforeEach(async () => {
@@ -48,7 +49,7 @@ describe('PatientsController', () => {
     mockUserService.findUserById.mockResolvedValue({
       id: 1,
       email: 'doctor@test.com',
-      role: { id: 1, name: 'Doctor' },
+      role: { id: 1, name: RoleEnum.DOCTOR },
     });
 
     const module: TestingModule = await Test.createTestingModule({
@@ -141,15 +142,19 @@ describe('PatientsController', () => {
         'ASC',
       );
 
-      expect(mockPatientsService.search).toHaveBeenCalledWith(1, 'Doctor', {
-        query: 'jane',
-        options: {
-          page: 2,
-          pageSize: 10,
-          sortBy: 'name',
-          order: 'ASC',
+      expect(mockPatientsService.search).toHaveBeenCalledWith(
+        1,
+        RoleEnum.DOCTOR,
+        {
+          query: 'jane',
+          options: {
+            page: 2,
+            pageSize: 10,
+            sortBy: 'name',
+            order: 'ASC',
+          },
         },
-      });
+      );
       expect(result).toBe(mockResult);
     });
 
@@ -166,15 +171,19 @@ describe('PatientsController', () => {
         undefined,
       );
 
-      expect(mockPatientsService.search).toHaveBeenCalledWith(1, 'Doctor', {
-        query: undefined,
-        options: {
-          page: NaN,
-          pageSize: NaN,
-          sortBy: undefined,
-          order: undefined,
+      expect(mockPatientsService.search).toHaveBeenCalledWith(
+        1,
+        RoleEnum.DOCTOR,
+        {
+          query: undefined,
+          options: {
+            page: NaN,
+            pageSize: NaN,
+            sortBy: undefined,
+            order: undefined,
+          },
         },
-      });
+      );
       expect(result).toBe(mockResult);
     });
   });
@@ -187,7 +196,7 @@ describe('PatientsController', () => {
 
       expect(mockPatientsService.exportPatientDataCsv).toHaveBeenCalledWith(
         1,
-        'Doctor',
+        RoleEnum.DOCTOR,
       );
       expect(result).toBe('csv-content');
     });
@@ -578,7 +587,7 @@ describe('PatientsController', () => {
       expect(mockPatientsService.exportPatientPdf).toHaveBeenCalledWith(
         1,
         10,
-        'Doctor',
+        RoleEnum.DOCTOR,
       );
       // StreamableFile wraps the buffer
       expect(result).toBeDefined();

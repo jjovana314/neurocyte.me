@@ -1,10 +1,11 @@
 import {
   BadRequestException,
+  ConflictException,
   Injectable,
   UnauthorizedException,
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
-import { UserService } from 'src/user/user.service';
+import { normalizeEmail, UserService } from 'src/user/user.service';
 import { User } from '../user/entities/user.entity';
 import { PinoLogger } from 'nestjs-pino';
 import { IRoles } from './interfaces/roles.interface';
@@ -16,6 +17,9 @@ import { Action } from './entites/action.entity';
 import { config } from '../config/config';
 import type { StringValue } from 'ms';
 import { RegisterDto } from './dtos/register.dto';
+
+export const USER_ALREADY_EXISTS_MESSAGE =
+  'User with that email already exists';
 
 @Injectable()
 export class AuthService {
@@ -48,12 +52,18 @@ export class AuthService {
   }
 
   async register(registerData: RegisterDto): Promise<UserInfo> {
-    const { email, password, firstName, lastName, role } = registerData;
-    // todo crete use info data with access token
+    const { password, firstName, lastName, role } = registerData;
+    const email = normalizeEmail(registerData.email);
+    if (!email) {
+      throw new BadRequestException('Email is required');
+    }
+
+    // Any existing account with this email blocks registration, whatever its
+    // role - we never fall through to creating a second account or logging in.
     const existingUser = await this.usersService.findUserByEmail(email);
     if (existingUser) {
       this.logger.error(`User with email ${existingUser.email} already exists`);
-      throw new BadRequestException(`User with email ${email} already exists`);
+      throw new ConflictException(USER_ALREADY_EXISTS_MESSAGE);
     }
     const user = new User();
     user.email = email;
@@ -70,7 +80,18 @@ export class AuthService {
     user.role = foundRole;
     this.logger.info('Creating user...');
 
-    const savedUser = await this.usersService.save(user);
+    let savedUser: User;
+    try {
+      savedUser = await this.usersService.save(user);
+    } catch (error) {
+      // A concurrent registration with the same email can pass the check
+      // above; the unique index on user.email then rejects the insert.
+      if (error?.code === 'ER_DUP_ENTRY') {
+        this.logger.error(`User with email ${email} already exists`);
+        throw new ConflictException(USER_ALREADY_EXISTS_MESSAGE);
+      }
+      throw error;
+    }
     this.logger.info(`User with id ${savedUser.id} registered successfully`);
     return await this.login(savedUser);
   }

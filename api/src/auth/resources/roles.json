@@ -1,32 +1,45 @@
 {
   "roles": [
     {
-      "doctor": {
-        "name": "Doctor",
-        "allowedActions": [
-          "create_patient",
-          "update_patient",
-          "delete_patient",
-          "view_patient",
-          "upload_medical_document",
-          "download_medical_document",
-          "generate_report",
-          "access_medical_devices",
-          "update_own_profile"
-        ]
-      },
-      "support": {
-        "name": "Support Engineer",
-        "allowedActions": [
-          "create_user",
-          "update_user",
-          "delete_user",
-          "assign_roles",
-          "manage_api_access",
-          "view_system_logs"
-        ]
-      }
+      "name": "Doctor",
+      "actions": [
+        "create_patient",
+        "update_patient",
+        "delete_patient",
+        "view_patient",
+        "upload_medical_document",
+        "download_medical_document",
+        "generate_report",
+        "access_medical_devices",
+        "update_own_profile"
+      ]
+    },
+    {
+      "name": "Support Engineer",
+      "actions": [
+        "create_user",
+        "update_user",
+        "delete_user",
+        "assign_roles",
+        "manage_api_access",
+        "view_system_logs"
+      ]
+    },
+    {
+      "name": "admin",
+      "actions": [
+        "create_user",
+        "update_user",
+        "delete_user",
+        "assign_roles",
+        "manage_api_access",
+        "view_system_logs",
+        "create_patient",
+        "update_patient",
+        "delete_patient",
+        "view_patient",
+        "generate_report"
+      ]
     }
-    
   ]
 }

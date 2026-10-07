@@ -1,5 +1,6 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { AuthService } from './auth.service';
+import { AuthService, USER_ALREADY_EXISTS_MESSAGE } from './auth.service';
+import { ConflictException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { UserService } from 'src/user/user.service';
 import { PinoLogger } from 'nestjs-pino';
@@ -108,5 +109,61 @@ describe('AuthService (login & register)', () => {
     });
 
     hashSpy.mockRestore();
+  });
+
+  describe('register with an email that is already taken', () => {
+    const registerData: RegisterDto = {
+      email: 'taken@user.com',
+      password: 'password',
+      firstName: 'First',
+      lastName: 'Last',
+      role: 'Doctor',
+    };
+
+    it('throws ConflictException and neither creates the user nor logs in', async () => {
+      mockUsersService.findUserByEmail.mockResolvedValue({
+        id: 5,
+        email: 'taken@user.com',
+        role: { name: 'Support Engineer' },
+      });
+
+      await expect(service.register(registerData)).rejects.toThrow(
+        new ConflictException(USER_ALREADY_EXISTS_MESSAGE),
+      );
+      expect(mockRoleRepository.findOne).not.toHaveBeenCalled();
+      expect(mockUsersService.save).not.toHaveBeenCalled();
+      expect(mockJwtService.sign).not.toHaveBeenCalled();
+    });
+
+    it('normalises the email before checking and saving it', async () => {
+      mockUsersService.findUserByEmail.mockResolvedValue(null);
+      mockRoleRepository.findOne.mockResolvedValue({ id: 1, name: 'Doctor' });
+      mockUsersService.save.mockImplementation(async (u: any) => ({
+        ...u,
+        id: 1,
+      }));
+
+      await service.register({ ...registerData, email: '  Taken@User.COM ' });
+
+      expect(mockUsersService.findUserByEmail).toHaveBeenCalledWith(
+        'taken@user.com',
+      );
+      expect(mockUsersService.save).toHaveBeenCalledWith(
+        expect.objectContaining({ email: 'taken@user.com' }),
+      );
+    });
+
+    it('throws ConflictException when a concurrent insert hits the unique index', async () => {
+      mockUsersService.findUserByEmail.mockResolvedValue(null);
+      mockRoleRepository.findOne.mockResolvedValue({ id: 1, name: 'Doctor' });
+      mockUsersService.save.mockRejectedValue(
+        Object.assign(new Error('Duplicate entry'), { code: 'ER_DUP_ENTRY' }),
+      );
+
+      await expect(service.register(registerData)).rejects.toThrow(
+        ConflictException,
+      );
+      expect(mockJwtService.sign).not.toHaveBeenCalled();
+    });
   });
 });

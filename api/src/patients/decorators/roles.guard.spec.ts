@@ -2,6 +2,7 @@ import { ExecutionContext, ForbiddenException } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { RolesGuard } from './roles.guard';
 import { UserService } from 'src/user/user.service';
+import { RoleEnum } from 'src/auth/enums/role.enum';
 
 describe('RolesGuard', () => {
   let guard: RolesGuard;
@@ -49,7 +50,7 @@ describe('RolesGuard', () => {
   });
 
   it('throws ForbiddenException when there is no authenticated user on the request', async () => {
-    mockReflector.getAllAndOverride.mockReturnValue(['admin']);
+    mockReflector.getAllAndOverride.mockReturnValue([RoleEnum.ADMIN]);
 
     await expect(guard.canActivate(makeContext(undefined))).rejects.toThrow(
       new ForbiddenException('User not authenticated'),
@@ -58,7 +59,7 @@ describe('RolesGuard', () => {
   });
 
   it('throws ForbiddenException when the authenticated user no longer exists', async () => {
-    mockReflector.getAllAndOverride.mockReturnValue(['admin']);
+    mockReflector.getAllAndOverride.mockReturnValue([RoleEnum.ADMIN]);
     mockUserService.findUserById.mockResolvedValue(null);
 
     await expect(guard.canActivate(makeContext({ id: 1 }))).rejects.toThrow(
@@ -67,10 +68,10 @@ describe('RolesGuard', () => {
   });
 
   it('throws ForbiddenException when the user role is not in the required roles', async () => {
-    mockReflector.getAllAndOverride.mockReturnValue(['admin']);
+    mockReflector.getAllAndOverride.mockReturnValue([RoleEnum.ADMIN]);
     mockUserService.findUserById.mockResolvedValue({
       id: 1,
-      role: { name: 'Doctor' },
+      role: { name: RoleEnum.DOCTOR },
     });
 
     await expect(guard.canActivate(makeContext({ id: 1 }))).rejects.toThrow(
@@ -79,7 +80,7 @@ describe('RolesGuard', () => {
   });
 
   it('throws ForbiddenException when the user has no role assigned', async () => {
-    mockReflector.getAllAndOverride.mockReturnValue(['admin']);
+    mockReflector.getAllAndOverride.mockReturnValue([RoleEnum.ADMIN]);
     mockUserService.findUserById.mockResolvedValue({ id: 1, role: null });
 
     await expect(guard.canActivate(makeContext({ id: 1 }))).rejects.toThrow(
@@ -88,10 +89,10 @@ describe('RolesGuard', () => {
   });
 
   it('allows access when the user role matches a required role', async () => {
-    mockReflector.getAllAndOverride.mockReturnValue(['admin']);
+    mockReflector.getAllAndOverride.mockReturnValue([RoleEnum.ADMIN]);
     mockUserService.findUserById.mockResolvedValue({
       id: 1,
-      role: { name: 'admin' },
+      role: { name: RoleEnum.ADMIN },
     });
 
     const result = await guard.canActivate(makeContext({ id: 1 }));
@@ -100,7 +101,10 @@ describe('RolesGuard', () => {
   });
 
   it('matches roles case-insensitively', async () => {
-    mockReflector.getAllAndOverride.mockReturnValue(['Doctor', 'Researcher']);
+    mockReflector.getAllAndOverride.mockReturnValue([
+      RoleEnum.DOCTOR,
+      'Researcher',
+    ]);
     mockUserService.findUserById.mockResolvedValue({
       id: 1,
       role: { name: 'doctor' },
@@ -112,10 +116,10 @@ describe('RolesGuard', () => {
   });
 
   it('looks up the user by the id from the JWT payload', async () => {
-    mockReflector.getAllAndOverride.mockReturnValue(['admin']);
+    mockReflector.getAllAndOverride.mockReturnValue([RoleEnum.ADMIN]);
     mockUserService.findUserById.mockResolvedValue({
       id: 42,
-      role: { name: 'admin' },
+      role: { name: RoleEnum.ADMIN },
     });
 
     await guard.canActivate(makeContext({ id: 42 }));

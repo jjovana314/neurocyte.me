@@ -8,9 +8,10 @@ import * as bcrypt from 'bcrypt';
 import { randomUUID } from 'crypto';
 import { PinoLogger } from 'nestjs-pino';
 import { User } from './entities/user.entity';
-import { Repository } from 'typeorm';
+import { Raw, Repository } from 'typeorm';
 import { config } from '../config/config';
 import { MailService } from './mail.service';
+import { RoleEnum } from 'src/auth/enums/role.enum';
 
 @Injectable()
 export class UserService {
@@ -21,7 +22,9 @@ export class UserService {
   ) {}
 
   async findUserByEmail(email: string): Promise<User | null> {
-    return await this.userRepository.findOne({ where: { email } });
+    return await this.userRepository.findOne({
+      where: { email: this.emailMatches(email) },
+    });
   }
 
   async findUserById(id: number): Promise<User | null> {
@@ -30,7 +33,7 @@ export class UserService {
 
   async validateUser(email: string, password: string): Promise<User | null> {
     const user = await this.userRepository.findOne({
-      where: { email },
+      where: { email: this.emailMatches(email) },
       relations: ['role'],
     });
 
@@ -78,7 +81,7 @@ export class UserService {
     await this.userRepository.save(user);
 
     const admins = await this.userRepository.find({
-      where: { role: { name: 'admin' } },
+      where: { role: { name: RoleEnum.ADMIN } },
       relations: ['role'],
     });
     const deactivationLink = `${config.get().APP_URL}/user/deactivate/${token}`;
@@ -104,7 +107,9 @@ export class UserService {
   }
 
   async sendPasswordReset(email: string): Promise<void> {
-    const user = await this.userRepository.findOne({ where: { email } });
+    const user = await this.userRepository.findOne({
+      where: { email: this.emailMatches(email) },
+    });
     // Always return silently to avoid revealing whether the email exists
     if (!user) return;
 
@@ -139,4 +144,18 @@ export class UserService {
     user.resetPasswordExpires = null;
     await this.userRepository.save(user);
   }
+
+  // Emails are compared trimmed and case-insensitively, so "Jane@x.com " and
+  // "jane@x.com" are treated as the same account. The column side is
+  // normalised too, to match rows stored before emails were normalised on
+  // registration.
+  private emailMatches(email: string) {
+    return Raw((alias) => `LOWER(TRIM(${alias})) = :email`, {
+      email: normalizeEmail(email),
+    });
+  }
+}
+
+export function normalizeEmail(email: string): string {
+  return (email ?? '').trim().toLowerCase();
 }

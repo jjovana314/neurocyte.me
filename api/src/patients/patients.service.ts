@@ -54,6 +54,7 @@ import {
 import { dateValidation } from './utils/validation';
 import { SearchPatientDto } from './dtos/search-patient.dto';
 import { PatientSearchResult } from './interfaces/search-result.interface';
+import { RoleEnum } from 'src/auth/enums/role.enum';
 
 @Injectable()
 export class PatientsService implements OnModuleInit {
@@ -180,7 +181,7 @@ export class PatientsService implements OnModuleInit {
       .leftJoinAndSelect('patient.seizureLogs', 'seizureLogs')
       .leftJoinAndSelect('patient.ncsStudies', 'ncsStudies');
 
-    if (roleName !== 'Support Engineer') {
+    if (roleName !== RoleEnum.SUPPORT_ENGINEER) {
       qb.andWhere('patient.doctorId = :doctorId', { doctorId });
     }
 
@@ -1059,7 +1060,7 @@ export class PatientsService implements OnModuleInit {
       .leftJoinAndSelect('patient.medicalHistory', 'medicalHistory')
       .leftJoinAndSelect('patient.familyHistory', 'familyHistory');
 
-    if (roleName === 'Doctor') {
+    if (roleName === RoleEnum.DOCTOR) {
       qb.where('patient.doctorId = :userId', { userId });
     }
     const patients = await qb.getMany();
@@ -1153,14 +1154,17 @@ export class PatientsService implements OnModuleInit {
     if (!patient) {
       throw new PatientNotFoundException(patientId);
     }
-    if (roleName !== 'Support Engineer' && patient.doctorId !== doctorId) {
+    if (
+      roleName !== RoleEnum.SUPPORT_ENGINEER &&
+      patient.doctorId !== doctorId
+    ) {
       this.logger.warn(
         `Doctor ${doctorId} attempted to export PDF for patient ${patientId} created by doctor ${patient.doctorId}`,
       );
       throw new AccessToPatientForbiddenException();
     }
 
-    const isSupportEngineer = roleName === 'Support Engineer';
+    const isSupportEngineer = roleName === RoleEnum.SUPPORT_ENGINEER;
 
     const [medicalHistory, familyHistory, seizureLogs] = await Promise.all([
       this.patientHistoryRepository.find({
@@ -1206,7 +1210,6 @@ export class PatientsService implements OnModuleInit {
       .stroke();
     doc.moveDown(0.5);
 
-    const doctorFullName = `${doctor.firstName} ${doctor.lastName}`;
     doc.fontSize(11).font('Helvetica');
 
     const infoRows: [string, string][] = [
@@ -1228,7 +1231,7 @@ export class PatientsService implements OnModuleInit {
         'Email',
         isSupportEngineer ? maskString(patient.email) : patient.email || 'N/A',
       ],
-      ['Attending Doctor', doctorFullName],
+      ['Attending Doctor', `${doctor.firstName} ${doctor.lastName}`],
       ['Doctor Email', doctor.email],
       ['Notes', patient.notes || 'None'],
       ['Created At', patient.createdAt.toLocaleString()],

@@ -5,6 +5,7 @@ import { getRepositoryToken } from '@nestjs/typeorm';
 import { User } from 'src/user/entities/user.entity';
 import { Role } from 'src/auth/entites/role.entity';
 import { PinoLogger } from 'nestjs-pino';
+import { FindOperator } from 'typeorm';
 import { MailService } from 'src/user/mail.service';
 import * as bcrypt from 'bcrypt';
 
@@ -68,8 +69,24 @@ describe('UserService', () => {
 
       expect(result).toEqual(user);
       expect(mockUserRepository.findOne).toHaveBeenCalledWith({
-        where: { email: 'test@example.com' },
+        where: { email: expect.any(FindOperator) },
       });
+    });
+
+    it('matches the email ignoring case and surrounding whitespace', async () => {
+      mockUserRepository.findOne.mockResolvedValue(null);
+
+      await service.findUserByEmail('  Test@Example.COM ');
+
+      const operator = mockUserRepository.findOne.mock.calls[0][0].where
+        .email as FindOperator<string>;
+      expect(operator.type).toBe('raw');
+      expect(operator.objectLiteralParameters).toEqual({
+        email: 'test@example.com',
+      });
+      expect(operator.getSql('user.email')).toBe(
+        'LOWER(TRIM(user.email)) = :email',
+      );
     });
   });
 
@@ -110,7 +127,7 @@ describe('UserService', () => {
 
       expect(await service.validateUser('a@b.c', 'right')).toBe(user);
       expect(mockUserRepository.findOne).toHaveBeenCalledWith({
-        where: { email: 'a@b.c' },
+        where: { email: expect.any(FindOperator) },
         relations: ['role'],
       });
     });

@@ -3,6 +3,9 @@ import * as dotenv from 'dotenv';
 import { DataSource } from 'typeorm';
 import { Role } from '../src/auth/entites/role.entity';
 import { Action } from '../src/auth/entites/action.entity';
+import { RoleEnum } from '../src/auth/enums/role.enum';
+import { IRoleSeed } from '../src/auth/interfaces/roles.interface';
+import rolesJson from '../src/auth/resources/roles.json';
 
 dotenv.config();
 
@@ -17,49 +20,18 @@ const AppDataSource = new DataSource({
   synchronize: false,
 });
 
-const rolesData: { name: string; actions: string[] }[] = [
-  {
-    name: 'Doctor',
-    actions: [
-      'create_patient',
-      'update_patient',
-      'delete_patient',
-      'view_patient',
-      'upload_medical_document',
-      'download_medical_document',
-      'generate_report',
-      'access_medical_devices',
-      'update_own_profile',
-    ],
-  },
-  {
-    name: 'Support Engineer',
-    actions: [
-      'create_user',
-      'update_user',
-      'delete_user',
-      'assign_roles',
-      'manage_api_access',
-      'view_system_logs',
-    ],
-  },
-  {
-    name: 'admin',
-    actions: [
-      'create_user',
-      'update_user',
-      'delete_user',
-      'assign_roles',
-      'manage_api_access',
-      'view_system_logs',
-      'create_patient',
-      'update_patient',
-      'delete_patient',
-      'view_patient',
-      'generate_report',
-    ],
-  },
-];
+const rolesData = (rolesJson as { roles: IRoleSeed[] }).roles;
+
+// Fail fast if roles.json names a role the code doesn't know about - every
+// role check in the services goes through RoleEnum.
+const knownRoles = Object.values(RoleEnum) as string[];
+for (const role of rolesData) {
+  if (!knownRoles.includes(role.name)) {
+    throw new Error(
+      `Unknown role "${role.name}" in roles.json - add it to RoleEnum first.`,
+    );
+  }
+}
 
 async function seed() {
   await AppDataSource.initialize();
@@ -85,11 +57,16 @@ async function seed() {
       });
 
       if (!exists) {
-        const action = actionRepo.create({ name: actionName, roleName: role.name });
+        const action = actionRepo.create({
+          name: actionName,
+          roleName: role.name,
+        });
         await actionRepo.save(action);
         console.log(`  Created action: ${actionName} -> ${role.name}`);
       } else {
-        console.log(`  Action already exists, skipping: ${actionName} -> ${role.name}`);
+        console.log(
+          `  Action already exists, skipping: ${actionName} -> ${role.name}`,
+        );
       }
     }
   }

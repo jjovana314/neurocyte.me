@@ -12,6 +12,7 @@ import { User } from 'src/user/entities/user.entity';
 import { Roles } from 'src/patients/decorators/roles.decorator';
 import { RolesGuard } from 'src/patients/decorators/roles.guard';
 import { UserService } from './user.service';
+import { RoleEnum } from 'src/auth/enums/role.enum';
 
 @Controller('user')
 export class UserController {
@@ -19,7 +20,7 @@ export class UserController {
 
   @Delete(':id')
   @UseGuards(AuthGuard('jwt'), RolesGuard)
-  @Roles('admin')
+  @Roles(RoleEnum.ADMIN)
   async remove(@Param('id', ParseIntPipe) id: number): Promise<User> {
     return this.userService.remove(id);
   }

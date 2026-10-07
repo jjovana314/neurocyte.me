@@ -24,6 +24,7 @@ import {
 import { of, throwError } from 'rxjs';
 import { status as GrpcStatus } from '@grpc/grpc-js';
 import { CALCULATOR_SERVICE_NAME } from 'src/calculator-client/generated/calculator';
+import { RoleEnum } from 'src/auth/enums/role.enum';
 
 describe('PatientsService', () => {
   let service: PatientsService;
@@ -161,7 +162,10 @@ describe('PatientsService', () => {
 
   describe('createPatient', () => {
     const doctorId = 1;
-    const mockDoctor = { id: doctorId, role: { id: 1, name: 'Doctor' } } as any;
+    const mockDoctor = {
+      id: doctorId,
+      role: { id: 1, name: RoleEnum.DOCTOR },
+    } as any;
     const baseCreateDto = {
       notes: 'Test patient',
       name: 'Test Name',
@@ -1264,7 +1268,7 @@ describe('PatientsService', () => {
     });
 
     it('scopes results to the doctor unless the caller is a Support Engineer', async () => {
-      await service.search(1, 'Doctor', {});
+      await service.search(1, RoleEnum.DOCTOR, {});
 
       expect(mockQueryBuilder.andWhere).toHaveBeenCalledWith(
         'patient.doctorId = :doctorId',
@@ -1273,7 +1277,7 @@ describe('PatientsService', () => {
     });
 
     it('does not scope by doctor for a Support Engineer', async () => {
-      await service.search(1, 'Support Engineer', {});
+      await service.search(1, RoleEnum.SUPPORT_ENGINEER, {});
 
       expect(mockQueryBuilder.andWhere).not.toHaveBeenCalledWith(
         'patient.doctorId = :doctorId',
@@ -1282,7 +1286,7 @@ describe('PatientsService', () => {
     });
 
     it('ORs the search term across name, email and phone', async () => {
-      await service.search(1, 'Doctor', { query: 'jane' });
+      await service.search(1, RoleEnum.DOCTOR, { query: 'jane' });
 
       const whereFactory = getBracketsWhereFactory();
       const innerQb = {
@@ -1303,7 +1307,7 @@ describe('PatientsService', () => {
     });
 
     it('also matches by id when the query term is numeric', async () => {
-      await service.search(1, 'Doctor', { query: '42' });
+      await service.search(1, RoleEnum.DOCTOR, { query: '42' });
 
       const whereFactory = getBracketsWhereFactory();
       const innerQb = {
@@ -1318,7 +1322,7 @@ describe('PatientsService', () => {
     });
 
     it('does not add a search clause when no query term is given', async () => {
-      await service.search(1, 'Doctor', {});
+      await service.search(1, RoleEnum.DOCTOR, {});
 
       const bracketsCall = mockQueryBuilder.andWhere.mock.calls.find(
         ([arg]) => arg instanceof Brackets,
@@ -1327,14 +1331,14 @@ describe('PatientsService', () => {
     });
 
     it('paginates using defaults when no options are given', async () => {
-      await service.search(1, 'Doctor', {});
+      await service.search(1, RoleEnum.DOCTOR, {});
 
       expect(mockQueryBuilder.skip).toHaveBeenCalledWith(0);
       expect(mockQueryBuilder.take).toHaveBeenCalledWith(20);
     });
 
     it('applies the requested page and pageSize', async () => {
-      await service.search(1, 'Doctor', {
+      await service.search(1, RoleEnum.DOCTOR, {
         options: { page: 3, pageSize: 10 } as any,
       });
 
@@ -1343,7 +1347,7 @@ describe('PatientsService', () => {
     });
 
     it('falls back to createdAt when the requested sort column is not allowlisted', async () => {
-      await service.search(1, 'Doctor', {
+      await service.search(1, RoleEnum.DOCTOR, {
         options: { sortBy: 'notAColumn' } as any,
       });
 
@@ -1354,7 +1358,7 @@ describe('PatientsService', () => {
     });
 
     it('sorts by the requested column and order when valid', async () => {
-      await service.search(1, 'Doctor', {
+      await service.search(1, RoleEnum.DOCTOR, {
         options: { sortBy: 'name', order: 'ASC' } as any,
       });
 
@@ -1367,7 +1371,7 @@ describe('PatientsService', () => {
     it('returns the patients and total count from the query', async () => {
       mockQueryBuilder.getManyAndCount.mockResolvedValue([[{ id: 7 }], 1]);
 
-      const result = await service.search(1, 'Doctor', {});
+      const result = await service.search(1, RoleEnum.DOCTOR, {});
 
       expect(result).toEqual({ patients: [{ id: 7 }], total: 1 });
     });
@@ -1431,7 +1435,7 @@ describe('PatientsService', () => {
       firstName: 'Jane',
       lastName: 'Smith',
       email: 'jane@hospital.com',
-      role: { name: 'Doctor' },
+      role: { name: RoleEnum.DOCTOR },
     } as any;
 
     const mockMedicalHistory = [
@@ -1494,7 +1498,7 @@ describe('PatientsService', () => {
       const result = await service.exportPatientPdf(
         doctorId,
         patientId,
-        'Doctor',
+        RoleEnum.DOCTOR,
       );
 
       expect(result).toBeInstanceOf(Buffer);
@@ -1509,7 +1513,7 @@ describe('PatientsService', () => {
       const result = await service.exportPatientPdf(
         doctorId,
         patientId,
-        'Doctor',
+        RoleEnum.DOCTOR,
       );
 
       expect(result.slice(0, 4).toString()).toBe('%PDF');
@@ -1537,7 +1541,7 @@ describe('PatientsService', () => {
       const result = await service.exportPatientPdf(
         doctorId,
         patientId,
-        'Support Engineer',
+        RoleEnum.SUPPORT_ENGINEER,
       );
 
       expect(result.slice(0, 4).toString()).toBe('%PDF');
@@ -1547,7 +1551,7 @@ describe('PatientsService', () => {
       mockUserRepository.findOne.mockResolvedValue(null);
 
       await expect(
-        service.exportPatientPdf(doctorId, patientId, 'Doctor'),
+        service.exportPatientPdf(doctorId, patientId, RoleEnum.DOCTOR),
       ).rejects.toThrow(NotFoundException);
     });
 
@@ -1556,7 +1560,7 @@ describe('PatientsService', () => {
       mockPatientRepository.findOne.mockResolvedValue(null);
 
       await expect(
-        service.exportPatientPdf(doctorId, patientId, 'Doctor'),
+        service.exportPatientPdf(doctorId, patientId, RoleEnum.DOCTOR),
       ).rejects.toThrow(NotFoundException);
     });
 
@@ -1568,7 +1572,7 @@ describe('PatientsService', () => {
       });
 
       await expect(
-        service.exportPatientPdf(doctorId, patientId, 'Doctor'),
+        service.exportPatientPdf(doctorId, patientId, RoleEnum.DOCTOR),
       ).rejects.toThrow(ForbiddenException);
     });
 
@@ -1584,7 +1588,7 @@ describe('PatientsService', () => {
       const result = await service.exportPatientPdf(
         doctorId,
         patientId,
-        'Doctor',
+        RoleEnum.DOCTOR,
       );
 
       expect(result).toBeInstanceOf(Buffer);
@@ -1605,7 +1609,7 @@ describe('PatientsService', () => {
       const result = await service.exportPatientPdf(
         doctorId,
         patientId,
-        'Doctor',
+        RoleEnum.DOCTOR,
       );
 
       expect(result).toBeInstanceOf(Buffer);
