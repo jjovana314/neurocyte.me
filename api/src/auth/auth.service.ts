@@ -13,7 +13,6 @@ import { Role } from './entites/role.entity';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { UserInfo } from './interfaces/user-info.interface';
-import { Action } from './entites/action.entity';
 import { config } from '../config/config';
 import type { StringValue } from 'ms';
 import { RegisterDto } from './dtos/register.dto';
