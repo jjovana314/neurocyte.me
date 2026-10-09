@@ -1,11 +1,17 @@
 import { useRef, useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { addMedicalHistory, createPatient, importNcsStudiesCsv } from '../api/patients';
+import {
+  addFamilyHistory,
+  addMedicalHistory,
+  createPatient,
+  importNcsStudiesCsv,
+} from '../api/patients';
 import type { ImportCsvResponse } from '../api/types';
 import { getErrorMessage } from '../api/errors';
 import EdssAssessmentForm from './EdssAssessmentForm';
 import Disclosure from './Disclosure';
 import MedicalHistoryFields from './MedicalHistoryFields';
+import FamilyHistoryFields from './FamilyHistoryFields';
 import MigraineLogFields from './MigraineLogFields';
 import SeizureLogFields from './SeizureLogFields';
 import NcsCsvImportResult from './NcsCsvImportResult';
@@ -19,6 +25,11 @@ import {
   medicalHistoryFormStateToInput,
   type MedicalHistoryFormState,
 } from '../utils/medicalHistoryForm';
+import {
+  EMPTY_FAMILY_HISTORY_FORM_STATE,
+  familyHistoryFormStateToInput,
+  type FamilyHistoryFormState,
+} from '../utils/familyHistoryForm';
 import {
   EMPTY_MIGRAINE_LOG_FORM_STATE,
   migraineLogFormStateToInput,
@@ -45,6 +56,9 @@ export default function AddPatientForm() {
   const [edssForm, setEdssForm] = useState<EdssFormState>(EMPTY_EDSS_FORM_STATE);
   const [medicalHistoryForm, setMedicalHistoryForm] = useState<MedicalHistoryFormState>(
     EMPTY_MEDICAL_HISTORY_FORM_STATE,
+  );
+  const [familyHistoryForm, setFamilyHistoryForm] = useState<FamilyHistoryFormState>(
+    EMPTY_FAMILY_HISTORY_FORM_STATE,
   );
   const [migraineLogForm, setMigraineLogForm] = useState<MigraineLogFormState>(
     EMPTY_MIGRAINE_LOG_FORM_STATE,
@@ -73,6 +87,10 @@ export default function AddPatientForm() {
       if (medicalHistoryInput) {
         await addMedicalHistory(patient.id, medicalHistoryInput);
       }
+      const familyHistoryInput = familyHistoryFormStateToInput(familyHistoryForm);
+      if (familyHistoryInput) {
+        await addFamilyHistory(patient.id, familyHistoryInput);
+      }
       const ncsFile = ncsFileRef.current?.files?.[0];
       const ncsResult = ncsFile ? await importNcsStudiesCsv(patient.id, ncsFile) : null;
       return { patient, ncsResult };
@@ -87,6 +105,7 @@ export default function AddPatientForm() {
       setNotes('');
       setEdssForm(EMPTY_EDSS_FORM_STATE);
       setMedicalHistoryForm(EMPTY_MEDICAL_HISTORY_FORM_STATE);
+      setFamilyHistoryForm(EMPTY_FAMILY_HISTORY_FORM_STATE);
       setMigraineLogForm(EMPTY_MIGRAINE_LOG_FORM_STATE);
       setSeizureLogForm(EMPTY_SEIZURE_LOG_FORM_STATE);
       if (ncsFileRef.current) ncsFileRef.current.value = '';
@@ -183,6 +202,17 @@ export default function AddPatientForm() {
             value={medicalHistoryForm}
             onChange={(fields) => setMedicalHistoryForm({ ...medicalHistoryForm, ...fields })}
             idPrefix="add-patient-medical-history"
+          />
+        </Disclosure>
+        <Disclosure
+          label="Record family history"
+          open={familyHistoryForm.enabled}
+          onToggle={(open) => setFamilyHistoryForm({ ...familyHistoryForm, enabled: open })}
+        >
+          <FamilyHistoryFields
+            value={familyHistoryForm}
+            onChange={(fields) => setFamilyHistoryForm({ ...familyHistoryForm, ...fields })}
+            idPrefix="add-patient-family-history"
           />
         </Disclosure>
         <Disclosure

@@ -4,7 +4,7 @@ import { PatientsService } from './patients.service';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { Patient } from './entities/patient.entity';
 import { PatientHistory } from './entities/patient-history.entity';
-import { FamilyHistory } from './entities/family-history.entity';
+import { FamilyHistory, DiseaseType } from './entities/family-history.entity';
 import { EdssAssesment } from './entities/edss-assesment.entity';
 import { MigraineLog } from './entities/migraine-log.entity';
 import {
@@ -640,6 +640,97 @@ describe('PatientsService', () => {
         expect(mockMigraineLogRepository.save).not.toHaveBeenCalled();
       },
     );
+  });
+
+  describe('addFamilyHistory', () => {
+    const doctorId = 1;
+    const patientId = 5;
+    const baseDto = {
+      patientId,
+      diseaseType: DiseaseType.PARKINSON,
+      relation: 'Mother',
+    };
+
+    beforeEach(() => {
+      mockPatientRepository.findOne.mockResolvedValue({
+        id: patientId,
+        doctorId,
+      });
+      mockFamilyHistoryRepository.save.mockImplementation((f) =>
+        Promise.resolve({ id: 1, ...f }),
+      );
+    });
+
+    it('should create a family history record for a patient owned by the doctor', async () => {
+      const result = await service.addFamilyHistory(doctorId, baseDto);
+
+      expect(mockFamilyHistoryRepository.save).toHaveBeenCalledWith(
+        expect.objectContaining({
+          patientId,
+          diseaseType: DiseaseType.PARKINSON,
+          relation: 'Mother',
+        }),
+      );
+      expect(result).toEqual(expect.objectContaining({ id: 1 }));
+    });
+
+    it('should apply default values for optional fields when omitted', async () => {
+      await service.addFamilyHistory(doctorId, baseDto);
+
+      expect(mockFamilyHistoryRepository.save).toHaveBeenCalledWith(
+        expect.objectContaining({ severity: 'moderate', notes: '' }),
+      );
+    });
+
+    it('should persist provided optional fields instead of defaults', async () => {
+      await service.addFamilyHistory(doctorId, {
+        ...baseDto,
+        severity: 'severe',
+        notes: 'Diagnosed at 60',
+      });
+
+      expect(mockFamilyHistoryRepository.save).toHaveBeenCalledWith(
+        expect.objectContaining({
+          severity: 'severe',
+          notes: 'Diagnosed at 60',
+        }),
+      );
+    });
+
+    it('should throw NotFoundException when patient does not exist', async () => {
+      mockPatientRepository.findOne.mockResolvedValue(null);
+
+      await expect(service.addFamilyHistory(doctorId, baseDto)).rejects.toThrow(
+        NotFoundException,
+      );
+      expect(mockFamilyHistoryRepository.save).not.toHaveBeenCalled();
+    });
+
+    it('should throw ForbiddenException when doctor does not own the patient', async () => {
+      mockPatientRepository.findOne.mockResolvedValue({
+        id: patientId,
+        doctorId: 999,
+      });
+
+      await expect(service.addFamilyHistory(doctorId, baseDto)).rejects.toThrow(
+        ForbiddenException,
+      );
+      expect(mockFamilyHistoryRepository.save).not.toHaveBeenCalled();
+    });
+
+    it.each([
+      ['diseaseType is missing', { diseaseType: undefined }],
+      ['diseaseType is not a known disease', { diseaseType: 'Flu' }],
+      ['relation is missing', { relation: '' }],
+    ])('should throw BadRequestException when %s', async (_label, override) => {
+      await expect(
+        service.addFamilyHistory(doctorId, {
+          ...baseDto,
+          ...override,
+        } as any),
+      ).rejects.toThrow(BadRequestException);
+      expect(mockFamilyHistoryRepository.save).not.toHaveBeenCalled();
+    });
   });
 
   describe('getPatientMigraineLogs', () => {
@@ -1504,6 +1595,46 @@ describe('PatientsService', () => {
       expect(result).toBeInstanceOf(Buffer);
       // PDF files start with the %PDF magic bytes
       expect(result.slice(0, 4).toString()).toBe('%PDF');
+    });
+
+    // The page-tree object (/Type /Pages ... /Count N) isn't compressed, so the
+    // page count can be read straight from the raw PDF bytes.
+    const pageCount = (pdf: Buffer): number =>
+      Number(
+        /\/Type \/Pages[\s\S]*?\/Count (\d+)/.exec(pdf.toString('latin1'))![1],
+      );
+
+    it('should not push the footer onto an extra blank page', async () => {
+      mockUserRepository.findOne.mockResolvedValue(mockDoctor);
+      mockPatientRepository.findOne.mockResolvedValue(mockPatient);
+
+      const result = await service.exportPatientPdf(
+        doctorId,
+        patientId,
+        RoleEnum.DOCTOR,
+      );
+
+      expect(pageCount(result)).toBe(1);
+    });
+
+    it('should keep the page count driven by content for multi-page reports', async () => {
+      mockUserRepository.findOne.mockResolvedValue(mockDoctor);
+      mockPatientRepository.findOne.mockResolvedValue(mockPatient);
+      mockSeizureLogRepository.find.mockResolvedValue(
+        Array.from({ length: 12 }, (_, i) => ({
+          ...mockSeizureLogs[0],
+          id: i,
+        })),
+      );
+
+      const result = await service.exportPatientPdf(
+        doctorId,
+        patientId,
+        RoleEnum.DOCTOR,
+      );
+
+      // Without the footer the content alone spans 3 pages.
+      expect(pageCount(result)).toBe(3);
     });
 
     it('should fetch history and seizure logs from their repositories', async () => {

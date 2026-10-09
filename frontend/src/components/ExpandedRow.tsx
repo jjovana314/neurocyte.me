@@ -9,6 +9,7 @@ import MigraineLogForm from './MigraineLogForm';
 import SeizureLogForm from './SeizureLogForm';
 import NcsStudyForm from './NcsStudyForm';
 import MedicalHistoryForm from './MedicalHistoryForm';
+import FamilyHistoryForm from './FamilyHistoryForm';
 import NcsCsvImportResult from './NcsCsvImportResult';
 import {
   EMPTY_EDSS_FORM_STATE,
@@ -75,6 +76,7 @@ export default function ExpandedRow({ patient }: Props) {
   const [addingSeizureLog, setAddingSeizureLog] = useState(false);
   const [addingNcsStudy, setAddingNcsStudy] = useState(false);
   const [addingMedicalHistory, setAddingMedicalHistory] = useState(false);
+  const [addingFamilyHistory, setAddingFamilyHistory] = useState(false);
   const ncsFileRef = useRef<HTMLInputElement>(null);
   const [ncsImportResult, setNcsImportResult] = useState<ImportCsvResponse | null>(null);
 
@@ -488,7 +490,23 @@ export default function ExpandedRow({ patient }: Props) {
       </div>
 
       <div className="expanded-section">
-        <h4>Family History</h4>
+        <div className="section-header">
+          <h4>Family History</h4>
+          {!addingFamilyHistory && (
+            <button className="btn btn-sm" onClick={() => setAddingFamilyHistory(true)}>
+              Add family history
+            </button>
+          )}
+        </div>
+
+        {addingFamilyHistory && (
+          <FamilyHistoryForm
+            patientId={patient.id}
+            idPrefix={`family-history-${patient.id}`}
+            onDone={() => setAddingFamilyHistory(false)}
+          />
+        )}
+
         {family.length === 0 ? (
           <p className="empty-note">No family history recorded.</p>
         ) : (

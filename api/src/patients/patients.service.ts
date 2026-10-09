@@ -312,6 +312,12 @@ export class PatientsService implements OnModuleInit {
     if (!createFamilyHistoryDto.diseaseType) {
       throw new BadRequestException('Disease type is required');
     }
+    const diseaseTypes = Object.values(DiseaseType) as string[];
+    if (!diseaseTypes.includes(createFamilyHistoryDto.diseaseType)) {
+      throw new BadRequestException(
+        `Invalid disease type. Allowed values: ${diseaseTypes.join(', ')}`,
+      );
+    }
     if (!createFamilyHistoryDto.relation) {
       throw new BadRequestException(
         'Relation is required (e.g., Mother, Father, Sibling)',
@@ -1178,7 +1184,7 @@ export class PatientsService implements OnModuleInit {
       }),
     ]);
 
-    const doc = new PDFDocument({ margin: 50 });
+    const doc = new PDFDocument({ margin: 50, bufferPages: true });
     const buffers: Buffer[] = [];
 
     doc.on('data', (chunk: Buffer) => buffers.push(chunk));
@@ -1339,20 +1345,27 @@ export class PatientsService implements OnModuleInit {
         doc.moveDown(0.5);
       }
     }
-
     // ─ Footer
-    doc
-      .fontSize(9)
-      .fillColor('#888888')
-      .text(
-        'Confidential – For authorized medical personnel only',
-        50,
-        doc.page.height - 50,
-        {
-          align: 'center',
-          width: doc.page.width - 100,
-        },
-      );
+    const pages = doc.bufferedPageRange();
+    for (let i = pages.start; i < pages.start + pages.count; i++) {
+      doc.switchToPage(i);
+      const bottomMargin = doc.page.margins.bottom;
+      doc.page.margins.bottom = 0;
+      doc
+        .fontSize(9)
+        .fillColor('#888888')
+        .text(
+          'Confidential – For authorized medical personnel only',
+          50,
+          doc.page.height - 40,
+          {
+            align: 'center',
+            width: doc.page.width - 100,
+            lineBreak: false,
+          },
+        );
+      doc.page.margins.bottom = bottomMargin;
+    }
 
     doc.end();
     await docEnded;
