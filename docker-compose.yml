@@ -6,7 +6,7 @@
 services:
   db:
     image: mysql:8.4
-    restart: unless-stopped
+    restart: always
     environment:
       # Dev-only default credentials. If you change these, update the api
       # service's DATABASE_USERNAME/DATABASE_PASSWORD/DATABASE_NAME below to
@@ -14,7 +14,10 @@ services:
       MYSQL_ROOT_PASSWORD: neurocyte_dev
       MYSQL_DATABASE: neurocyte
     ports:
-      - '3306:3306'
+      # Host port 3307, not 3306, so it doesn't collide with a host-installed
+      # MySQL (e.g. Homebrew) on 127.0.0.1:3306 - otherwise host-side clients
+      # can silently connect to that server instead of this one.
+      - '3307:3306'
     volumes:
       - db-data:/var/lib/mysql
     healthcheck:
