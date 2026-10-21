@@ -89,4 +89,19 @@ describe('FamilyHistoryForm', () => {
     expect(await screen.findByText(/something went wrong/i)).toBeInTheDocument();
     expect(onDone).not.toHaveBeenCalled();
   });
+
+  it('clears the entered values and calls onCancel without saving when cancelled', async () => {
+    const onCancel = vi.fn();
+    const user = userEvent.setup();
+
+    renderWithQueryClient(<FamilyHistoryForm patientId={42} idPrefix="test" onCancel={onCancel} />);
+
+    await fillRequiredFields(user);
+    await user.click(screen.getByRole('button', { name: /cancel/i }));
+
+    expect(onCancel).toHaveBeenCalledTimes(1);
+    expect(mockAddFamilyHistory).not.toHaveBeenCalled();
+    expect(screen.getByLabelText(/disease/i)).toHaveValue('');
+    expect(screen.getByLabelText(/relation/i)).toHaveValue('');
+  });
 });

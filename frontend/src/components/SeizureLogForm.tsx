@@ -9,9 +9,10 @@ interface Props {
   patientId: number;
   idPrefix: string;
   onDone?: () => void;
+  onCancel?: () => void;
 }
 
-export default function SeizureLogForm({ patientId, idPrefix, onDone }: Props) {
+export default function SeizureLogForm({ patientId, idPrefix, onDone, onCancel }: Props) {
   const queryClient = useQueryClient();
   const [fields, setFields] = useState(EMPTY_SEIZURE_LOG_FORM_STATE);
 
@@ -33,6 +34,12 @@ export default function SeizureLogForm({ patientId, idPrefix, onDone }: Props) {
     mutation.mutate();
   }
 
+  function handleCancel() {
+    setFields(EMPTY_SEIZURE_LOG_FORM_STATE);
+    mutation.reset();
+    onCancel?.();
+  }
+
   return (
     <form onSubmit={handleSubmit} className="seizure-log-form">
       <SeizureLogFields
@@ -44,6 +51,14 @@ export default function SeizureLogForm({ patientId, idPrefix, onDone }: Props) {
       <div className="edit-actions">
         <button className="btn btn-primary btn-sm" type="submit" disabled={mutation.isPending}>
           {mutation.isPending ? 'Saving…' : 'Add seizure log'}
+        </button>
+        <button
+          className="btn btn-sm"
+          type="button"
+          onClick={handleCancel}
+          disabled={mutation.isPending}
+        >
+          Cancel
         </button>
       </div>
     </form>

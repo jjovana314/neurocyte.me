@@ -105,6 +105,7 @@ export default function ExpandedRow({ patient }: Props) {
   }
 
   function cancelEditing() {
+    mutation.reset();
     setEditing(false);
   }
 
@@ -273,6 +274,7 @@ export default function ExpandedRow({ patient }: Props) {
             patientId={patient.id}
             idPrefix={`migraine-${patient.id}`}
             onDone={() => setAddingMigraineLog(false)}
+            onCancel={() => setAddingMigraineLog(false)}
           />
         )}
 
@@ -327,6 +329,7 @@ export default function ExpandedRow({ patient }: Props) {
             patientId={patient.id}
             idPrefix={`seizure-${patient.id}`}
             onDone={() => setAddingSeizureLog(false)}
+            onCancel={() => setAddingSeizureLog(false)}
           />
         )}
 
@@ -389,6 +392,7 @@ export default function ExpandedRow({ patient }: Props) {
             patientId={patient.id}
             idPrefix={`ncs-${patient.id}`}
             onDone={() => setAddingNcsStudy(false)}
+            onCancel={() => setAddingNcsStudy(false)}
           />
         )}
 
@@ -454,6 +458,7 @@ export default function ExpandedRow({ patient }: Props) {
             patientId={patient.id}
             idPrefix={`medical-history-${patient.id}`}
             onDone={() => setAddingMedicalHistory(false)}
+            onCancel={() => setAddingMedicalHistory(false)}
           />
         )}
 
@@ -504,6 +509,7 @@ export default function ExpandedRow({ patient }: Props) {
             patientId={patient.id}
             idPrefix={`family-history-${patient.id}`}
             onDone={() => setAddingFamilyHistory(false)}
+            onCancel={() => setAddingFamilyHistory(false)}
           />
         )}
 

@@ -9,9 +9,10 @@ interface Props {
   patientId: number;
   idPrefix: string;
   onDone?: () => void;
+  onCancel?: () => void;
 }
 
-export default function MigraineLogForm({ patientId, idPrefix, onDone }: Props) {
+export default function MigraineLogForm({ patientId, idPrefix, onDone, onCancel }: Props) {
   const queryClient = useQueryClient();
   const [fields, setFields] = useState(EMPTY_MIGRAINE_LOG_FORM_STATE);
 
@@ -33,6 +34,12 @@ export default function MigraineLogForm({ patientId, idPrefix, onDone }: Props) 
     mutation.mutate();
   }
 
+  function handleCancel() {
+    setFields(EMPTY_MIGRAINE_LOG_FORM_STATE);
+    mutation.reset();
+    onCancel?.();
+  }
+
   return (
     <form onSubmit={handleSubmit} className="migraine-log-form">
       <MigraineLogFields
@@ -44,6 +51,14 @@ export default function MigraineLogForm({ patientId, idPrefix, onDone }: Props) 
       <div className="edit-actions">
         <button className="btn btn-primary btn-sm" type="submit" disabled={mutation.isPending}>
           {mutation.isPending ? 'Saving…' : 'Add migraine log'}
+        </button>
+        <button
+          className="btn btn-sm"
+          type="button"
+          onClick={handleCancel}
+          disabled={mutation.isPending}
+        >
+          Cancel
         </button>
       </div>
     </form>

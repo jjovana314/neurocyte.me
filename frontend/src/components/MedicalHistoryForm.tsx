@@ -12,9 +12,10 @@ interface Props {
   patientId: number;
   idPrefix: string;
   onDone?: () => void;
+  onCancel?: () => void;
 }
 
-export default function MedicalHistoryForm({ patientId, idPrefix, onDone }: Props) {
+export default function MedicalHistoryForm({ patientId, idPrefix, onDone, onCancel }: Props) {
   const queryClient = useQueryClient();
   const [fields, setFields] = useState(EMPTY_MEDICAL_HISTORY_FORM_STATE);
 
@@ -36,6 +37,12 @@ export default function MedicalHistoryForm({ patientId, idPrefix, onDone }: Prop
     mutation.mutate();
   }
 
+  function handleCancel() {
+    setFields(EMPTY_MEDICAL_HISTORY_FORM_STATE);
+    mutation.reset();
+    onCancel?.();
+  }
+
   return (
     <form onSubmit={handleSubmit} className="medical-history-form">
       <MedicalHistoryFields
@@ -47,6 +54,14 @@ export default function MedicalHistoryForm({ patientId, idPrefix, onDone }: Prop
       <div className="edit-actions">
         <button className="btn btn-primary btn-sm" type="submit" disabled={mutation.isPending}>
           {mutation.isPending ? 'Saving…' : 'Add medical history'}
+        </button>
+        <button
+          className="btn btn-sm"
+          type="button"
+          onClick={handleCancel}
+          disabled={mutation.isPending}
+        >
+          Cancel
         </button>
       </div>
     </form>

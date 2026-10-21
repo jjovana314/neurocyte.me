@@ -69,6 +69,21 @@ describe('ExpandedRow medical history', () => {
     expect(screen.getByLabelText(/disorder/i)).toBeInTheDocument();
   });
 
+  it('hides the form and discards typed values when cancelled', async () => {
+    const user = userEvent.setup();
+    renderWithQueryClient(<ExpandedRow patient={mockPatient} />);
+
+    await user.click(screen.getByRole('button', { name: /add medical history/i }));
+    await user.type(screen.getByLabelText(/disorder/i), 'Migraine');
+    await user.click(screen.getByRole('button', { name: /^cancel$/i }));
+
+    expect(screen.queryByLabelText(/disorder/i)).not.toBeInTheDocument();
+    expect(mockAddMedicalHistory).not.toHaveBeenCalled();
+
+    await user.click(screen.getByRole('button', { name: /add medical history/i }));
+    expect(screen.getByLabelText(/disorder/i)).toHaveValue('');
+  });
+
   it('submits a new medical history entry for this patient and re-hides the form', async () => {
     mockAddMedicalHistory.mockResolvedValue(mockCreatedHistory);
     const user = userEvent.setup();

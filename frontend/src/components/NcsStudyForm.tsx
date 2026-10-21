@@ -9,9 +9,10 @@ interface Props {
   patientId: number;
   idPrefix: string;
   onDone?: () => void;
+  onCancel?: () => void;
 }
 
-export default function NcsStudyForm({ patientId, idPrefix, onDone }: Props) {
+export default function NcsStudyForm({ patientId, idPrefix, onDone, onCancel }: Props) {
   const queryClient = useQueryClient();
   const [fields, setFields] = useState(EMPTY_NCS_STUDY_FORM_STATE);
 
@@ -29,6 +30,12 @@ export default function NcsStudyForm({ patientId, idPrefix, onDone }: Props) {
     mutation.mutate();
   }
 
+  function handleCancel() {
+    setFields(EMPTY_NCS_STUDY_FORM_STATE);
+    mutation.reset();
+    onCancel?.();
+  }
+
   return (
     <form onSubmit={handleSubmit} className="ncs-study-form">
       <NcsStudyFields value={fields} onChange={setFields} idPrefix={idPrefix} />
@@ -36,6 +43,14 @@ export default function NcsStudyForm({ patientId, idPrefix, onDone }: Props) {
       <div className="edit-actions">
         <button className="btn btn-primary btn-sm" type="submit" disabled={mutation.isPending}>
           {mutation.isPending ? 'Calculating…' : 'Add NCS study'}
+        </button>
+        <button
+          className="btn btn-sm"
+          type="button"
+          onClick={handleCancel}
+          disabled={mutation.isPending}
+        >
+          Cancel
         </button>
       </div>
     </form>
