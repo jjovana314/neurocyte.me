@@ -904,19 +904,19 @@ export class PatientsService implements OnModuleInit {
   // touching patientId, so it can be validated before a patient save
   // (createPatient) or attached to an existing patient (addSeizureLog).
   private buildSeizureLog(
-    dto: Omit<CreateSeizureLogDto, 'patientId'>,
+    seizureData: Omit<CreateSeizureLogDto, 'patientId'>,
   ): SeizureLog {
-    if (!Object.values(OnsetVector).includes(dto.onsetVector)) {
+    if (!Object.values(OnsetVector).includes(seizureData.onsetVector)) {
       throw new BadRequestException(
         'onsetVector is required and must be one of FOCAL_AWARE, FOCAL_IMPAIRED_AWARENESS, GENERALIZED',
       );
     }
-    if (!dto.ictusStart || !dto.ictusEnd) {
+    if (!seizureData.ictusStart || !seizureData.ictusEnd) {
       throw new BadRequestException('ictusStart and ictusEnd are required');
     }
 
-    const ictusStart = new Date(dto.ictusStart);
-    const ictusEnd = new Date(dto.ictusEnd);
+    const ictusStart = new Date(seizureData.ictusStart);
+    const ictusEnd = new Date(seizureData.ictusEnd);
     if (
       Number.isNaN(ictusStart.getTime()) ||
       Number.isNaN(ictusEnd.getTime())
@@ -934,14 +934,14 @@ export class PatientsService implements OnModuleInit {
       throw new BadRequestException('ictusEnd must not be before ictusStart');
     }
 
-    const motorFeatures = dto.motorFeatures || [];
+    const motorFeatures = seizureData.motorFeatures || [];
     if (motorFeatures.some((f) => !Object.values(MotorFeature).includes(f))) {
       throw new BadRequestException(
         'motorFeatures may only contain TONIC, CLONIC, ATONIC, AUTOMATISMS',
       );
     }
 
-    const triggers = dto.triggers || [];
+    const triggers = seizureData.triggers || [];
     if (triggers.some((t) => !Object.values(SeizureTrigger).includes(t))) {
       throw new BadRequestException(
         'triggers may only contain SLEEP_DEPRIVATION, MISSED_DOSE, HIGH_STRESS, ILLNESS',
@@ -949,9 +949,9 @@ export class PatientsService implements OnModuleInit {
     }
 
     if (
-      dto.postictalDurationMinutes != null &&
-      (!Number.isInteger(dto.postictalDurationMinutes) ||
-        dto.postictalDurationMinutes < 0)
+      seizureData.postictalDurationMinutes != null &&
+      (!Number.isInteger(seizureData.postictalDurationMinutes) ||
+        seizureData.postictalDurationMinutes < 0)
     ) {
       throw new BadRequestException(
         'postictalDurationMinutes must be a non-negative integer',
@@ -959,16 +959,16 @@ export class PatientsService implements OnModuleInit {
     }
 
     const seizureLog = new SeizureLog();
-    seizureLog.onsetVector = dto.onsetVector;
+    seizureLog.onsetVector = seizureData.onsetVector;
     seizureLog.motorFeatures = motorFeatures;
     seizureLog.ictusStart = ictusStart;
     seizureLog.ictusEnd = ictusEnd;
     seizureLog.ictusDurationSeconds = Math.round(
       (ictusEnd.getTime() - ictusStart.getTime()) / 1000,
     );
-    seizureLog.postictalDurationMinutes = dto.postictalDurationMinutes ?? null;
+    seizureLog.postictalDurationMinutes = seizureData.postictalDurationMinutes ?? null;
     seizureLog.triggers = triggers;
-    seizureLog.notes = dto.notes || '';
+    seizureLog.notes = seizureData.notes || '';
 
     return seizureLog;
   }
