@@ -966,7 +966,8 @@ export class PatientsService implements OnModuleInit {
     seizureLog.ictusDurationSeconds = Math.round(
       (ictusEnd.getTime() - ictusStart.getTime()) / 1000,
     );
-    seizureLog.postictalDurationMinutes = seizureData.postictalDurationMinutes ?? null;
+    seizureLog.postictalDurationMinutes =
+      seizureData.postictalDurationMinutes ?? null;
     seizureLog.triggers = triggers;
     seizureLog.notes = seizureData.notes || '';
 
