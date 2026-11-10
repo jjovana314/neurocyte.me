@@ -24,7 +24,7 @@ export class TouretteSyndrome {
   @JoinColumn({ name: 'patientId' })
   patient: Patient;
 
-  @Column({ enum: TycType })
+  @Column({ type: 'enum', enum: TycType })
   tycType: TycType;
 
   @CreateDateColumn()

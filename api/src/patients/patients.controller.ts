@@ -348,7 +348,7 @@ export class PatientsController {
    * Create tourette syndrom information for patient
    *
    * */
-  @Post(':id/tourette-syndrom')
+  @Post(':id/tourette-syndrome')
   @HttpCode(HttpStatus.CREATED)
   @HttpCode(HttpStatus.OK)
   async addTouretteSyndrome(

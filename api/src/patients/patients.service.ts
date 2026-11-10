@@ -57,6 +57,7 @@ import { PatientSearchResult } from './interfaces/search-result.interface';
 import { RoleEnum } from 'src/auth/enums/role.enum';
 import { CreateTouretteSyndromeDto } from './dtos/create-tourette-syndrome.dto';
 import { TycType } from './enums/touretteTycType';
+import { TouretteTrigger } from './enums/touretteTrigger';
 import { TouretteSyndrome } from './entities/tourette-syndrome.entity';
 
 @Injectable()
@@ -749,6 +750,7 @@ export class PatientsService implements OnModuleInit {
         'migraineLogs',
         'seizureLogs',
         'ncsStudies',
+        'touretteSyndrom',
         'doctor',
       ],
     });
@@ -1596,9 +1598,23 @@ export class PatientsService implements OnModuleInit {
       throw new AccessToPatientForbiddenException();
     }
 
+    if (!Object.values(TycType).includes(createData.tycType)) {
+      throw new BadRequestException(
+        'tycType is required and must be one of MOTOR_SIMPLE, MOTOR_COMPLEX, VOCAL_SIMPLE, VOCAL_COMPLEX',
+      );
+    }
+
+    const triggers = createData.triggers || [];
+    if (triggers.some((t) => !Object.values(TouretteTrigger).includes(t))) {
+      throw new BadRequestException(
+        'triggers may only contain STRESS, EXCITEMENT, ANGER, FATIGUE, ILLNESS, BOREDOM, SENSORY_ENVIRONMENT, REBOUND_EFFECT',
+      );
+    }
+
     await this.touretteSyndromeRepository.save({
       ...createData,
-      tycType: createData.tycType,
+      patientId,
+      triggers,
       recordedAt: new Date(),
     });
     return this.getPatient(doctorId, patientId);

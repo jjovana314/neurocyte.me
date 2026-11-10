@@ -15,6 +15,8 @@ import {
 } from './enums/seizureEnums';
 import { NcsStudy, NcsStudyType } from './entities/ncs-study.entity';
 import { TouretteSyndrome } from './entities/tourette-syndrome.entity';
+import { TycType } from './enums/touretteTycType';
+import { TouretteTrigger } from './enums/touretteTrigger';
 import { User } from 'src/user/entities/user.entity';
 import { PinoLogger } from 'nestjs-pino';
 import {
@@ -1756,6 +1758,98 @@ describe('PatientsService', () => {
       );
 
       expect(result).toBeInstanceOf(Buffer);
+    });
+  });
+
+  describe('createTouretteSyndrome', () => {
+    const doctorId = 1;
+    const patientId = 5;
+    const baseDto = {
+      tycType: TycType.MOTOR_COMPLEX,
+      severityScale: 6,
+      premonitoryUrgeLevel: 4,
+    };
+
+    beforeEach(() => {
+      mockPatientRepository.findOne.mockResolvedValue({
+        id: patientId,
+        doctorId,
+      });
+      mockTouretteSyndromeRepository.save.mockImplementation((t) =>
+        Promise.resolve({ id: 1, ...t }),
+      );
+    });
+
+    it('should create a tourette syndrome record linked to the patient', async () => {
+      await service.createTouretteSyndrome(doctorId, patientId, baseDto);
+
+      expect(mockTouretteSyndromeRepository.save).toHaveBeenCalledWith(
+        expect.objectContaining({
+          patientId,
+          tycType: TycType.MOTOR_COMPLEX,
+          triggers: [],
+        }),
+      );
+    });
+
+    it('should persist provided triggers', async () => {
+      await service.createTouretteSyndrome(doctorId, patientId, {
+        ...baseDto,
+        triggers: [TouretteTrigger.STRESS, TouretteTrigger.FATIGUE],
+      });
+
+      expect(mockTouretteSyndromeRepository.save).toHaveBeenCalledWith(
+        expect.objectContaining({
+          triggers: [TouretteTrigger.STRESS, TouretteTrigger.FATIGUE],
+        }),
+      );
+    });
+
+    it('should throw NotFoundException when patient does not exist', async () => {
+      mockPatientRepository.findOne.mockResolvedValue(null);
+
+      await expect(
+        service.createTouretteSyndrome(doctorId, patientId, baseDto),
+      ).rejects.toThrow(NotFoundException);
+      expect(mockTouretteSyndromeRepository.save).not.toHaveBeenCalled();
+    });
+
+    it('should throw ForbiddenException when doctor does not own the patient', async () => {
+      mockPatientRepository.findOne.mockResolvedValue({
+        id: patientId,
+        doctorId: 999,
+      });
+
+      await expect(
+        service.createTouretteSyndrome(doctorId, patientId, baseDto),
+      ).rejects.toThrow(ForbiddenException);
+      expect(mockTouretteSyndromeRepository.save).not.toHaveBeenCalled();
+    });
+
+    it('should throw BadRequestException when tycType is missing or invalid', async () => {
+      await expect(
+        service.createTouretteSyndrome(doctorId, patientId, {
+          ...baseDto,
+          tycType: undefined,
+        }),
+      ).rejects.toThrow(BadRequestException);
+      await expect(
+        service.createTouretteSyndrome(doctorId, patientId, {
+          ...baseDto,
+          tycType: 'MOTOR' as TycType,
+        }),
+      ).rejects.toThrow(BadRequestException);
+      expect(mockTouretteSyndromeRepository.save).not.toHaveBeenCalled();
+    });
+
+    it('should throw BadRequestException for an unknown trigger', async () => {
+      await expect(
+        service.createTouretteSyndrome(doctorId, patientId, {
+          ...baseDto,
+          triggers: ['CAFFEINE' as TouretteTrigger],
+        }),
+      ).rejects.toThrow(BadRequestException);
+      expect(mockTouretteSyndromeRepository.save).not.toHaveBeenCalled();
     });
   });
 });
