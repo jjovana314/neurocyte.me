@@ -1,0 +1,11 @@
+export enum TouretteTrigger {
+  UNKNOWN_TRIGGER_TYPE = 0,
+  STRESS = 1,
+  EXCITMENT = 2,
+  ANGER = 3,
+  FATIGUE = 4,
+  ILLNES = 5,
+  BOREDOM = 6,
+  SENSORY_ENVIRONMENT = 7,
+  REBOUND_EFFECT = 8,
+}

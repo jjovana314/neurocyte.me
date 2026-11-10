@@ -14,6 +14,7 @@ import { EdssAssesment } from './edss-assesment.entity';
 import { MigraineLog } from './migraine-log.entity';
 import { SeizureLog } from './seizure-log.entity';
 import { NcsStudy } from './ncs-study.entity';
+import { TouretteSyndrome } from './tourette-syndrome.entity';
 
 @Entity()
 export class Patient {
@@ -72,4 +73,10 @@ export class Patient {
 
   @OneToMany(() => NcsStudy, (ncsStudy) => ncsStudy.patient)
   ncsStudies: NcsStudy[];
+
+  @OneToMany(
+    () => TouretteSyndrome,
+    (touretteSyndrom) => touretteSyndrom.patient,
+  )
+  touretteSyndrom: TouretteSyndrome[];
 }

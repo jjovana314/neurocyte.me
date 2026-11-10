@@ -18,11 +18,11 @@ import { FamilyHistory, DiseaseType } from './entities/family-history.entity';
 import { EdssAssesment } from './entities/edss-assesment.entity';
 import { MigraineLog } from './entities/migraine-log.entity';
 import {
-  SeizureLog,
   OnsetVector,
   MotorFeature,
   SeizureTrigger,
-} from './entities/seizure-log.entity';
+} from './enums/seizureEnums';
+import { SeizureLog } from './entities/seizure-log.entity';
 import { NcsStudy, NcsStudyType } from './entities/ncs-study.entity';
 import { User } from 'src/user/entities/user.entity';
 import PDFDocument from 'pdfkit';
@@ -55,6 +55,9 @@ import { dateValidation } from './utils/validation';
 import { SearchPatientDto } from './dtos/search-patient.dto';
 import { PatientSearchResult } from './interfaces/search-result.interface';
 import { RoleEnum } from 'src/auth/enums/role.enum';
+import { CreateTouretteSyndromeDto } from './dtos/create-tourette-syndrome.dto';
+import { TycType } from './enums/touretteTycType';
+import { TouretteSyndrome } from './entities/tourette-syndrome.entity';
 
 @Injectable()
 export class PatientsService implements OnModuleInit {
@@ -74,6 +77,8 @@ export class PatientsService implements OnModuleInit {
     private seizureLogRepository: Repository<SeizureLog>,
     @InjectRepository(NcsStudy)
     private ncsStudyRepository: Repository<NcsStudy>,
+    @InjectRepository(TouretteSyndrome)
+    private touretteSyndromeRepository: Repository<TouretteSyndrome>,
     @InjectRepository(User) private userRepository: Repository<User>,
     private readonly logger: PinoLogger,
     @Inject('CALCULATOR_PACKAGE') private readonly calculatorClient: ClientGrpc,
@@ -1570,5 +1575,32 @@ export class PatientsService implements OnModuleInit {
     }
     fields.push(current);
     return fields;
+  }
+
+  async createTouretteSyndrome(
+    doctorId: number,
+    patientId: number,
+    createData: CreateTouretteSyndromeDto,
+  ): Promise<Patient> {
+    const patient = await this.patientRepository.findOne({
+      where: { id: patientId },
+    });
+    if (!patient) {
+      throw new PatientNotFoundException(patientId);
+    }
+
+    if (patient.doctorId !== doctorId) {
+      this.logger.warn(
+        `Doctor ${doctorId} attempted to access patient ${patientId} created by doctor ${patient.doctorId}`,
+      );
+      throw new AccessToPatientForbiddenException();
+    }
+
+    await this.touretteSyndromeRepository.save({
+      ...createData,
+      tycType: createData.tycType,
+      recordedAt: new Date(),
+    });
+    return this.getPatient(doctorId, patientId);
   }
 }

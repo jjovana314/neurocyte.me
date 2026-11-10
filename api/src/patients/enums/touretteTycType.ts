@@ -1,0 +1,7 @@
+export enum TycType {
+  UNKNOWN_TYC_TYPE = 0,
+  MOTOR_SYMPLE = 1,
+  MOTOR_COMPLEX = 2,
+  VOCAL_SYMPLE = 3,
+  VOCAL_COMPLEX = 4,
+}

@@ -43,6 +43,7 @@ import { NcsStudy } from './entities/ncs-study.entity';
 import { CurrentUser } from 'src/auth/decorators/current-user.decorator';
 import { JwtUser } from 'src/auth/classes/jwt-user.class';
 import { MultipartFile } from 'src/common/multipart-file';
+import { CreateTouretteSyndromeDto } from './dtos/create-tourette-syndrome.dto';
 
 @Controller('patients')
 @UseGuards(AuthGuard('jwt'))
@@ -341,6 +342,24 @@ export class PatientsController {
       user.id,
       parseInt(patientId, 10),
       createNcsStudy,
+    );
+  }
+  /**
+   * Create tourette syndrom information for patient
+   *
+   * */
+  @Post(':id/tourette-syndrom')
+  @HttpCode(HttpStatus.CREATED)
+  @HttpCode(HttpStatus.OK)
+  async addTouretteSyndrome(
+    @CurrentUser() user: JwtUser,
+    @Param('id') patientId: string,
+    @Body() createTouretteSyndrome: CreateTouretteSyndromeDto,
+  ): Promise<Patient> {
+    return this.patientsService.createTouretteSyndrome(
+      user.id,
+      parseInt(patientId, 10),
+      createTouretteSyndrome,
     );
   }
 }

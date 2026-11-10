@@ -7,13 +7,14 @@ import { PatientHistory } from './entities/patient-history.entity';
 import { FamilyHistory, DiseaseType } from './entities/family-history.entity';
 import { EdssAssesment } from './entities/edss-assesment.entity';
 import { MigraineLog } from './entities/migraine-log.entity';
+import { SeizureLog } from './entities/seizure-log.entity';
 import {
-  SeizureLog,
   OnsetVector,
   MotorFeature,
   SeizureTrigger,
-} from './entities/seizure-log.entity';
+} from './enums/seizureEnums';
 import { NcsStudy, NcsStudyType } from './entities/ncs-study.entity';
+import { TouretteSyndrome } from './entities/tourette-syndrome.entity';
 import { User } from 'src/user/entities/user.entity';
 import { PinoLogger } from 'nestjs-pino';
 import {
@@ -80,6 +81,13 @@ describe('PatientsService', () => {
     delete: jest.fn(),
   };
 
+  const mockTouretteSyndromeRepository = {
+    findOne: jest.fn(),
+    find: jest.fn(),
+    save: jest.fn(),
+    delete: jest.fn(),
+  };
+
   const mockUserRepository = {
     findOne: jest.fn(),
   };
@@ -139,6 +147,10 @@ describe('PatientsService', () => {
         {
           provide: getRepositoryToken(NcsStudy),
           useValue: mockNcsStudyRepository,
+        },
+        {
+          provide: getRepositoryToken(TouretteSyndrome),
+          useValue: mockTouretteSyndromeRepository,
         },
         { provide: getRepositoryToken(User), useValue: mockUserRepository },
         { provide: PinoLogger, useValue: mockLogger },

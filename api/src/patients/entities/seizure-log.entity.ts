@@ -8,26 +8,11 @@ import {
   Check,
 } from 'typeorm';
 import { Patient } from './patient.entity';
-
-export enum OnsetVector {
-  FOCAL_AWARE = 'FOCAL_AWARE',
-  FOCAL_IMPAIRED_AWARENESS = 'FOCAL_IMPAIRED_AWARENESS',
-  GENERALIZED = 'GENERALIZED',
-}
-
-export enum MotorFeature {
-  TONIC = 'TONIC',
-  CLONIC = 'CLONIC',
-  ATONIC = 'ATONIC',
-  AUTOMATISMS = 'AUTOMATISMS',
-}
-
-export enum SeizureTrigger {
-  SLEEP_DEPRIVATION = 'SLEEP_DEPRIVATION',
-  MISSED_DOSE = 'MISSED_DOSE',
-  HIGH_STRESS = 'HIGH_STRESS',
-  ILLNESS = 'ILLNESS',
-}
+import {
+  OnsetVector,
+  MotorFeature,
+  SeizureTrigger,
+} from '../enums/seizureEnums';
 
 // Column identifiers use backticks (MySQL identifier quoting) - double quotes
 // would be parsed as a string literal here and silently no-op the check.
