@@ -59,6 +59,7 @@ import { CreateTouretteSyndromeDto } from './dtos/create-tourette-syndrome.dto';
 import { TycType } from './enums/touretteTycType';
 import { TouretteTrigger } from './enums/touretteTrigger';
 import { TouretteSyndrome } from './entities/tourette-syndrome.entity';
+import { UpdateTouretteSyndromeDto } from './dtos/update-tourette-syndrome.dto';
 
 @Injectable()
 export class PatientsService implements OnModuleInit {
@@ -1579,10 +1580,9 @@ export class PatientsService implements OnModuleInit {
     return fields;
   }
 
-  async createTouretteSyndrome(
-    doctorId: number,
+  private async validatePatient(
     patientId: number,
-    createData: CreateTouretteSyndromeDto,
+    doctorId: number,
   ): Promise<Patient> {
     const patient = await this.patientRepository.findOne({
       where: { id: patientId },
@@ -1597,26 +1597,55 @@ export class PatientsService implements OnModuleInit {
       );
       throw new AccessToPatientForbiddenException();
     }
+    return patient;
+  }
 
-    if (!Object.values(TycType).includes(createData.tycType)) {
+  private validateTouretteRequest(touretteData: CreateTouretteSyndromeDto | UpdateTouretteSyndromeDto): void {
+    if (!Object.values(TycType).includes(touretteData.tycType)) {
       throw new BadRequestException(
         'tycType is required and must be one of MOTOR_SIMPLE, MOTOR_COMPLEX, VOCAL_SIMPLE, VOCAL_COMPLEX',
       );
     }
-
-    const triggers = createData.triggers || [];
+    const triggers = touretteData.triggers || [];
     if (triggers.some((t) => !Object.values(TouretteTrigger).includes(t))) {
       throw new BadRequestException(
         'triggers may only contain STRESS, EXCITEMENT, ANGER, FATIGUE, ILLNESS, BOREDOM, SENSORY_ENVIRONMENT, REBOUND_EFFECT',
       );
     }
+  }
 
+  async createTouretteSyndrome(
+    doctorId: number,
+    patientId: number,
+    createData: CreateTouretteSyndromeDto,
+  ): Promise<Patient> {
+    await this.validatePatient(patientId, doctorId);
+    this.validateTouretteRequest(createData);
+  
     await this.touretteSyndromeRepository.save({
       ...createData,
       patientId,
-      triggers,
+      triggers: createData.triggers || [],
       recordedAt: new Date(),
     });
-    return this.getPatient(doctorId, patientId);
+    return await this.getPatient(doctorId, patientId);
+  }
+
+  async updateTouretteSyndrome(
+    doctorId: number,
+    patientId: number,
+    touretteSyndromeId: number,
+    updateData: UpdateTouretteSyndromeDto,
+  ): Promise<Patient> {
+    await this.validatePatient(patientId, doctorId);
+    const touretteSyndrome = await this.touretteSyndromeRepository.findOne({ where: { id: touretteSyndromeId }});
+    if (!touretteSyndrome) {
+      throw new NotFoundException(`Tourette syndrome with id ${touretteSyndromeId} not found.`);
+    }
+    this.validateTouretteRequest(updateData);
+
+    Object.assign(touretteSyndrome, updateData);
+    await this.touretteSyndromeRepository.save(touretteSyndrome);
+    return await this.getPatient(doctorId, patientId);
   }
 }
