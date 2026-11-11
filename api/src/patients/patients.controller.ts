@@ -44,6 +44,7 @@ import { CurrentUser } from 'src/auth/decorators/current-user.decorator';
 import { JwtUser } from 'src/auth/classes/jwt-user.class';
 import { MultipartFile } from 'src/common/multipart-file';
 import { CreateTouretteSyndromeDto } from './dtos/create-tourette-syndrome.dto';
+import { UpdateTouretteSyndromeDto } from './dtos/update-tourette-syndrome.dto';
 
 @Controller('patients')
 @UseGuards(AuthGuard('jwt'))
@@ -360,6 +361,22 @@ export class PatientsController {
       user.id,
       parseInt(patientId, 10),
       createTouretteSyndrome,
+    );
+  }
+
+  @Put(':id/tourette-syndrome')
+  @HttpCode(HttpStatus.OK)
+  async updateTouretteSyndrome(
+    @CurrentUser() user: JwtUser,
+    @Param('id') id: string,
+    @Query('patientId') patientId: number,
+    @Body() updateData: UpdateTouretteSyndromeDto,
+  ): Promise<Patient> {
+    return this.patientsService.updateTouretteSyndrome(
+      user.id,
+      patientId,
+      parseInt(id, 10),
+      updateData,
     );
   }
 }
