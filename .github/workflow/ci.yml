@@ -1,3 +1,5 @@
+YAML
+
 name: CI Pipeline
 
 on:
