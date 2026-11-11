@@ -1600,7 +1600,9 @@ export class PatientsService implements OnModuleInit {
     return patient;
   }
 
-  private validateTouretteRequest(touretteData: CreateTouretteSyndromeDto | UpdateTouretteSyndromeDto): void {
+  private validateTouretteRequest(
+    touretteData: CreateTouretteSyndromeDto | UpdateTouretteSyndromeDto,
+  ): void {
     if (!Object.values(TycType).includes(touretteData.tycType)) {
       throw new BadRequestException(
         'tycType is required and must be one of MOTOR_SIMPLE, MOTOR_COMPLEX, VOCAL_SIMPLE, VOCAL_COMPLEX',
@@ -1621,7 +1623,7 @@ export class PatientsService implements OnModuleInit {
   ): Promise<Patient> {
     await this.validatePatient(patientId, doctorId);
     this.validateTouretteRequest(createData);
-  
+
     await this.touretteSyndromeRepository.save({
       ...createData,
       patientId,
@@ -1638,9 +1640,13 @@ export class PatientsService implements OnModuleInit {
     updateData: UpdateTouretteSyndromeDto,
   ): Promise<Patient> {
     await this.validatePatient(patientId, doctorId);
-    const touretteSyndrome = await this.touretteSyndromeRepository.findOne({ where: { id: touretteSyndromeId }});
+    const touretteSyndrome = await this.touretteSyndromeRepository.findOne({
+      where: { id: touretteSyndromeId },
+    });
     if (!touretteSyndrome) {
-      throw new NotFoundException(`Tourette syndrome with id ${touretteSyndromeId} not found.`);
+      throw new NotFoundException(
+        `Tourette syndrome with id ${touretteSyndromeId} not found.`,
+      );
     }
     this.validateTouretteRequest(updateData);
 
