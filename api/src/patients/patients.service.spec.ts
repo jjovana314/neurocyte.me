@@ -1852,4 +1852,72 @@ describe('PatientsService', () => {
       expect(mockTouretteSyndromeRepository.save).not.toHaveBeenCalled();
     });
   });
+
+  describe('updateTouretteSyndrome', () => {
+    const doctorId = 1;
+    const patientId = 5;
+    const touretteId = 3;
+    const existing = {
+      id: touretteId,
+      patientId,
+      tycType: TycType.MOTOR_SIMPLE,
+      severityScale: 4,
+      premonitoryUrgeLevel: 2,
+      triggers: [],
+    };
+
+    beforeEach(() => {
+      mockPatientRepository.findOne.mockResolvedValue({
+        id: patientId,
+        doctorId,
+      });
+      mockTouretteSyndromeRepository.findOne.mockResolvedValue({ ...existing });
+      mockTouretteSyndromeRepository.save.mockImplementation((t) =>
+        Promise.resolve(t),
+      );
+    });
+
+    it('should only look up the record within the given patient', async () => {
+      await service.updateTouretteSyndrome(doctorId, patientId, touretteId, {
+        severityScale: 7,
+      });
+
+      expect(mockTouretteSyndromeRepository.findOne).toHaveBeenCalledWith({
+        where: { id: touretteId, patientId },
+      });
+    });
+
+    it('should allow a partial update without tycType', async () => {
+      await service.updateTouretteSyndrome(doctorId, patientId, touretteId, {
+        severityScale: 7,
+      });
+
+      expect(mockTouretteSyndromeRepository.save).toHaveBeenCalledWith(
+        expect.objectContaining({
+          tycType: TycType.MOTOR_SIMPLE,
+          severityScale: 7,
+        }),
+      );
+    });
+
+    it('should throw NotFoundException when the record does not belong to the patient', async () => {
+      mockTouretteSyndromeRepository.findOne.mockResolvedValue(null);
+
+      await expect(
+        service.updateTouretteSyndrome(doctorId, patientId, touretteId, {
+          severityScale: 7,
+        }),
+      ).rejects.toThrow(NotFoundException);
+      expect(mockTouretteSyndromeRepository.save).not.toHaveBeenCalled();
+    });
+
+    it('should throw BadRequestException for an invalid tycType', async () => {
+      await expect(
+        service.updateTouretteSyndrome(doctorId, patientId, touretteId, {
+          tycType: 'MOTOR' as TycType,
+        }),
+      ).rejects.toThrow(BadRequestException);
+      expect(mockTouretteSyndromeRepository.save).not.toHaveBeenCalled();
+    });
+  });
 });

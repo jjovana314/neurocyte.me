@@ -166,6 +166,41 @@ export interface CreateNcsStudyDto {
   skinTemperatureCelsius?: number;
 }
 
+export type TycType = 'MOTOR_SIMPLE' | 'MOTOR_COMPLEX' | 'VOCAL_SIMPLE' | 'VOCAL_COMPLEX';
+
+export type TouretteTrigger =
+  | 'STRESS'
+  | 'EXCITEMENT'
+  | 'ANGER'
+  | 'FATIGUE'
+  | 'ILLNESS'
+  | 'BOREDOM'
+  | 'SENSORY_ENVIRONMENT'
+  | 'REBOUND_EFFECT';
+
+export interface TouretteSyndrome {
+  id: number;
+  patientId: number;
+  tycType: TycType;
+  recordedAt: string;
+  severityScale: number;
+  premonitoryUrgeLevel: number;
+  triggers: TouretteTrigger[];
+  notes: string | null;
+  medicationTaken: string | null;
+}
+
+export interface CreateTouretteSyndromeDto {
+  tycType: TycType;
+  severityScale: number;
+  premonitoryUrgeLevel: number;
+  triggers?: TouretteTrigger[];
+  notes?: string;
+  medicationTaken?: string;
+}
+
+export type UpdateTouretteSyndromeDto = Partial<CreateTouretteSyndromeDto>;
+
 export interface Patient {
   id: number;
   doctorId: number;
@@ -183,6 +218,7 @@ export interface Patient {
   migraineLogs: MigraineLog[];
   seizureLogs: SeizureLog[];
   ncsStudies: NcsStudy[];
+  touretteSyndrom: TouretteSyndrome[];
 }
 
 export interface CreatePatientDto {

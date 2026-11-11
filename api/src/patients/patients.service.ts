@@ -186,7 +186,8 @@ export class PatientsService implements OnModuleInit {
       .leftJoinAndSelect('patient.edssAssessments', 'edssAssessments')
       .leftJoinAndSelect('patient.migraineLogs', 'migraineLogs')
       .leftJoinAndSelect('patient.seizureLogs', 'seizureLogs')
-      .leftJoinAndSelect('patient.ncsStudies', 'ncsStudies');
+      .leftJoinAndSelect('patient.ncsStudies', 'ncsStudies')
+      .leftJoinAndSelect('patient.touretteSyndrom', 'touretteSyndrom');
 
     if (roleName !== RoleEnum.SUPPORT_ENGINEER) {
       qb.andWhere('patient.doctorId = :doctorId', { doctorId });
@@ -1602,8 +1603,13 @@ export class PatientsService implements OnModuleInit {
 
   private validateTouretteRequest(
     touretteData: CreateTouretteSyndromeDto | UpdateTouretteSyndromeDto,
+    partial = false,
   ): void {
-    if (!Object.values(TycType).includes(touretteData.tycType)) {
+    const tycTypeOmitted = partial && touretteData.tycType === undefined;
+    if (
+      !tycTypeOmitted &&
+      !Object.values(TycType).includes(touretteData.tycType as TycType)
+    ) {
       throw new BadRequestException(
         'tycType is required and must be one of MOTOR_SIMPLE, MOTOR_COMPLEX, VOCAL_SIMPLE, VOCAL_COMPLEX',
       );
@@ -1641,14 +1647,14 @@ export class PatientsService implements OnModuleInit {
   ): Promise<Patient> {
     await this.validatePatient(patientId, doctorId);
     const touretteSyndrome = await this.touretteSyndromeRepository.findOne({
-      where: { id: touretteSyndromeId },
+      where: { id: touretteSyndromeId, patientId },
     });
     if (!touretteSyndrome) {
       throw new NotFoundException(
         `Tourette syndrome with id ${touretteSyndromeId} not found.`,
       );
     }
-    this.validateTouretteRequest(updateData);
+    this.validateTouretteRequest(updateData, true);
 
     Object.assign(touretteSyndrome, updateData);
     await this.touretteSyndromeRepository.save(touretteSyndrome);

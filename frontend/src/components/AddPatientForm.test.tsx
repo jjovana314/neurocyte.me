@@ -5,6 +5,7 @@ import AddPatientForm from './AddPatientForm';
 import {
   addFamilyHistory,
   addMedicalHistory,
+  addTouretteSyndrome,
   createPatient,
   importNcsStudiesCsv,
 } from '../api/patients';
@@ -15,6 +16,7 @@ vi.mock('../api/patients', () => ({
   createPatient: vi.fn(),
   addMedicalHistory: vi.fn(),
   addFamilyHistory: vi.fn(),
+  addTouretteSyndrome: vi.fn(),
   importNcsStudiesCsv: vi.fn(),
 }));
 
@@ -22,6 +24,7 @@ const mockCreatePatient = vi.mocked(createPatient);
 const mockAddMedicalHistory = vi.mocked(addMedicalHistory);
 const mockAddFamilyHistory = vi.mocked(addFamilyHistory);
 const mockImportNcsStudiesCsv = vi.mocked(importNcsStudiesCsv);
+const mockAddTouretteSyndrome = vi.mocked(addTouretteSyndrome);
 
 const mockCreatedPatient = { id: 99 } as Patient;
 const mockCreatedHistory: PatientHistory = {
@@ -55,6 +58,7 @@ beforeEach(() => {
   mockAddMedicalHistory.mockReset();
   mockAddFamilyHistory.mockReset();
   mockImportNcsStudiesCsv.mockReset();
+  mockAddTouretteSyndrome.mockReset().mockResolvedValue(mockCreatedPatient);
 });
 
 describe('AddPatientForm family history', () => {
@@ -151,5 +155,46 @@ describe('AddPatientForm medical history', () => {
     await screen.findByText(/patient created successfully/i);
 
     expect(screen.queryByLabelText(/disorder/i)).not.toBeInTheDocument();
+  });
+});
+
+describe('AddPatientForm Tourette syndrome', () => {
+  it('does not add a Tourette record when the disclosure is left closed', async () => {
+    const user = userEvent.setup();
+    renderWithQueryClient(<AddPatientForm />);
+
+    await fillRequiredPatientFields(user);
+    await user.click(screen.getByRole('button', { name: /create patient/i }));
+
+    await waitFor(() => expect(mockCreatePatient).toHaveBeenCalledTimes(1));
+    expect(mockAddTouretteSyndrome).not.toHaveBeenCalled();
+  });
+
+  it('adds a Tourette record for the newly created patient and collapses the disclosure', async () => {
+    const user = userEvent.setup();
+    renderWithQueryClient(<AddPatientForm />);
+
+    await fillRequiredPatientFields(user);
+    await user.click(screen.getByRole('button', { name: /record tourette syndrome/i }));
+    await user.selectOptions(screen.getByLabelText(/tic type/i), 'VOCAL_COMPLEX');
+    await user.clear(screen.getByLabelText(/^severity/i));
+    await user.type(screen.getByLabelText(/^severity/i), '6');
+    await user.clear(screen.getByLabelText(/premonitory urge/i));
+    await user.type(screen.getByLabelText(/premonitory urge/i), '4');
+    await user.click(screen.getByLabelText(/^stress$/i));
+    await user.click(screen.getByRole('button', { name: /create patient/i }));
+
+    await waitFor(() => expect(mockAddTouretteSyndrome).toHaveBeenCalledTimes(1));
+    expect(mockAddTouretteSyndrome).toHaveBeenCalledWith(99, {
+      tycType: 'VOCAL_COMPLEX',
+      severityScale: 6,
+      premonitoryUrgeLevel: 4,
+      triggers: ['STRESS'],
+      medicationTaken: undefined,
+      notes: undefined,
+    });
+
+    await screen.findByText(/patient created successfully/i);
+    expect(screen.queryByLabelText(/tic type/i)).not.toBeInTheDocument();
   });
 });

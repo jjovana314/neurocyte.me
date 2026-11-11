@@ -8,6 +8,8 @@ import type {
   CreateMigraineLogDto,
   CreateSeizureLogDto,
   CreateNcsStudyDto,
+  CreateTouretteSyndromeDto,
+  UpdateTouretteSyndromeDto,
   PatientHistory,
   FamilyHistory,
   MigraineLog,
@@ -95,6 +97,29 @@ export async function addNcsStudy(
   const { data } = await client.post<NcsStudy>('/patients/ncs-studies', dto, {
     params: { patientId },
   });
+  return data;
+}
+
+export async function addTouretteSyndrome(
+  patientId: number,
+  dto: CreateTouretteSyndromeDto,
+): Promise<Patient> {
+  const { data } = await client.post<Patient>('/patients/tourette-syndrome', dto, {
+    params: { patientId },
+  });
+  return data;
+}
+
+export async function updateTouretteSyndrome(
+  patientId: number,
+  touretteSyndromeId: number,
+  dto: UpdateTouretteSyndromeDto,
+): Promise<Patient> {
+  const { data } = await client.put<Patient>(
+    `/patients/tourette-syndrome/${touretteSyndromeId}`,
+    dto,
+    { params: { patientId } },
+  );
   return data;
 }
 
