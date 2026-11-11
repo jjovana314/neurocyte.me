@@ -50,7 +50,9 @@ export async function addMedicalHistory(
   patientId: number,
   dto: CreatePatientHistoryDto,
 ): Promise<PatientHistory> {
-  const { data } = await client.post<PatientHistory>(`/patients/${patientId}/history`, dto);
+  const { data } = await client.post<PatientHistory>('/patients/history', dto, {
+    params: { patientId },
+  });
   return data;
 }
 
@@ -59,8 +61,9 @@ export async function addFamilyHistory(
   dto: CreateFamilyHistoryDto,
 ): Promise<FamilyHistory> {
   const { data } = await client.post<FamilyHistory>(
-    `/patients/${patientId}/family-history`,
+    '/patients/family-history',
     dto,
+    { params: { patientId } },
   );
   return data;
 }
@@ -69,7 +72,9 @@ export async function addMigraineLog(
   patientId: number,
   dto: CreateMigraineLogDto,
 ): Promise<MigraineLog> {
-  const { data } = await client.post<MigraineLog>(`/patients/${patientId}/migraines`, dto);
+  const { data } = await client.post<MigraineLog>('/patients/migraines', dto, {
+    params: { patientId },
+  });
   return data;
 }
 
@@ -77,7 +82,9 @@ export async function addSeizureLog(
   patientId: number,
   dto: CreateSeizureLogDto,
 ): Promise<SeizureLog> {
-  const { data } = await client.post<SeizureLog>(`/patients/${patientId}/seizures`, dto);
+  const { data } = await client.post<SeizureLog>('/patients/seizures', dto, {
+    params: { patientId },
+  });
   return data;
 }
 
@@ -85,7 +92,9 @@ export async function addNcsStudy(
   patientId: number,
   dto: CreateNcsStudyDto,
 ): Promise<NcsStudy> {
-  const { data } = await client.post<NcsStudy>(`/patients/${patientId}/ncs-studies`, dto);
+  const { data } = await client.post<NcsStudy>('/patients/ncs-studies', dto, {
+    params: { patientId },
+  });
   return data;
 }
 
@@ -127,9 +136,12 @@ export async function importNcsStudiesCsv(
   const formData = new FormData();
   formData.append('file', file);
   const { data } = await client.post<ImportCsvResponse>(
-    `/patients/${patientId}/ncs-studies/import`,
+    '/patients/ncs-studies/import',
     formData,
-    { headers: { 'Content-Type': 'multipart/form-data' } },
+    {
+      headers: { 'Content-Type': 'multipart/form-data' },
+      params: { patientId },
+    },
   );
   return data;
 }

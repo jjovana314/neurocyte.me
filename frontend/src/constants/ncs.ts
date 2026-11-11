@@ -22,7 +22,7 @@ export const NCS_NERVE_DEFINITIONS: { name: string; region: NcsAnatomicRegion }[
 
 export const NCS_NERVE_OPTIONS = NCS_NERVE_DEFINITIONS.map((n) => n.name);
 
-// Column order expected by POST /patients/:id/ncs-studies/import (header row required, not validated by name)
+// Column order expected by POST /patients/ncs-studies/import?patientId=:id (header row required, not validated by name)
 export const NCS_CSV_IMPORT_HINT =
   'Optional. Columns: nerveName, studyType (MOTOR/SENSORY), distanceMm, distalLatencyMs, ' +
   'distalAmplitude, distalDurationMs, proximalLatencyMs, proximalAmplitude, proximalDurationMs, ' +

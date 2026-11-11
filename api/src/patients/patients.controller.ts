@@ -15,6 +15,7 @@ import {
   UseInterceptors,
   ParseFilePipe,
   FileTypeValidator,
+  ParseIntPipe,
   StreamableFile,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
@@ -75,11 +76,11 @@ export class PatientsController {
   @Header('Content-Disposition', 'attachment; filename="patient-report.pdf"')
   async exportPatientPdf(
     @CurrentUser() user: JwtUser,
-    @Param('id') patientId: string,
+    @Param('id', ParseIntPipe) patientId: number,
   ): Promise<StreamableFile> {
     const buffer = await this.patientsService.exportPatientPdf(
       user.id,
-      parseInt(patientId, 10),
+      patientId,
       user.role.name,
     );
     return new StreamableFile(buffer);
@@ -128,26 +129,18 @@ export class PatientsController {
     );
   }
 
-  @Get(':id')
-  async getPatient(
-    @CurrentUser() user: JwtUser,
-    @Param('id') patientId: string,
-  ): Promise<Patient> {
-    return this.patientsService.getPatient(user.id, parseInt(patientId, 10));
-  }
-
   /**
    * Update patient notes, optionally recording a new EDSS assessment in the same request
    */
   @Put(':id')
   async updatePatientNotes(
     @CurrentUser() user: JwtUser,
-    @Param('id') patientId: string,
+    @Param('id', ParseIntPipe) patientId: number,
     @Body() body: UpdatePatientNotesDto,
   ): Promise<Patient> {
     return this.patientsService.updatePatientNotes(
       user.id,
-      parseInt(patientId, 10),
+      patientId,
       body,
     );
   }
@@ -156,47 +149,47 @@ export class PatientsController {
   @HttpCode(HttpStatus.NO_CONTENT)
   async deletePatient(
     @CurrentUser() user: JwtUser,
-    @Param('id') patientId: string,
+    @Param('id', ParseIntPipe) patientId: number,
   ): Promise<void> {
-    return this.patientsService.deletePatient(user.id, parseInt(patientId, 10));
+    return this.patientsService.deletePatient(user.id, patientId);
   }
 
-  @Post(':id/history')
+  @Post('history')
   @HttpCode(HttpStatus.CREATED)
   async addPatientHistory(
     @CurrentUser() user: JwtUser,
-    @Param('id') patientId: string,
+    @Query('patientId', ParseIntPipe) patientId: number,
     @Body() createHistoryDto: CreatePatientHistoryDto,
   ): Promise<PatientHistory> {
-    createHistoryDto.patientId = parseInt(patientId, 10);
+    createHistoryDto.patientId = patientId;
     return this.patientsService.addPatientHistory(user.id, createHistoryDto);
   }
 
   /**
    * Get patient medical history
    */
-  @Get(':id/history')
+  @Get('history')
   async getPatientHistory(
     @CurrentUser() user: JwtUser,
-    @Param('id') patientId: string,
+    @Query('patientId', ParseIntPipe) patientId: number,
   ): Promise<PatientHistory[]> {
     return this.patientsService.getPatientMedicalHistory(
       user.id,
-      parseInt(patientId, 10),
+      patientId,
     );
   }
 
   /**
    * Add family history to a patient
    */
-  @Post(':id/family-history')
+  @Post('family-history')
   @HttpCode(HttpStatus.CREATED)
   async addFamilyHistory(
     @CurrentUser() user: JwtUser,
-    @Param('id') patientId: string,
+    @Query('patientId', ParseIntPipe) patientId: number,
     @Body() createFamilyHistoryDto: CreateFamilyHistoryDto,
   ): Promise<FamilyHistory> {
-    createFamilyHistoryDto.patientId = parseInt(patientId, 10);
+    createFamilyHistoryDto.patientId = patientId;
     return this.patientsService.addFamilyHistory(
       user.id,
       createFamilyHistoryDto,
@@ -206,14 +199,14 @@ export class PatientsController {
   /**
    * Get patient family history
    */
-  @Get(':id/family-history')
+  @Get('family-history')
   async getPatientFamilyHistory(
     @CurrentUser() user: JwtUser,
-    @Param('id') patientId: string,
+    @Query('patientId', ParseIntPipe) patientId: number,
   ): Promise<FamilyHistory[]> {
     return this.patientsService.getPatientFamilyHistory(
       user.id,
-      parseInt(patientId, 10),
+      patientId,
     );
   }
 
@@ -221,93 +214,93 @@ export class PatientsController {
    * Get a patient's EDSS assessment history. Assessments themselves are
    * recorded via createPatient/updatePatientNotes, not a dedicated endpoint.
    */
-  @Get(':id/edss')
+  @Get('edss')
   async getPatientEdssAssessments(
     @CurrentUser() user: JwtUser,
-    @Param('id') patientId: string,
+    @Query('patientId', ParseIntPipe) patientId: number,
   ): Promise<EdssAssesment[]> {
     return this.patientsService.getPatientEdssAssessments(
       user.id,
-      parseInt(patientId, 10),
+      patientId,
     );
   }
 
   /**
    * Add a migraine log entry for a patient
    */
-  @Post(':id/migraines')
+  @Post('migraines')
   @HttpCode(HttpStatus.CREATED)
   async addMigraineLog(
     @CurrentUser() user: JwtUser,
-    @Param('id') patientId: string,
+    @Query('patientId', ParseIntPipe) patientId: number,
     @Body() createMigraineLogDto: CreateMigraineLogDto,
   ): Promise<MigraineLog> {
-    createMigraineLogDto.patientId = parseInt(patientId, 10);
+    createMigraineLogDto.patientId = patientId;
     return this.patientsService.addMigraineLog(user.id, createMigraineLogDto);
   }
 
   /**
    * Get a patient's migraine log history
    */
-  @Get(':id/migraines')
+  @Get('migraines')
   async getPatientMigraineLogs(
     @CurrentUser() user: JwtUser,
-    @Param('id') patientId: string,
+    @Query('patientId', ParseIntPipe) patientId: number,
   ): Promise<MigraineLog[]> {
     return this.patientsService.getPatientMigraineLogs(
       user.id,
-      parseInt(patientId, 10),
+      patientId,
     );
   }
 
   /**
    * Add a seizure log entry for a patient
    */
-  @Post(':id/seizures')
+  @Post('seizures')
   @HttpCode(HttpStatus.CREATED)
   async addSeizureLog(
     @CurrentUser() user: JwtUser,
-    @Param('id') patientId: string,
+    @Query('patientId', ParseIntPipe) patientId: number,
     @Body() createSeizureLogDto: CreateSeizureLogDto,
   ): Promise<SeizureLog> {
-    createSeizureLogDto.patientId = parseInt(patientId, 10);
+    createSeizureLogDto.patientId = patientId;
     return this.patientsService.addSeizureLog(user.id, createSeizureLogDto);
   }
 
   /**
    * Get a patient's seizure log history
    */
-  @Get(':id/seizures')
+  @Get('seizures')
   async getPatientSeizureLogs(
     @CurrentUser() user: JwtUser,
-    @Param('id') patientId: string,
+    @Query('patientId', ParseIntPipe) patientId: number,
   ): Promise<SeizureLog[]> {
     return this.patientsService.getPatientSeizureLogs(
       user.id,
-      parseInt(patientId, 10),
+      patientId,
     );
   }
 
   /**
    * Get a patient's nerve conduction study history
    */
-  @Get(':id/ncs-studies')
+  @Get('ncs-studies')
   async getPatientNcsStudies(
     @CurrentUser() user: JwtUser,
-    @Param('id') patientId: string,
+    @Query('patientId', ParseIntPipe) patientId: number,
   ): Promise<NcsStudy[]> {
     return this.patientsService.getPatientNcsStudies(
       user.id,
-      parseInt(patientId, 10),
+      patientId,
     );
   }
 
-  @Post(':id/ncs-studies/import')
+  @Post('ncs-studies/import')
   @HttpCode(HttpStatus.OK)
   @UseInterceptors(FileInterceptor('file'))
   async importNcsStudies(
     @CurrentUser() user: JwtUser,
-    @Param('id') patientId: string,
+    @Query('patientId', ParseIntPipe) patientId: number,
     @UploadedFile(
       new ParseFilePipe({
         validators: [
@@ -319,7 +312,7 @@ export class PatientsController {
   ): Promise<ImportCsvResponseDto> {
     return this.patientsService.importNcsStudiesCsv(
       user.id,
-      parseInt(patientId, 10),
+      patientId,
       file.buffer,
     );
   }
@@ -331,52 +324,59 @@ export class PatientsController {
    * @param createNcsStudy NCS data
    * @returns updated patient information
    */
-  @Post(':id/ncs-studies')
+  @Post('ncs-studies')
   @HttpCode(HttpStatus.CREATED)
-  @HttpCode(HttpStatus.OK)
   async addNcsStudy(
     @CurrentUser() user: JwtUser,
-    @Param('id') patientId: string,
+    @Query('patientId', ParseIntPipe) patientId: number,
     @Body() createNcsStudy: CreateNcsStudyDto,
   ): Promise<Patient> {
     return this.patientsService.createNcsStudy(
       user.id,
-      parseInt(patientId, 10),
+      patientId,
       createNcsStudy,
     );
   }
+
   /**
    * Create tourette syndrom information for patient
    *
    * */
-  @Post(':id/tourette-syndrome')
+  @Post('tourette-syndrome')
   @HttpCode(HttpStatus.CREATED)
-  @HttpCode(HttpStatus.OK)
   async addTouretteSyndrome(
     @CurrentUser() user: JwtUser,
-    @Param('id') patientId: string,
+    @Query('patientId', ParseIntPipe) patientId: number,
     @Body() createTouretteSyndrome: CreateTouretteSyndromeDto,
   ): Promise<Patient> {
     return this.patientsService.createTouretteSyndrome(
       user.id,
-      parseInt(patientId, 10),
+      patientId,
       createTouretteSyndrome,
     );
   }
 
-  @Put(':id/tourette-syndrome')
+  @Put('tourette-syndrome/:id')
   @HttpCode(HttpStatus.OK)
   async updateTouretteSyndrome(
     @CurrentUser() user: JwtUser,
-    @Param('id') id: string,
-    @Query('patientId') patientId: number,
+    @Param('id', ParseIntPipe) id: number,
+    @Query('patientId', ParseIntPipe) patientId: number,
     @Body() updateData: UpdateTouretteSyndromeDto,
   ): Promise<Patient> {
     return this.patientsService.updateTouretteSyndrome(
       user.id,
       patientId,
-      parseInt(id, 10),
+      id,
       updateData,
     );
+  }
+
+  @Get(':id')
+  async getPatient(
+    @CurrentUser() user: JwtUser,
+    @Param('id', ParseIntPipe) patientId: number,
+  ): Promise<Patient> {
+    return this.patientsService.getPatient(user.id, patientId);
   }
 }

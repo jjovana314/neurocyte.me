@@ -228,7 +228,7 @@ describe('PatientsController', () => {
       const mockPatient = { id: 5 } as any;
       mockPatientsService.getPatient.mockResolvedValue(mockPatient);
 
-      const result = await controller.getPatient(mockUser, '5');
+      const result = await controller.getPatient(mockUser, 5);
 
       expect(mockPatientsService.getPatient).toHaveBeenCalledWith(1, 5);
       expect(result).toBe(mockPatient);
@@ -241,7 +241,7 @@ describe('PatientsController', () => {
       const mockPatient = { id: 5, notes: 'Updated' } as any;
       mockPatientsService.updatePatientNotes.mockResolvedValue(mockPatient);
 
-      const result = await controller.updatePatientNotes(mockUser, '5', body);
+      const result = await controller.updatePatientNotes(mockUser, 5, body);
 
       expect(mockPatientsService.updatePatientNotes).toHaveBeenCalledWith(
         1,
@@ -267,7 +267,7 @@ describe('PatientsController', () => {
       const mockPatient = { id: 5, notes: 'Updated' } as any;
       mockPatientsService.updatePatientNotes.mockResolvedValue(mockPatient);
 
-      const result = await controller.updatePatientNotes(mockUser, '5', body);
+      const result = await controller.updatePatientNotes(mockUser, 5, body);
 
       expect(mockPatientsService.updatePatientNotes).toHaveBeenCalledWith(
         1,
@@ -285,7 +285,7 @@ describe('PatientsController', () => {
       );
 
       await expect(
-        controller.updatePatientNotes(mockUser, '5', {
+        controller.updatePatientNotes(mockUser, 5, {
           notes: 'Updated',
           edss: { pyramidalSystem: 99 },
         } as any),
@@ -297,7 +297,7 @@ describe('PatientsController', () => {
     it('should call patientsService.deletePatient with user id and patient id', async () => {
       mockPatientsService.deletePatient.mockResolvedValue(undefined);
 
-      await controller.deletePatient(mockUser, '5');
+      await controller.deletePatient(mockUser, 5);
 
       expect(mockPatientsService.deletePatient).toHaveBeenCalledWith(1, 5);
     });
@@ -309,7 +309,7 @@ describe('PatientsController', () => {
       const mockHistory = { id: 1, patientId: 5, disorder: 'Epilepsy' } as any;
       mockPatientsService.addPatientHistory.mockResolvedValue(mockHistory);
 
-      const result = await controller.addPatientHistory(mockUser, '5', dto);
+      const result = await controller.addPatientHistory(mockUser, 5, dto);
 
       expect(mockPatientsService.addPatientHistory).toHaveBeenCalledWith(1, {
         ...dto,
@@ -326,7 +326,7 @@ describe('PatientsController', () => {
         mockHistory,
       );
 
-      const result = await controller.getPatientHistory(mockUser, '5');
+      const result = await controller.getPatientHistory(mockUser, 5);
 
       expect(mockPatientsService.getPatientMedicalHistory).toHaveBeenCalledWith(
         1,
@@ -346,7 +346,7 @@ describe('PatientsController', () => {
       const mockFamilyHistory = { id: 1, patientId: 5 } as any;
       mockPatientsService.addFamilyHistory.mockResolvedValue(mockFamilyHistory);
 
-      const result = await controller.addFamilyHistory(mockUser, '5', dto);
+      const result = await controller.addFamilyHistory(mockUser, 5, dto);
 
       expect(mockPatientsService.addFamilyHistory).toHaveBeenCalledWith(1, {
         ...dto,
@@ -363,7 +363,7 @@ describe('PatientsController', () => {
         mockFamilyHistory,
       );
 
-      const result = await controller.getPatientFamilyHistory(mockUser, '5');
+      const result = await controller.getPatientFamilyHistory(mockUser, 5);
 
       expect(mockPatientsService.getPatientFamilyHistory).toHaveBeenCalledWith(
         1,
@@ -380,7 +380,7 @@ describe('PatientsController', () => {
         mockAssessments,
       );
 
-      const result = await controller.getPatientEdssAssessments(mockUser, '5');
+      const result = await controller.getPatientEdssAssessments(mockUser, 5);
 
       expect(
         mockPatientsService.getPatientEdssAssessments,
@@ -391,7 +391,7 @@ describe('PatientsController', () => {
     it('should return an empty array when the patient has no assessments yet', async () => {
       mockPatientsService.getPatientEdssAssessments.mockResolvedValue([]);
 
-      const result = await controller.getPatientEdssAssessments(mockUser, '5');
+      const result = await controller.getPatientEdssAssessments(mockUser, 5);
 
       expect(result).toEqual([]);
     });
@@ -402,7 +402,7 @@ describe('PatientsController', () => {
       );
 
       await expect(
-        controller.getPatientEdssAssessments(mockUser, '5'),
+        controller.getPatientEdssAssessments(mockUser, 5),
       ).rejects.toThrow(NotFoundException);
     });
   });
@@ -417,7 +417,7 @@ describe('PatientsController', () => {
       const mockLog = { id: 1, patientId: 5, painSeverity: 7 } as any;
       mockPatientsService.addMigraineLog.mockResolvedValue(mockLog);
 
-      const result = await controller.addMigraineLog(mockUser, '5', dto);
+      const result = await controller.addMigraineLog(mockUser, 5, dto);
 
       expect(mockPatientsService.addMigraineLog).toHaveBeenCalledWith(1, {
         ...dto,
@@ -434,7 +434,7 @@ describe('PatientsController', () => {
       );
 
       await expect(
-        controller.addMigraineLog(mockUser, '5', {
+        controller.addMigraineLog(mockUser, 5, {
           occurredAt: '2026-07-20T10:00:00Z',
           painSeverity: 99,
         } as any),
@@ -447,7 +447,7 @@ describe('PatientsController', () => {
       const mockLogs = [{ id: 1, painSeverity: 6 }] as any[];
       mockPatientsService.getPatientMigraineLogs.mockResolvedValue(mockLogs);
 
-      const result = await controller.getPatientMigraineLogs(mockUser, '5');
+      const result = await controller.getPatientMigraineLogs(mockUser, 5);
 
       expect(mockPatientsService.getPatientMigraineLogs).toHaveBeenCalledWith(
         1,
@@ -459,7 +459,7 @@ describe('PatientsController', () => {
     it('should return an empty array when the patient has no migraine logs yet', async () => {
       mockPatientsService.getPatientMigraineLogs.mockResolvedValue([]);
 
-      const result = await controller.getPatientMigraineLogs(mockUser, '5');
+      const result = await controller.getPatientMigraineLogs(mockUser, 5);
 
       expect(result).toEqual([]);
     });
@@ -480,7 +480,7 @@ describe('PatientsController', () => {
       } as any;
       mockPatientsService.addSeizureLog.mockResolvedValue(mockLog);
 
-      const result = await controller.addSeizureLog(mockUser, '5', dto);
+      const result = await controller.addSeizureLog(mockUser, 5, dto);
 
       expect(mockPatientsService.addSeizureLog).toHaveBeenCalledWith(1, {
         ...dto,
@@ -495,7 +495,7 @@ describe('PatientsController', () => {
       );
 
       await expect(
-        controller.addSeizureLog(mockUser, '5', {
+        controller.addSeizureLog(mockUser, 5, {
           onsetVector: 'GENERALIZED',
           ictusStart: '2026-07-20T10:02:00Z',
           ictusEnd: '2026-07-20T10:00:00Z',
@@ -509,7 +509,7 @@ describe('PatientsController', () => {
       const mockLogs = [{ id: 1, onsetVector: 'GENERALIZED' }] as any[];
       mockPatientsService.getPatientSeizureLogs.mockResolvedValue(mockLogs);
 
-      const result = await controller.getPatientSeizureLogs(mockUser, '5');
+      const result = await controller.getPatientSeizureLogs(mockUser, 5);
 
       expect(mockPatientsService.getPatientSeizureLogs).toHaveBeenCalledWith(
         1,
@@ -521,7 +521,7 @@ describe('PatientsController', () => {
     it('should return an empty array when the patient has no seizure logs yet', async () => {
       mockPatientsService.getPatientSeizureLogs.mockResolvedValue([]);
 
-      const result = await controller.getPatientSeizureLogs(mockUser, '5');
+      const result = await controller.getPatientSeizureLogs(mockUser, 5);
 
       expect(result).toEqual([]);
     });
@@ -532,7 +532,7 @@ describe('PatientsController', () => {
       const mockStudies = [{ id: 1, nerveName: 'Median' }] as any[];
       mockPatientsService.getPatientNcsStudies.mockResolvedValue(mockStudies);
 
-      const result = await controller.getPatientNcsStudies(mockUser, '5');
+      const result = await controller.getPatientNcsStudies(mockUser, 5);
 
       expect(mockPatientsService.getPatientNcsStudies).toHaveBeenCalledWith(
         1,
@@ -544,7 +544,7 @@ describe('PatientsController', () => {
     it('should return an empty array when the patient has no NCS studies yet', async () => {
       mockPatientsService.getPatientNcsStudies.mockResolvedValue([]);
 
-      const result = await controller.getPatientNcsStudies(mockUser, '5');
+      const result = await controller.getPatientNcsStudies(mockUser, 5);
 
       expect(result).toEqual([]);
     });
@@ -566,7 +566,7 @@ describe('PatientsController', () => {
       const mockResponse = { imported: 1, skipped: 0, errors: [] };
       mockPatientsService.importNcsStudiesCsv.mockResolvedValue(mockResponse);
 
-      const result = await controller.importNcsStudies(mockUser, '5', file);
+      const result = await controller.importNcsStudies(mockUser, 5, file);
 
       expect(mockPatientsService.importNcsStudiesCsv).toHaveBeenCalledWith(
         1,
@@ -582,7 +582,7 @@ describe('PatientsController', () => {
       const pdfBuffer = Buffer.from('%PDF-1.4 fake-pdf-content');
       mockPatientsService.exportPatientPdf.mockResolvedValue(pdfBuffer);
 
-      const result = await controller.exportPatientPdf(mockUser, '10');
+      const result = await controller.exportPatientPdf(mockUser, 10);
 
       expect(mockPatientsService.exportPatientPdf).toHaveBeenCalledWith(
         1,
@@ -598,7 +598,7 @@ describe('PatientsController', () => {
       const pdfBuffer = Buffer.from('%PDF-1.4 fake-pdf-content');
       mockPatientsService.exportPatientPdf.mockResolvedValue(pdfBuffer);
 
-      const result = await controller.exportPatientPdf(mockUser, '10');
+      const result = await controller.exportPatientPdf(mockUser, 10);
 
       expect(result).toBeInstanceOf(StreamableFile);
     });
