@@ -138,11 +138,7 @@ export class PatientsController {
     @Param('id', ParseIntPipe) patientId: number,
     @Body() body: UpdatePatientNotesDto,
   ): Promise<Patient> {
-    return this.patientsService.updatePatientNotes(
-      user.id,
-      patientId,
-      body,
-    );
+    return this.patientsService.updatePatientNotes(user.id, patientId, body);
   }
 
   @Delete(':id')
@@ -173,10 +169,7 @@ export class PatientsController {
     @CurrentUser() user: JwtUser,
     @Query('patientId', ParseIntPipe) patientId: number,
   ): Promise<PatientHistory[]> {
-    return this.patientsService.getPatientMedicalHistory(
-      user.id,
-      patientId,
-    );
+    return this.patientsService.getPatientMedicalHistory(user.id, patientId);
   }
 
   /**
@@ -204,10 +197,7 @@ export class PatientsController {
     @CurrentUser() user: JwtUser,
     @Query('patientId', ParseIntPipe) patientId: number,
   ): Promise<FamilyHistory[]> {
-    return this.patientsService.getPatientFamilyHistory(
-      user.id,
-      patientId,
-    );
+    return this.patientsService.getPatientFamilyHistory(user.id, patientId);
   }
 
   /**
@@ -219,10 +209,7 @@ export class PatientsController {
     @CurrentUser() user: JwtUser,
     @Query('patientId', ParseIntPipe) patientId: number,
   ): Promise<EdssAssesment[]> {
-    return this.patientsService.getPatientEdssAssessments(
-      user.id,
-      patientId,
-    );
+    return this.patientsService.getPatientEdssAssessments(user.id, patientId);
   }
 
   /**
@@ -247,10 +234,7 @@ export class PatientsController {
     @CurrentUser() user: JwtUser,
     @Query('patientId', ParseIntPipe) patientId: number,
   ): Promise<MigraineLog[]> {
-    return this.patientsService.getPatientMigraineLogs(
-      user.id,
-      patientId,
-    );
+    return this.patientsService.getPatientMigraineLogs(user.id, patientId);
   }
 
   /**
@@ -275,10 +259,7 @@ export class PatientsController {
     @CurrentUser() user: JwtUser,
     @Query('patientId', ParseIntPipe) patientId: number,
   ): Promise<SeizureLog[]> {
-    return this.patientsService.getPatientSeizureLogs(
-      user.id,
-      patientId,
-    );
+    return this.patientsService.getPatientSeizureLogs(user.id, patientId);
   }
 
   /**
@@ -289,10 +270,7 @@ export class PatientsController {
     @CurrentUser() user: JwtUser,
     @Query('patientId', ParseIntPipe) patientId: number,
   ): Promise<NcsStudy[]> {
-    return this.patientsService.getPatientNcsStudies(
-      user.id,
-      patientId,
-    );
+    return this.patientsService.getPatientNcsStudies(user.id, patientId);
   }
 
   @Post('ncs-studies/import')
