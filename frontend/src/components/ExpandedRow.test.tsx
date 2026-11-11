@@ -2,19 +2,29 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import ExpandedRow from './ExpandedRow';
-import { addMedicalHistory, importNcsStudiesCsv, updatePatient } from '../api/patients';
+import {
+  addMedicalHistory,
+  addTouretteSyndrome,
+  importNcsStudiesCsv,
+  updatePatient,
+  updateTouretteSyndrome,
+} from '../api/patients';
 import { renderWithQueryClient } from '../test/renderWithQueryClient';
-import type { Patient, PatientHistory } from '../api/types';
+import type { Patient, PatientHistory, TouretteSyndrome } from '../api/types';
 
 vi.mock('../api/patients', () => ({
   addMedicalHistory: vi.fn(),
   updatePatient: vi.fn(),
   importNcsStudiesCsv: vi.fn(),
+  addTouretteSyndrome: vi.fn(),
+  updateTouretteSyndrome: vi.fn(),
 }));
 
 const mockAddMedicalHistory = vi.mocked(addMedicalHistory);
 const mockUpdatePatient = vi.mocked(updatePatient);
 const mockImportNcsStudiesCsv = vi.mocked(importNcsStudiesCsv);
+const mockAddTouretteSyndrome = vi.mocked(addTouretteSyndrome);
+const mockUpdateTouretteSyndrome = vi.mocked(updateTouretteSyndrome);
 
 const mockPatient: Patient = {
   id: 7,
@@ -33,6 +43,19 @@ const mockPatient: Patient = {
   migraineLogs: [],
   seizureLogs: [],
   ncsStudies: [],
+  touretteSyndrom: [],
+};
+
+const mockTouretteRecord: TouretteSyndrome = {
+  id: 3,
+  patientId: 7,
+  tycType: 'MOTOR_COMPLEX',
+  recordedAt: new Date().toISOString(),
+  severityScale: 5,
+  premonitoryUrgeLevel: 3,
+  triggers: ['FATIGUE'],
+  notes: 'worse at school',
+  medicationTaken: null,
 };
 
 const mockCreatedHistory: PatientHistory = {
@@ -50,6 +73,8 @@ beforeEach(() => {
   mockAddMedicalHistory.mockReset();
   mockUpdatePatient.mockReset();
   mockImportNcsStudiesCsv.mockReset();
+  mockAddTouretteSyndrome.mockReset().mockResolvedValue(mockPatient);
+  mockUpdateTouretteSyndrome.mockReset().mockResolvedValue(mockPatient);
 });
 
 describe('ExpandedRow medical history', () => {
@@ -114,5 +139,60 @@ describe('ExpandedRow medical history', () => {
 
     expect(screen.getByText('Migraine')).toBeInTheDocument();
     expect(screen.queryByText(/no medical history recorded/i)).not.toBeInTheDocument();
+  });
+});
+
+describe('ExpandedRow Tourette syndrome', () => {
+  it('shows an empty state when there are no Tourette records', () => {
+    renderWithQueryClient(<ExpandedRow patient={mockPatient} />);
+
+    expect(screen.getByText(/no tourette syndrome records/i)).toBeInTheDocument();
+  });
+
+  it('adds a new Tourette record for this patient', async () => {
+    const user = userEvent.setup();
+    renderWithQueryClient(<ExpandedRow patient={mockPatient} />);
+
+    await user.click(screen.getByRole('button', { name: /add tourette record/i }));
+    await user.selectOptions(screen.getByLabelText(/tic type/i), 'VOCAL_SIMPLE');
+    await user.click(screen.getByRole('button', { name: /add tourette record/i }));
+
+    await waitFor(() => expect(mockAddTouretteSyndrome).toHaveBeenCalledTimes(1));
+    expect(mockAddTouretteSyndrome).toHaveBeenCalledWith(
+      7,
+      expect.objectContaining({ tycType: 'VOCAL_SIMPLE', triggers: [] }),
+    );
+    await waitFor(() => expect(screen.queryByLabelText(/tic type/i)).not.toBeInTheDocument());
+  });
+
+  it('renders existing records and edits one with its current values prefilled', async () => {
+    const user = userEvent.setup();
+    renderWithQueryClient(
+      <ExpandedRow patient={{ ...mockPatient, touretteSyndrom: [mockTouretteRecord] }} />,
+    );
+
+    expect(screen.getByText('Motor - complex')).toBeInTheDocument();
+    expect(screen.getByText('worse at school')).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: /^edit$/i }));
+    expect(screen.getByLabelText(/tic type/i)).toHaveValue('MOTOR_COMPLEX');
+    expect(screen.getByLabelText(/^fatigue$/i)).toBeChecked();
+
+    await user.clear(screen.getByLabelText(/^severity/i));
+    await user.type(screen.getByLabelText(/^severity/i), '8');
+    await user.click(screen.getByRole('button', { name: /save changes/i }));
+
+    await waitFor(() => expect(mockUpdateTouretteSyndrome).toHaveBeenCalledTimes(1));
+    expect(mockUpdateTouretteSyndrome).toHaveBeenCalledWith(7, 3, {
+      tycType: 'MOTOR_COMPLEX',
+      severityScale: 8,
+      premonitoryUrgeLevel: 3,
+      triggers: ['FATIGUE'],
+      medicationTaken: '',
+      notes: 'worse at school',
+    });
+    await waitFor(() =>
+      expect(screen.queryByRole('button', { name: /save changes/i })).not.toBeInTheDocument(),
+    );
   });
 });

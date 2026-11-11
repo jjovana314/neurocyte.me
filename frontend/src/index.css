@@ -339,6 +339,13 @@ td {
   padding: 14px;
   margin-bottom: 14px;
 }
+.tourette-syndrome-form {
+  background: #f7fbf8;
+  border: 1px solid #d9eedf;
+  border-radius: 6px;
+  padding: 14px;
+  margin-bottom: 14px;
+}
 .checkbox-flags {
   display: flex;
   flex-wrap: wrap;

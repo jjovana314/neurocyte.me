@@ -7,6 +7,7 @@ import { EDSS_FSS_FIELDS } from '../constants/edss';
 import EdssAssessmentForm from './EdssAssessmentForm';
 import MigraineLogForm from './MigraineLogForm';
 import SeizureLogForm from './SeizureLogForm';
+import TouretteSyndromeForm from './TouretteSyndromeForm';
 import NcsStudyForm from './NcsStudyForm';
 import MedicalHistoryForm from './MedicalHistoryForm';
 import FamilyHistoryForm from './FamilyHistoryForm';
@@ -17,6 +18,7 @@ import {
   type EdssFormState,
 } from '../utils/edssForm';
 import { MOTOR_FEATURE_OPTIONS, SEIZURE_TRIGGER_OPTIONS } from '../constants/seizure';
+import { TOURETTE_TRIGGER_OPTIONS, TYC_TYPE_OPTIONS } from '../constants/tourette';
 import { NCS_CSV_IMPORT_HINT, NCS_STUDY_TYPE_OPTIONS } from '../constants/ncs';
 import { sortNcsStudies } from '../utils/ncsStudySort';
 
@@ -38,6 +40,12 @@ const MOTOR_FEATURE_LABELS = Object.fromEntries(
 );
 const SEIZURE_TRIGGER_LABELS = Object.fromEntries(
   SEIZURE_TRIGGER_OPTIONS.map((opt) => [opt.value, opt.label]),
+);
+const TYC_TYPE_LABELS = Object.fromEntries(
+  TYC_TYPE_OPTIONS.map((opt) => [opt.value, opt.label]),
+);
+const TOURETTE_TRIGGER_LABELS = Object.fromEntries(
+  TOURETTE_TRIGGER_OPTIONS.map((opt) => [opt.value, opt.label]),
 );
 
 function onsetVectorLabel(onsetVector: Patient['seizureLogs'][number]['onsetVector']): string {
@@ -75,6 +83,8 @@ export default function ExpandedRow({ patient }: Props) {
   const [addingMigraineLog, setAddingMigraineLog] = useState(false);
   const [addingSeizureLog, setAddingSeizureLog] = useState(false);
   const [addingNcsStudy, setAddingNcsStudy] = useState(false);
+  const [addingTourette, setAddingTourette] = useState(false);
+  const [editingTouretteId, setEditingTouretteId] = useState<number | null>(null);
   const [addingMedicalHistory, setAddingMedicalHistory] = useState(false);
   const [addingFamilyHistory, setAddingFamilyHistory] = useState(false);
   const ncsFileRef = useRef<HTMLInputElement>(null);
@@ -126,6 +136,10 @@ export default function ExpandedRow({ patient }: Props) {
     (a, b) => new Date(b.ictusStart).getTime() - new Date(a.ictusStart).getTime(),
   );
   const ncsStudies = sortNcsStudies(patient.ncsStudies ?? []);
+  const touretteRecords = [...(patient.touretteSyndrom ?? [])].sort(
+    (a, b) => new Date(b.recordedAt).getTime() - new Date(a.recordedAt).getTime(),
+  );
+  const editingTouretteRecord = touretteRecords.find((r) => r.id === editingTouretteId);
 
   const hasDemographics = patient.dateOfBirth || patient.gender || patient.phone || patient.email;
 
@@ -368,6 +382,87 @@ export default function ExpandedRow({ patient }: Props) {
                       {log.triggers.length > 0
                         ? log.triggers.map((t) => SEIZURE_TRIGGER_LABELS[t] ?? t).join(', ')
                         : '—'}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+
+      <div className="expanded-section">
+        <div className="section-header">
+          <h4>Tourette Syndrome</h4>
+          {!addingTourette && !editingTouretteRecord && (
+            <button className="btn btn-sm" onClick={() => setAddingTourette(true)}>
+              Add Tourette record
+            </button>
+          )}
+        </div>
+
+        {addingTourette && (
+          <TouretteSyndromeForm
+            patientId={patient.id}
+            idPrefix={`tourette-${patient.id}`}
+            onDone={() => setAddingTourette(false)}
+            onCancel={() => setAddingTourette(false)}
+          />
+        )}
+
+        {editingTouretteRecord && (
+          <TouretteSyndromeForm
+            key={editingTouretteRecord.id}
+            patientId={patient.id}
+            record={editingTouretteRecord}
+            idPrefix={`tourette-edit-${editingTouretteRecord.id}`}
+            onDone={() => setEditingTouretteId(null)}
+            onCancel={() => setEditingTouretteId(null)}
+          />
+        )}
+
+        {touretteRecords.length === 0 ? (
+          <p className="empty-note">No Tourette syndrome records.</p>
+        ) : (
+          <div className="table-scroll">
+            <table className="inner-table">
+              <thead>
+                <tr>
+                  <th>Recorded</th>
+                  <th>Tic type</th>
+                  <th>Severity</th>
+                  <th>Premonitory urge</th>
+                  <th>Triggers</th>
+                  <th>Medication</th>
+                  <th>Notes</th>
+                  <th />
+                </tr>
+              </thead>
+              <tbody>
+                {touretteRecords.map((record) => (
+                  <tr key={record.id}>
+                    <td>{new Date(record.recordedAt).toLocaleDateString()}</td>
+                    <td>{TYC_TYPE_LABELS[record.tycType] ?? record.tycType}</td>
+                    <td>{record.severityScale}</td>
+                    <td>{record.premonitoryUrgeLevel}</td>
+                    <td>
+                      {record.triggers?.length
+                        ? record.triggers.map((t) => TOURETTE_TRIGGER_LABELS[t] ?? t).join(', ')
+                        : '—'}
+                    </td>
+                    <td>{record.medicationTaken || '—'}</td>
+                    <td>{record.notes || '—'}</td>
+                    <td>
+                      <button
+                        className="btn btn-sm"
+                        onClick={() => {
+                          setAddingTourette(false);
+                          setEditingTouretteId(record.id);
+                        }}
+                        disabled={editingTouretteId === record.id}
+                      >
+                        Edit
+                      </button>
                     </td>
                   </tr>
                 ))}

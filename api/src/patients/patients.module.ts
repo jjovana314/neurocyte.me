@@ -15,6 +15,7 @@ import { ClientsModule, Transport } from '@nestjs/microservices';
 import { join } from 'path';
 import { config } from 'src/config/config';
 import { CALCULATOR_PACKAGE_NAME } from 'src/calculator-client/generated/calculator';
+import { TouretteSyndrome } from './entities/tourette-syndrome.entity';
 
 @Module({
   imports: [
@@ -26,6 +27,7 @@ import { CALCULATOR_PACKAGE_NAME } from 'src/calculator-client/generated/calcula
       MigraineLog,
       SeizureLog,
       NcsStudy,
+      TouretteSyndrome,
       User,
     ]),
     ClientsModule.register([

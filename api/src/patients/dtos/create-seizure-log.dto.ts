@@ -2,7 +2,7 @@ import {
   OnsetVector,
   MotorFeature,
   SeizureTrigger,
-} from '../entities/seizure-log.entity';
+} from '../enums/seizureEnums';
 
 export class CreateSeizureLogDto {
   patientId: number;

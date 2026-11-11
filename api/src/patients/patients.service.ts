@@ -18,11 +18,11 @@ import { FamilyHistory, DiseaseType } from './entities/family-history.entity';
 import { EdssAssesment } from './entities/edss-assesment.entity';
 import { MigraineLog } from './entities/migraine-log.entity';
 import {
-  SeizureLog,
   OnsetVector,
   MotorFeature,
   SeizureTrigger,
-} from './entities/seizure-log.entity';
+} from './enums/seizureEnums';
+import { SeizureLog } from './entities/seizure-log.entity';
 import { NcsStudy, NcsStudyType } from './entities/ncs-study.entity';
 import { User } from 'src/user/entities/user.entity';
 import PDFDocument from 'pdfkit';
@@ -55,6 +55,11 @@ import { dateValidation } from './utils/validation';
 import { SearchPatientDto } from './dtos/search-patient.dto';
 import { PatientSearchResult } from './interfaces/search-result.interface';
 import { RoleEnum } from 'src/auth/enums/role.enum';
+import { CreateTouretteSyndromeDto } from './dtos/create-tourette-syndrome.dto';
+import { TycType } from './enums/touretteTycType';
+import { TouretteTrigger } from './enums/touretteTrigger';
+import { TouretteSyndrome } from './entities/tourette-syndrome.entity';
+import { UpdateTouretteSyndromeDto } from './dtos/update-tourette-syndrome.dto';
 
 @Injectable()
 export class PatientsService implements OnModuleInit {
@@ -74,6 +79,8 @@ export class PatientsService implements OnModuleInit {
     private seizureLogRepository: Repository<SeizureLog>,
     @InjectRepository(NcsStudy)
     private ncsStudyRepository: Repository<NcsStudy>,
+    @InjectRepository(TouretteSyndrome)
+    private touretteSyndromeRepository: Repository<TouretteSyndrome>,
     @InjectRepository(User) private userRepository: Repository<User>,
     private readonly logger: PinoLogger,
     @Inject('CALCULATOR_PACKAGE') private readonly calculatorClient: ClientGrpc,
@@ -179,7 +186,8 @@ export class PatientsService implements OnModuleInit {
       .leftJoinAndSelect('patient.edssAssessments', 'edssAssessments')
       .leftJoinAndSelect('patient.migraineLogs', 'migraineLogs')
       .leftJoinAndSelect('patient.seizureLogs', 'seizureLogs')
-      .leftJoinAndSelect('patient.ncsStudies', 'ncsStudies');
+      .leftJoinAndSelect('patient.ncsStudies', 'ncsStudies')
+      .leftJoinAndSelect('patient.touretteSyndrom', 'touretteSyndrom');
 
     if (roleName !== RoleEnum.SUPPORT_ENGINEER) {
       qb.andWhere('patient.doctorId = :doctorId', { doctorId });
@@ -744,6 +752,7 @@ export class PatientsService implements OnModuleInit {
         'migraineLogs',
         'seizureLogs',
         'ncsStudies',
+        'touretteSyndrom',
         'doctor',
       ],
     });
@@ -1570,5 +1579,85 @@ export class PatientsService implements OnModuleInit {
     }
     fields.push(current);
     return fields;
+  }
+
+  private async validatePatient(
+    patientId: number,
+    doctorId: number,
+  ): Promise<Patient> {
+    const patient = await this.patientRepository.findOne({
+      where: { id: patientId },
+    });
+    if (!patient) {
+      throw new PatientNotFoundException(patientId);
+    }
+
+    if (patient.doctorId !== doctorId) {
+      this.logger.warn(
+        `Doctor ${doctorId} attempted to access patient ${patientId} created by doctor ${patient.doctorId}`,
+      );
+      throw new AccessToPatientForbiddenException();
+    }
+    return patient;
+  }
+
+  private validateTouretteRequest(
+    touretteData: CreateTouretteSyndromeDto | UpdateTouretteSyndromeDto,
+    partial = false,
+  ): void {
+    const tycTypeOmitted = partial && touretteData.tycType === undefined;
+    if (
+      !tycTypeOmitted &&
+      !Object.values(TycType).includes(touretteData.tycType as TycType)
+    ) {
+      throw new BadRequestException(
+        'tycType is required and must be one of MOTOR_SIMPLE, MOTOR_COMPLEX, VOCAL_SIMPLE, VOCAL_COMPLEX',
+      );
+    }
+    const triggers = touretteData.triggers || [];
+    if (triggers.some((t) => !Object.values(TouretteTrigger).includes(t))) {
+      throw new BadRequestException(
+        'triggers may only contain STRESS, EXCITEMENT, ANGER, FATIGUE, ILLNESS, BOREDOM, SENSORY_ENVIRONMENT, REBOUND_EFFECT',
+      );
+    }
+  }
+
+  async createTouretteSyndrome(
+    doctorId: number,
+    patientId: number,
+    createData: CreateTouretteSyndromeDto,
+  ): Promise<Patient> {
+    await this.validatePatient(patientId, doctorId);
+    this.validateTouretteRequest(createData);
+
+    await this.touretteSyndromeRepository.save({
+      ...createData,
+      patientId,
+      triggers: createData.triggers || [],
+      recordedAt: new Date(),
+    });
+    return await this.getPatient(doctorId, patientId);
+  }
+
+  async updateTouretteSyndrome(
+    doctorId: number,
+    patientId: number,
+    touretteSyndromeId: number,
+    updateData: UpdateTouretteSyndromeDto,
+  ): Promise<Patient> {
+    await this.validatePatient(patientId, doctorId);
+    const touretteSyndrome = await this.touretteSyndromeRepository.findOne({
+      where: { id: touretteSyndromeId, patientId },
+    });
+    if (!touretteSyndrome) {
+      throw new NotFoundException(
+        `Tourette syndrome with id ${touretteSyndromeId} not found.`,
+      );
+    }
+    this.validateTouretteRequest(updateData, true);
+
+    Object.assign(touretteSyndrome, updateData);
+    await this.touretteSyndromeRepository.save(touretteSyndrome);
+    return await this.getPatient(doctorId, patientId);
   }
 }

@@ -3,6 +3,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   addFamilyHistory,
   addMedicalHistory,
+  addTouretteSyndrome,
   createPatient,
   importNcsStudiesCsv,
 } from '../api/patients';
@@ -14,6 +15,7 @@ import MedicalHistoryFields from './MedicalHistoryFields';
 import FamilyHistoryFields from './FamilyHistoryFields';
 import MigraineLogFields from './MigraineLogFields';
 import SeizureLogFields from './SeizureLogFields';
+import TouretteSyndromeFields from './TouretteSyndromeFields';
 import NcsCsvImportResult from './NcsCsvImportResult';
 import {
   EMPTY_EDSS_FORM_STATE,
@@ -40,6 +42,11 @@ import {
   seizureLogFormStateToInput,
   type SeizureLogFormState,
 } from '../utils/seizureLogForm';
+import {
+  EMPTY_TOURETTE_SYNDROME_FORM_STATE,
+  touretteSyndromeFormStateToInput,
+  type TouretteSyndromeFormState,
+} from '../utils/touretteSyndromeForm';
 import { todayDateString } from '../utils/dateLimits';
 import { NCS_CSV_IMPORT_HINT } from '../constants/ncs';
 
@@ -66,6 +73,9 @@ export default function AddPatientForm() {
   const [seizureLogForm, setSeizureLogForm] = useState<SeizureLogFormState>(
     EMPTY_SEIZURE_LOG_FORM_STATE,
   );
+  const [touretteForm, setTouretteForm] = useState<TouretteSyndromeFormState>(
+    EMPTY_TOURETTE_SYNDROME_FORM_STATE,
+  );
   const [success, setSuccess] = useState(false);
   const ncsFileRef = useRef<HTMLInputElement>(null);
   const [ncsImportResult, setNcsImportResult] = useState<ImportCsvResponse | null>(null);
@@ -91,6 +101,10 @@ export default function AddPatientForm() {
       if (familyHistoryInput) {
         await addFamilyHistory(patient.id, familyHistoryInput);
       }
+      const touretteInput = touretteSyndromeFormStateToInput(touretteForm);
+      if (touretteInput) {
+        await addTouretteSyndrome(patient.id, touretteInput);
+      }
       const ncsFile = ncsFileRef.current?.files?.[0];
       const ncsResult = ncsFile ? await importNcsStudiesCsv(patient.id, ncsFile) : null;
       return { patient, ncsResult };
@@ -108,6 +122,7 @@ export default function AddPatientForm() {
       setFamilyHistoryForm(EMPTY_FAMILY_HISTORY_FORM_STATE);
       setMigraineLogForm(EMPTY_MIGRAINE_LOG_FORM_STATE);
       setSeizureLogForm(EMPTY_SEIZURE_LOG_FORM_STATE);
+      setTouretteForm(EMPTY_TOURETTE_SYNDROME_FORM_STATE);
       if (ncsFileRef.current) ncsFileRef.current.value = '';
       setNcsImportResult(ncsResult);
       setSuccess(true);
@@ -235,6 +250,17 @@ export default function AddPatientForm() {
             value={seizureLogForm}
             onChange={(fields) => setSeizureLogForm({ ...seizureLogForm, ...fields })}
             idPrefix="add-patient-seizure"
+          />
+        </Disclosure>
+        <Disclosure
+          label="Record Tourette syndrome"
+          open={touretteForm.enabled}
+          onToggle={(open) => setTouretteForm({ ...touretteForm, enabled: open })}
+        >
+          <TouretteSyndromeFields
+            value={touretteForm}
+            onChange={(fields) => setTouretteForm({ ...touretteForm, ...fields })}
+            idPrefix="add-patient-tourette"
           />
         </Disclosure>
         <div className="form-group">
