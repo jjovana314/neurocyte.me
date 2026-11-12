@@ -33,6 +33,11 @@ jobs:
           echo "MAIL_PASS=${{ secrets.MAIL_PASS }}" >> .env
           echo "MAIL_FROM=${{ secrets.MAIL_FROM }}" >> .env
           echo "APP_URL=${{ secrets.APP_URL }}" >> .env
+          echo "FRONTEND_URL=${{ secrets.FRONTEND_URL }}" >> .env
+          echo "ACCESS_TOKEN_TIME=${{ secrets.ACCESS_TOKEN_TIME }}" >> .env
+          echo "REFRESH_TOKEN_TIME=${{ secrets.REFRESH_TOKEN_TIME }}" >> .env
+          echo "CALCULATOR_GRPC_PORT=${{ secrets.CALCULATOR_GRPC_PORT }}" >> .env
+          echo "CALCULATOR_GRPC_URL=${{ secrets.CALCULATOR_GRPC_URL }}" >> .env
 
       - name: Install dependencies
         run: npm install

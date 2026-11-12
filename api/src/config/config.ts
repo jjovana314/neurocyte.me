@@ -73,7 +73,8 @@ export const config = createProfiguration<Config>(
     verbose: true,
     loadRelativeTo: 'cwd',
     configureEnv: () => ({
-      files: `.env`,
+      // Single env file lives in the repo root; scripts run with cwd = api/.
+      files: process.env.ENV_FILE ?? '../.env',
     }),
   },
 );

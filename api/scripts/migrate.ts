@@ -3,7 +3,7 @@ import * as path from 'path';
 import * as dotenv from 'dotenv';
 import * as mysql from 'mysql2/promise';
 
-dotenv.config();
+dotenv.config({ path: process.env.ENV_FILE ?? '../.env' });
 
 const MIGRATIONS_DIR = path.join(__dirname, 'migrations');
 
