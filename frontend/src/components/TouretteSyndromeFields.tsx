@@ -1,10 +1,11 @@
 import type { TycType } from '../api/types';
 import type { TouretteSyndromeFormState } from '../utils/touretteSyndromeForm';
 import {
-  TOURETTE_SCALE_MAX,
+  SEVERITY_SCALE_TOURETTE_MAX,
   TOURETTE_SCALE_MIN,
   TOURETTE_TRIGGER_OPTIONS,
   TYC_TYPE_OPTIONS,
+  URGE_LEVEN_TOURETTE_SCALE_MAX,
 } from '../constants/tourette';
 
 type TouretteSyndromeFieldsValue = Omit<TouretteSyndromeFormState, 'enabled'>;
@@ -27,7 +28,8 @@ export default function TouretteSyndromeFields({ value, onChange, idPrefix }: Pr
     onChange({ ...value, [key]: fieldValue });
   }
 
-  const scaleLabel = `(${TOURETTE_SCALE_MIN}-${TOURETTE_SCALE_MAX})`;
+  const urgeScaleLabel = `(${TOURETTE_SCALE_MIN}-${URGE_LEVEN_TOURETTE_SCALE_MAX})`;
+  const severityScaleLabel =`(${TOURETTE_SCALE_MIN}-${SEVERITY_SCALE_TOURETTE_MAX})`; 
 
   return (
     <>
@@ -48,12 +50,12 @@ export default function TouretteSyndromeFields({ value, onChange, idPrefix }: Pr
       </div>
       <div className="form-row">
         <div className="form-group">
-          <label htmlFor={`${idPrefix}-severityScale`}>Severity {scaleLabel}*</label>
+          <label htmlFor={`${idPrefix}-severityScale`}>Severity {severityScaleLabel}*</label>
           <input
             id={`${idPrefix}-severityScale`}
             type="number"
             min={TOURETTE_SCALE_MIN}
-            max={TOURETTE_SCALE_MAX}
+            max={SEVERITY_SCALE_TOURETTE_MAX}
             value={value.severityScale}
             required
             onChange={(e) => update('severityScale', Number(e.target.value))}
@@ -61,13 +63,13 @@ export default function TouretteSyndromeFields({ value, onChange, idPrefix }: Pr
         </div>
         <div className="form-group">
           <label htmlFor={`${idPrefix}-premonitoryUrgeLevel`}>
-            Premonitory urge {scaleLabel}*
+            Premonitory urge {urgeScaleLabel}*
           </label>
           <input
             id={`${idPrefix}-premonitoryUrgeLevel`}
             type="number"
             min={TOURETTE_SCALE_MIN}
-            max={TOURETTE_SCALE_MAX}
+            max={URGE_LEVEN_TOURETTE_SCALE_MAX}
             value={value.premonitoryUrgeLevel}
             required
             onChange={(e) => update('premonitoryUrgeLevel', Number(e.target.value))}
