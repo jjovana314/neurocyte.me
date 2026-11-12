@@ -41,13 +41,13 @@ jobs:
         run: npm ci
         working-directory: api
 
-      - name: Generate API gRPC client stubs
-        run: npm run generate:calculator-proto
-        working-directory: api
-
       - name: Install frontend dependencies
         run: npm ci
         working-directory: frontend
+
+      # Python stubs (calculator/generated) + TS client (api/src/calculator-client/generated)
+      - name: Generate gRPC stubs
+        run: npm run generate:proto
 
       # Packed into a tarball because upload-artifact drops file permissions
       # and symlinks, which would break node_modules/.bin and the venv.
@@ -58,7 +58,8 @@ jobs:
             api/node_modules \
             api/src/calculator-client/generated \
             frontend/node_modules \
-            calculator/.venv
+            calculator/.venv \
+            calculator/generated
 
       - name: Upload workspace
         uses: actions/upload-artifact@v4
@@ -129,8 +130,250 @@ jobs:
       - name: Check test coverage
         run: npm run test:cov
 
-  lint:
+  build-api:
     needs: setup
+    runs-on: ubuntu-latest
+
+    steps:
+      - *checkout
+      - *setup-node
+      - *download-workspace
+      - *unpack-workspace
+
+      - name: Build API
+        run: npm run build
+        working-directory: api
+
+      - name: Build API Docker image
+        run: docker build ./api
+
+  build-frontend:
+    needs: setup
+    runs-on: ubuntu-latest
+
+    steps:
+      - *checkout
+      - *setup-node
+      - *download-workspace
+      - *unpack-workspace
+
+      - name: Build frontend
+        run: npm run build
+        working-directory: frontend
+
+      - name: Build frontend Docker image
+        run: docker build ./frontend
+
+  build-calculator:
+    needs: setup
+    runs-on: ubuntu-latest
+
+    steps:
+      - *checkout
+      - *setup-python
+      - *download-workspace
+      - *unpack-workspace
+
+      # Python has no build step; byte-compiling catches syntax errors.
+      - name: Compile calculator
+        run: .venv/bin/python -m compileall -q app.py edss_calculator.py ncs_calculator.py generated
+        working-directory: calculator
+
+      - name: Build calculator Docker image
+        run: docker build ./calculator
+
+  run-calculator:
+    needs: setup
+    runs-on: ubuntu-latest
+
+    steps:
+      - *checkout
+      - *setup-node
+      - *setup-python
+      - *download-workspace
+      - *unpack-workspace
+
+      - &start-calculator
+        name: Start calculator
+        run: |
+          npm run start:calculator > calculator.log 2>&1 &
+          calculator/.venv/bin/python -c "import grpc; grpc.channel_ready_future(grpc.insecure_channel('localhost:50051')).result(timeout=30)" \
+            || { cat calculator.log; exit 1; }
+          echo "Calculator is accepting gRPC connections on :50051"
+
+  run-api:
+    needs: setup
+    runs-on: ubuntu-latest
+
+    # Throwaway MySQL for the API to connect to.
+    services: &mysql-service
+      mysql:
+        image: mysql:8.4
+        env:
+          MYSQL_ROOT_PASSWORD: ci_password
+          MYSQL_DATABASE: neurocyte
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h localhost"
+          --health-interval=5s
+          --health-timeout=5s
+          --health-retries=20
+
+    # Already-set env vars win over .env, so these point the API at the
+    # services above instead of whatever the DATABASE_* secrets contain.
+    env: &api-ci-env
+      DATABASE_URL: 127.0.0.1
+      DATABASE_PORT: "3306"
+      DATABASE_USERNAME: root
+      DATABASE_PASSWORD: ci_password
+      DATABASE_NAME: neurocyte
+      CALCULATOR_GRPC_URL: localhost:50051
+
+    steps:
+      - *checkout
+      - *setup-node
+      - *setup-python
+      - *download-workspace
+      - *unpack-workspace
+      - *create-env
+      - *start-calculator
+
+      - &run-migrations
+        name: Run migrations
+        run: npm run migrate
+        working-directory: api
+
+      - name: Build and start API
+        working-directory: api
+        run: |
+          npm run build
+          npm run start:prod > api.log 2>&1 &
+          curl --retry 30 --retry-connrefused --retry-delay 2 -fsS http://localhost:3000/ \
+            || { cat api.log; exit 1; }
+          echo
+          echo "API is responding on :3000"
+
+  run-frontend:
+    needs: setup
+    runs-on: ubuntu-latest
+
+    steps:
+      - *checkout
+      - *setup-node
+      - *download-workspace
+      - *unpack-workspace
+
+      - name: Build and serve frontend
+        working-directory: frontend
+        run: |
+          npm run build
+          npm run preview -- --port 4173 --strictPort > frontend.log 2>&1 &
+          curl --retry 30 --retry-connrefused --retry-delay 2 -fsS http://localhost:4173/ -o /dev/null \
+            || { cat frontend.log; exit 1; }
+          echo "Frontend is being served on :4173"
+
+  # Defined after run-api because it reuses run-api's MySQL service and env.
+  run-database:
+    needs: setup
+    runs-on: ubuntu-latest
+    services: *mysql-service
+    env: *api-ci-env
+
+    steps:
+      - *checkout
+      - *setup-node
+      - *download-workspace
+      - *unpack-workspace
+      - *create-env
+
+      - name: Run migrations and seed
+        working-directory: api
+        run: |
+          npm run migrate
+          npx ts-node scripts/seed.ts
+
+      # Both scripts are meant to be safe to re-run (Docker runs them on
+      # every API start), so a second run must also succeed.
+      - name: Re-run migrations and seed (idempotency)
+        working-directory: api
+        run: |
+          npm run migrate
+          npx ts-node scripts/seed.ts
+
+      - name: Check schema and seed data
+        working-directory: api
+        run: |
+          q() { mysql -h 127.0.0.1 -P "$DATABASE_PORT" -u "$DATABASE_USERNAME" -p"$DATABASE_PASSWORD" "$DATABASE_NAME" -N -e "$1"; }
+
+          expected_migrations=$(ls scripts/migrations/*.sql | wc -l)
+          applied_migrations=$(q 'SELECT COUNT(*) FROM schema_migrations')
+          echo "Migrations applied: $applied_migrations / $expected_migrations"
+          [ "$applied_migrations" -eq "$expected_migrations" ]
+
+          expected_roles=$(node -p "require('./src/auth/resources/roles.json').roles.length")
+          seeded_roles=$(q 'SELECT COUNT(*) FROM role')
+          echo "Roles seeded: $seeded_roles / $expected_roles"
+          [ "$seeded_roles" -eq "$expected_roles" ]
+
+          expected_actions=$(node -p "require('./src/auth/resources/roles.json').roles.reduce((n, r) => n + r.actions.length, 0)")
+          seeded_actions=$(q 'SELECT COUNT(*) FROM action')
+          echo "Actions seeded: $seeded_actions / $expected_actions"
+          [ "$seeded_actions" -eq "$expected_actions" ]
+
+  run-all:
+    needs: setup
+    runs-on: ubuntu-latest
+    services: *mysql-service
+    env: *api-ci-env
+
+    steps:
+      - *checkout
+      - *setup-node
+      - *setup-python
+      - *download-workspace
+      - *unpack-workspace
+      - *create-env
+      - *run-migrations
+
+      - name: Start all services
+        run: |
+          npm run start > all.log 2>&1 &
+
+      - name: Check calculator, API and frontend respond
+        run: |
+          calculator/.venv/bin/python -c "import grpc; grpc.channel_ready_future(grpc.insecure_channel('localhost:50051')).result(timeout=60)"
+          echo "Calculator is accepting gRPC connections on :50051"
+          curl --retry 60 --retry-connrefused --retry-delay 2 -fsS http://localhost:3000/
+          echo
+          echo "API is responding on :3000"
+          curl --retry 30 --retry-connrefused --retry-delay 2 -fsS http://localhost:5173/ -o /dev/null
+          echo "Frontend is being served on :5173"
+
+      - name: Show logs on failure
+        if: failure()
+        run: cat all.log
+
+      - name: Stop all services
+        if: always()
+        # Match each service by name: `npm run start` spawns them several
+        # levels deep (e.g. nest start -> node dist/src/main).
+        run: pkill -f "calculator/app.py|nest start|dist/src/main|vite" || true
+
+  # Runs last: waits for every other job to pass first.
+  lint:
+    needs:
+      - setup
+      - test
+      - coverage
+      - build-api
+      - build-frontend
+      - build-calculator
+      - run-calculator
+      - run-api
+      - run-frontend
+      - run-database
+      - run-all
     runs-on: ubuntu-latest
 
     steps:
