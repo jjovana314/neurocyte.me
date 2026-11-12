@@ -21,4 +21,5 @@ export const TOURETTE_TRIGGER_OPTIONS: { value: TouretteTrigger; label: string }
 
 // The backend doesn't bound these yet; 0-10 matches the other severity inputs in the app.
 export const TOURETTE_SCALE_MIN = 0;
-export const TOURETTE_SCALE_MAX = 10;
+export const URGE_LEVEN_TOURETTE_SCALE_MAX = 10;
+export const SEVERITY_SCALE_TOURETTE_MAX = 50;
