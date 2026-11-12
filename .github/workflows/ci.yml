@@ -7,44 +7,219 @@ on:
     branches: ["main", "master"]
 
 jobs:
-  test:
+  # Installs every dependency and generates code once, then hands the result
+  # to the test jobs as an artifact so they don't reinstall anything.
+  setup:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout code
+      - &checkout
+        name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Set up Node.js
+      - &setup-node
+        name: Set up Node.js
         uses: actions/setup-node@v4
         with:
           node-version: "26"
 
-      - name: Set up Python
+      - &setup-python
+        name: Set up Python
+        id: setup-python
         uses: actions/setup-python@v5
         with:
           python-version: "3.12"
           cache: pip
           cache-dependency-path: calculator/requirements.txt
 
+      # Each install below is skipped when its cache hits. Keys change when
+      # the lockfile / requirements / runtime version changes, so a stale
+      # cache is never reused. Node and Python versions are in the keys
+      # because native modules (bcrypt, grpcio) and the venv are tied to them.
+
+      - name: Cache calculator venv
+        id: cache-venv
+        uses: actions/cache@v4
+        with:
+          path: calculator/.venv
+          key: venv-${{ runner.os }}-py${{ steps.setup-python.outputs.python-version }}-${{ hashFiles('calculator/requirements.txt') }}
+
       - name: Install calculator dependencies
+        if: steps.cache-venv.outputs.cache-hit != 'true'
         run: npm run setup:calculator
 
+      - name: Cache root node_modules
+        id: cache-root-modules
+        uses: actions/cache@v4
+        with:
+          path: node_modules
+          # No root lockfile, so key on package.json itself.
+          key: root-modules-${{ runner.os }}-node26-${{ hashFiles('package.json') }}
+
       - name: Install root dependencies
+        if: steps.cache-root-modules.outputs.cache-hit != 'true'
         run: npm install
 
+      - name: Cache API node_modules
+        id: cache-api-modules
+        uses: actions/cache@v4
+        with:
+          path: api/node_modules
+          key: api-modules-${{ runner.os }}-node26-${{ hashFiles('api/package-lock.json') }}
+
       - name: Install API dependencies
+        if: steps.cache-api-modules.outputs.cache-hit != 'true'
         run: npm ci
         working-directory: api
 
-      - name: Generate API gRPC client stubs
-        run: npm run generate:calculator-proto
-        working-directory: api
+      - name: Cache frontend node_modules
+        id: cache-frontend-modules
+        uses: actions/cache@v4
+        with:
+          path: frontend/node_modules
+          key: frontend-modules-${{ runner.os }}-node26-${{ hashFiles('frontend/package-lock.json') }}
 
       - name: Install frontend dependencies
+        if: steps.cache-frontend-modules.outputs.cache-hit != 'true'
         run: npm ci
         working-directory: frontend
 
-      - name: Create .env file
+      - name: Cache generated gRPC stubs
+        id: cache-proto
+        uses: actions/cache@v4
+        with:
+          path: |
+            calculator/generated
+            api/src/calculator-client/generated
+          # Regenerate when a .proto, the generator script, or the codegen
+          # tool versions (lockfile / requirements) change.
+          key: proto-${{ hashFiles('calculator/proto/**', 'api/proto/**', 'scripts/generate-proto.js', 'api/package-lock.json', 'calculator/requirements.txt') }}
+
+      # Python stubs (calculator/generated) + TS client (api/src/calculator-client/generated)
+      - name: Generate gRPC stubs
+        if: steps.cache-proto.outputs.cache-hit != 'true'
+        run: npm run generate:proto
+
+      # Packed into a tarball because upload-artifact drops file permissions
+      # and symlinks, which would break node_modules/.bin and the venv.
+      - name: Pack workspace
+        run: |
+          tar -czf workspace.tgz \
+            node_modules \
+            api/node_modules \
+            api/src/calculator-client/generated \
+            frontend/node_modules \
+            calculator/.venv \
+            calculator/generated
+
+      - name: Upload workspace
+        uses: actions/upload-artifact@v4
+        with:
+          name: workspace
+          path: workspace.tgz
+          retention-days: 1
+
+  # Stage 2 - builds + database (parallel, after setup)
+  build-api:
+    needs: setup
+    runs-on: ubuntu-latest
+
+    steps:
+      - *checkout
+      - *setup-node
+      - &download-workspace
+        name: Download workspace
+        uses: actions/download-artifact@v4
+        with:
+          name: workspace
+
+      - &unpack-workspace
+        name: Unpack workspace
+        run: tar -xzf workspace.tgz && rm workspace.tgz
+
+      - name: Build API
+        run: npm run build
+        working-directory: api
+
+  build-frontend:
+    needs: setup
+    runs-on: ubuntu-latest
+
+    steps:
+      - *checkout
+      - *setup-node
+      - *download-workspace
+      - *unpack-workspace
+
+      # `tsc -b` stores incremental state here (see tsconfig.*.json
+      # tsBuildInfoFile), so unchanged files aren't type-checked again.
+      # restore-keys falls back to the latest cache from an earlier commit.
+      - name: Cache frontend TypeScript build info
+        uses: actions/cache@v4
+        with:
+          path: frontend/node_modules/.tmp
+          key: frontend-tsbuildinfo-${{ runner.os }}-${{ hashFiles('frontend/src/**', 'frontend/tsconfig*.json', 'frontend/package-lock.json') }}
+          restore-keys: |
+            frontend-tsbuildinfo-${{ runner.os }}-
+
+      - name: Build frontend
+        run: npm run build
+        working-directory: frontend
+
+  build-calculator:
+    needs: setup
+    runs-on: ubuntu-latest
+
+    steps:
+      - *checkout
+      - *setup-python
+      - *download-workspace
+      - *unpack-workspace
+
+      # Python has no build step; byte-compiling catches syntax errors.
+      - name: Compile calculator
+        run: .venv/bin/python -m compileall -q app.py edss_calculator.py ncs_calculator.py generated
+        working-directory: calculator
+
+  run-database:
+    needs: setup
+    runs-on: ubuntu-latest
+
+    # Throwaway MySQL for the API to connect to.
+    services: &mysql-service
+      mysql:
+        image: mysql:8.4
+        env:
+          MYSQL_ROOT_PASSWORD: ci_password
+          MYSQL_DATABASE: neurocyte
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h localhost"
+          --health-interval=5s
+          --health-timeout=5s
+          --health-retries=20
+
+    # Already-set env vars win over .env, so these point the API at the
+    # services above instead of whatever the DATABASE_* secrets contain.
+    env: &api-ci-env
+      DATABASE_URL: 127.0.0.1
+      DATABASE_PORT: "3306"
+      DATABASE_USERNAME: root
+      DATABASE_PASSWORD: ci_password
+      DATABASE_NAME: neurocyte
+      CALCULATOR_GRPC_URL: localhost:50051
+
+
+    steps:
+      - *checkout
+      - *setup-node
+      - *download-workspace
+      - *unpack-workspace
+      # Created in each job (not shipped in the artifact) so secrets never
+      # end up in a downloadable artifact.
+      - &create-env
+        name: Create .env file
         run: |
           echo "DATABASE_URL=${{ secrets.DATABASE_URL }}" >> .env
           echo "DATABASE_PORT=${{ secrets.DATABASE_PORT }}" >> .env
@@ -64,5 +239,208 @@ jobs:
           echo "CALCULATOR_GRPC_PORT=${{ secrets.CALCULATOR_GRPC_PORT }}" >> .env
           echo "CALCULATOR_GRPC_URL=${{ secrets.CALCULATOR_GRPC_URL }}" >> .env
 
+      - name: Run migrations and seed
+        working-directory: api
+        run: |
+          npm run migrate
+          npx ts-node scripts/seed.ts
+
+      # Both scripts are meant to be safe to re-run (Docker runs them on
+      # every API start), so a second run must also succeed.
+      - name: Re-run migrations and seed (idempotency)
+        working-directory: api
+        run: |
+          npm run migrate
+          npx ts-node scripts/seed.ts
+
+      - name: Check schema and seed data
+        working-directory: api
+        run: |
+          q() { mysql -h 127.0.0.1 -P "$DATABASE_PORT" -u "$DATABASE_USERNAME" -p"$DATABASE_PASSWORD" "$DATABASE_NAME" -N -e "$1"; }
+
+          expected_migrations=$(ls scripts/migrations/*.sql | wc -l)
+          applied_migrations=$(q 'SELECT COUNT(*) FROM schema_migrations')
+          echo "Migrations applied: $applied_migrations / $expected_migrations"
+          [ "$applied_migrations" -eq "$expected_migrations" ]
+
+          expected_roles=$(node -p "require('./src/auth/resources/roles.json').roles.length")
+          seeded_roles=$(q 'SELECT COUNT(*) FROM role')
+          echo "Roles seeded: $seeded_roles / $expected_roles"
+          [ "$seeded_roles" -eq "$expected_roles" ]
+
+          expected_actions=$(node -p "require('./src/auth/resources/roles.json').roles.reduce((n, r) => n + r.actions.length, 0)")
+          seeded_actions=$(q 'SELECT COUNT(*) FROM action')
+          echo "Actions seeded: $seeded_actions / $expected_actions"
+          [ "$seeded_actions" -eq "$expected_actions" ]
+
+  # Stage 3 - run each service on its own (parallel)
+  run-calculator:
+    needs:
+      - build-api
+      - build-frontend
+      - build-calculator
+      - run-database
+    runs-on: ubuntu-latest
+
+    steps:
+      - *checkout
+      - *setup-node
+      - *setup-python
+      - *download-workspace
+      - *unpack-workspace
+
+      - &start-calculator
+        name: Start calculator
+        run: |
+          npm run start:calculator > calculator.log 2>&1 &
+          calculator/.venv/bin/python -c "import grpc; grpc.channel_ready_future(grpc.insecure_channel('localhost:50051')).result(timeout=30)" \
+            || { cat calculator.log; exit 1; }
+          echo "Calculator is accepting gRPC connections on :50051"
+
+  run-api:
+    needs:
+      - build-api
+      - build-frontend
+      - build-calculator
+      - run-database
+    runs-on: ubuntu-latest
+    services: *mysql-service
+    env: *api-ci-env
+
+    steps:
+      - *checkout
+      - *setup-node
+      - *setup-python
+      - *download-workspace
+      - *unpack-workspace
+      - *create-env
+      - *start-calculator
+
+      - &run-migrations
+        name: Run migrations
+        run: npm run migrate
+        working-directory: api
+
+      - name: Build and start API
+        working-directory: api
+        run: |
+          npm run build
+          npm run start:prod > api.log 2>&1 &
+          curl --retry 30 --retry-connrefused --retry-delay 2 -fsS http://localhost:3000/ \
+            || { cat api.log; exit 1; }
+          echo
+          echo "API is responding on :3000"
+
+  run-frontend:
+    needs:
+      - build-api
+      - build-frontend
+      - build-calculator
+      - run-database
+    runs-on: ubuntu-latest
+
+    steps:
+      - *checkout
+      - *setup-node
+      - *download-workspace
+      - *unpack-workspace
+
+      - name: Build and serve frontend
+        working-directory: frontend
+        run: |
+          npm run build
+          npm run preview -- --port 4173 --strictPort > frontend.log 2>&1 &
+          curl --retry 30 --retry-connrefused --retry-delay 2 -fsS http://localhost:4173/ -o /dev/null \
+            || { cat frontend.log; exit 1; }
+          echo "Frontend is being served on :4173"
+
+  # Stage 4 - all services together via root `npm run start`
+  run-all:
+    needs:
+      - run-calculator
+      - run-api
+      - run-frontend
+    runs-on: ubuntu-latest
+    services: *mysql-service
+    env: *api-ci-env
+
+    steps:
+      - *checkout
+      - *setup-node
+      - *setup-python
+      - *download-workspace
+      - *unpack-workspace
+      - *create-env
+      - *run-migrations
+
+      - name: Start all services
+        run: |
+          npm run start > all.log 2>&1 &
+
+      - name: Check calculator, API and frontend respond
+        run: |
+          calculator/.venv/bin/python -c "import grpc; grpc.channel_ready_future(grpc.insecure_channel('localhost:50051')).result(timeout=60)"
+          echo "Calculator is accepting gRPC connections on :50051"
+          curl --retry 60 --retry-connrefused --retry-delay 2 -fsS http://localhost:3000/
+          echo
+          echo "API is responding on :3000"
+          curl --retry 30 --retry-connrefused --retry-delay 2 -fsS http://localhost:5173/ -o /dev/null
+          echo "Frontend is being served on :5173"
+
+      - name: Show logs on failure
+        if: failure()
+        run: cat all.log
+
+      - name: Stop all services
+        if: always()
+        # Match each service by name: `npm run start` spawns them several
+        # levels deep (e.g. nest start -> node dist/src/main).
+        run: pkill -f "calculator/app.py|nest start|dist/src/main|vite" || true
+
+  # Stage 5 - tests
+  test:
+    needs: run-all
+    runs-on: ubuntu-latest
+
+    steps:
+      - *checkout
+      - *setup-node
+      - *setup-python
+      - *download-workspace
+      - *unpack-workspace
+      - *create-env
+
       - name: Run tests
         run: npm run test
+
+  # Stage 6 - coverage gate
+  coverage:
+    needs: test
+    runs-on: ubuntu-latest
+
+    steps:
+      - *checkout
+      - *setup-node
+      - *setup-python
+      - *download-workspace
+      - *unpack-workspace
+      - *create-env
+
+      # Fails if coverage drops below the thresholds configured in each
+      # project (jest config, vite.config.ts, calculator/pytest.ini).
+      - name: Check test coverage
+        run: npm run test:cov
+
+  # Stage 7 - lint (last)
+  lint:
+    needs: coverage
+    runs-on: ubuntu-latest
+
+    steps:
+      - *checkout
+      - *setup-node
+      - *download-workspace
+      - *unpack-workspace
+
+      - name: Lint API and frontend
+        run: npm run lint

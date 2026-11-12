@@ -8,6 +8,9 @@
   "scripts": {
     "start": "npm run start:calculator & npm run --prefix api start:dev & npm run --prefix frontend dev",
     "build": "npm run --prefix api build & npm run --prefix frontend build",
+    "lint": "npm run lint:backend && npm run lint:frontend",
+    "lint:backend": "npm run lint:check --prefix api",
+    "lint:frontend": "npm run lint:check --prefix frontend",
     "test": "npm run test:backend && npm run test:calculator && npm run test:frontend",
     "test:backend": "npm test --prefix api",
     "test:frontend": "npm test --prefix frontend",
