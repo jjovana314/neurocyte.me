@@ -60,6 +60,7 @@ import { TycType } from './enums/touretteTycType';
 import { TouretteTrigger } from './enums/touretteTrigger';
 import { TouretteSyndrome } from './entities/tourette-syndrome.entity';
 import { UpdateTouretteSyndromeDto } from './dtos/update-tourette-syndrome.dto';
+import { formatToTitleCase } from './utils/format-to-title-case';
 
 @Injectable()
 export class PatientsService implements OnModuleInit {
@@ -1182,17 +1183,22 @@ export class PatientsService implements OnModuleInit {
 
     const isSupportEngineer = roleName === RoleEnum.SUPPORT_ENGINEER;
 
-    const [medicalHistory, familyHistory, seizureLogs] = await Promise.all([
-      this.patientHistoryRepository.find({
-        where: { patientId },
-        order: { recordedAt: 'DESC' },
-      }),
-      this.getPatientFamilyHistory(patient.doctorId, patientId),
-      this.seizureLogRepository.find({
-        where: { patientId },
-        order: { ictusStart: 'DESC' },
-      }),
-    ]);
+    const [medicalHistory, familyHistory, seizureLogs, touretteSydndrome] =
+      await Promise.all([
+        this.patientHistoryRepository.find({
+          where: { patientId },
+          order: { recordedAt: 'DESC' },
+        }),
+        this.getPatientFamilyHistory(patient.doctorId, patientId),
+        this.seizureLogRepository.find({
+          where: { patientId },
+          order: { ictusStart: 'DESC' },
+        }),
+        this.touretteSyndromeRepository.find({
+          where: { patientId },
+          order: { recordedAt: 'DESC' },
+        }),
+      ]);
 
     const doc = new PDFDocument({ margin: 50, bufferPages: true });
     const buffers: Buffer[] = [];
@@ -1200,7 +1206,7 @@ export class PatientsService implements OnModuleInit {
     doc.on('data', (chunk: Buffer) => buffers.push(chunk));
     const docEnded = once(doc, 'end');
 
-    // ─ Header
+    // - Header
     doc
       .fontSize(22)
       .font('Helvetica-Bold')
@@ -1213,7 +1219,7 @@ export class PatientsService implements OnModuleInit {
       .text(`Generated: ${new Date().toLocaleString()}`, { align: 'center' });
     doc.moveDown(1);
 
-    // ─ Patient Info
+    // - Patient Info
     doc
       .fontSize(14)
       .font('Helvetica-Bold')
@@ -1263,7 +1269,7 @@ export class PatientsService implements OnModuleInit {
     }
     doc.moveDown(1);
 
-    // ─ Medical History
+    // - Medical History
     doc.fontSize(14).font('Helvetica-Bold').text('Medical History');
     doc
       .moveTo(50, doc.y)
@@ -1291,7 +1297,7 @@ export class PatientsService implements OnModuleInit {
     }
     doc.moveDown(1);
 
-    // ─ Family History
+    // - Family History
     doc.fontSize(14).font('Helvetica-Bold').text('Family History');
     doc
       .moveTo(50, doc.y)
@@ -1316,7 +1322,7 @@ export class PatientsService implements OnModuleInit {
       }
     }
     doc.moveDown(1);
-    // ─ Seizure Logs
+    // - Seizure Logs
     doc.fontSize(14).font('Helvetica-Bold').text('Seizure Logs');
     doc
       .moveTo(50, doc.y)
@@ -1332,7 +1338,7 @@ export class PatientsService implements OnModuleInit {
         doc
           .fontSize(12)
           .font('Helvetica-Bold')
-          .text(`${index + 1}. ${record.onsetVector}`);
+          .text(`${index + 1}. ${formatToTitleCase(record.onsetVector)}`);
         doc.fontSize(11).font('Helvetica');
         doc.text(`   Ictus Start: ${record.ictusStart.toLocaleString()}`);
         doc.text(`   Ictus End: ${record.ictusEnd.toLocaleString()}`);
@@ -1348,14 +1354,52 @@ export class PatientsService implements OnModuleInit {
           `   Motor Features: ${record.motorFeatures?.length ? record.motorFeatures.join(', ') : 'None'}`,
         );
         doc.text(
-          `   Triggers: ${record.triggers?.length ? record.triggers.join(', ') : 'None'}`,
+          `   Triggers: ${
+            record.triggers.length
+              ? record.triggers.map(formatToTitleCase).join(', ')
+              : 'None'
+          }`,
         );
         doc.text(`   Notes: ${record.notes || 'N/A'}`);
         doc.text(`   Recorded At: ${record.recordedAt.toLocaleString()}`);
         doc.moveDown(0.5);
       }
     }
-    // ─ Footer
+
+    // - Tourette syndrome
+    doc.fontSize(14).font('Helvetica-Bold').text('Tourette syndrome');
+    doc
+      .moveTo(50, doc.y)
+      .lineTo(doc.page.width - 50, doc.y)
+      .strokeColor('#cccccc')
+      .stroke();
+    doc.moveDown(0.5);
+    if (!touretteSydndrome || touretteSydndrome.length === 0) {
+      doc.fontSize(11).font('Helvetica').text('No tourette syndrome recorded.');
+    } else {
+      for (const [index, record] of touretteSydndrome.entries()) {
+        doc
+          .fontSize(12)
+          .font('Helvetica-Bold')
+          .text(`${index + 1}. ${formatToTitleCase(record.tycType)}`);
+        doc.fontSize(11).font('Helvetica');
+        doc.text(`   Started: ${record.recordedAt.toLocaleString()}`);
+        doc.text(`   Severity: ${record.severityScale}`);
+        doc.text(`   Premonitory urge: ${record.premonitoryUrgeLevel}`);
+        doc.text(
+          `   Triggers: ${
+            record.triggers.length
+              ? record.triggers.map(formatToTitleCase).join(', ')
+              : 'None'
+          }`,
+        );
+        doc.text(`   Medication taken: ${record.medicationTaken}`);
+        doc.text(`   Notes: ${record.notes}`);
+        doc.moveDown(0.5);
+      }
+    }
+
+    // - Footer
     const pages = doc.bufferedPageRange();
     for (let i = pages.start; i < pages.start + pages.count; i++) {
       doc.switchToPage(i);

@@ -1569,13 +1569,13 @@ describe('PatientsService', () => {
     const mockSeizureLogs = [
       {
         id: 1,
-        onsetVector: 'FOCAL_AWARE',
+        onsetVector: 'Focal Aware',
         motorFeatures: ['TONIC', 'CLONIC'],
         ictusStart: new Date('2025-05-01T10:00:00Z'),
         ictusEnd: new Date('2025-05-01T10:02:00Z'),
         ictusDurationSeconds: 120,
         postictalDurationMinutes: 15,
-        triggers: ['SLEEP_DEPRIVATION'],
+        triggers: ['Sleep deprivation'],
         notes: 'Witnessed by spouse',
         recordedAt: new Date('2025-05-01T12:00:00Z'),
       },
