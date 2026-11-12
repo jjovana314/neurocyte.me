@@ -7,19 +7,24 @@ on:
     branches: ["main", "master"]
 
 jobs:
-  test:
+  # Installs every dependency and generates code once, then hands the result
+  # to the test jobs as an artifact so they don't reinstall anything.
+  setup:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout code
+      - &checkout
+        name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Set up Node.js
+      - &setup-node
+        name: Set up Node.js
         uses: actions/setup-node@v4
         with:
           node-version: "26"
 
-      - name: Set up Python
+      - &setup-python
+        name: Set up Python
         uses: actions/setup-python@v5
         with:
           python-version: "3.12"
@@ -44,7 +49,47 @@ jobs:
         run: npm ci
         working-directory: frontend
 
-      - name: Create .env file
+      # Packed into a tarball because upload-artifact drops file permissions
+      # and symlinks, which would break node_modules/.bin and the venv.
+      - name: Pack workspace
+        run: |
+          tar -czf workspace.tgz \
+            node_modules \
+            api/node_modules \
+            api/src/calculator-client/generated \
+            frontend/node_modules \
+            calculator/.venv
+
+      - name: Upload workspace
+        uses: actions/upload-artifact@v4
+        with:
+          name: workspace
+          path: workspace.tgz
+          retention-days: 1
+
+  test:
+    needs: setup
+    runs-on: ubuntu-latest
+
+    steps:
+      - *checkout
+      - *setup-node
+      - *setup-python
+
+      - &download-workspace
+        name: Download workspace
+        uses: actions/download-artifact@v4
+        with:
+          name: workspace
+
+      - &unpack-workspace
+        name: Unpack workspace
+        run: tar -xzf workspace.tgz && rm workspace.tgz
+
+      # Created in each job (not shipped in the artifact) so secrets never
+      # end up in a downloadable artifact.
+      - &create-env
+        name: Create .env file
         run: |
           echo "DATABASE_URL=${{ secrets.DATABASE_URL }}" >> .env
           echo "DATABASE_PORT=${{ secrets.DATABASE_PORT }}" >> .env
@@ -66,3 +111,20 @@ jobs:
 
       - name: Run tests
         run: npm run test
+
+  coverage:
+    needs: setup
+    runs-on: ubuntu-latest
+
+    steps:
+      - *checkout
+      - *setup-node
+      - *setup-python
+      - *download-workspace
+      - *unpack-workspace
+      - *create-env
+
+      # Fails if coverage drops below the thresholds configured in each
+      # project (jest config, vite.config.ts, calculator/pytest.ini).
+      - name: Check test coverage
+        run: npm run test:cov
