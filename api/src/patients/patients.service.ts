@@ -1365,6 +1365,7 @@ export class PatientsService implements OnModuleInit {
         doc.moveDown(0.5);
       }
     }
+    doc.moveDown(1);
 
     // - Tourette syndrome
     doc.fontSize(14).font('Helvetica-Bold').text('Tourette syndrome');
