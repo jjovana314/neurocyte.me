@@ -19,6 +19,17 @@ jobs:
         with:
           node-version: "26"
 
+      - name: Install root dependencies
+        run: npm install
+
+      - name: Install API dependencies
+        run: npm ci
+        working-directory: api
+
+      - name: Install frontend dependencies
+        run: npm ci
+        working-directory: frontend
+
       - name: Create .env file
         run: |
           echo "DATABASE_URL=${{ secrets.DATABASE_URL }}" >> .env
@@ -38,9 +49,6 @@ jobs:
           echo "REFRESH_TOKEN_TIME=${{ secrets.REFRESH_TOKEN_TIME }}" >> .env
           echo "CALCULATOR_GRPC_PORT=${{ secrets.CALCULATOR_GRPC_PORT }}" >> .env
           echo "CALCULATOR_GRPC_URL=${{ secrets.CALCULATOR_GRPC_URL }}" >> .env
-
-      - name: Install dependencies
-        run: npm install
 
       - name: Run tests
         run: npm run test
