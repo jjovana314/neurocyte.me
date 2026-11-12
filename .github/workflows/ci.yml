@@ -68,15 +68,14 @@ jobs:
           path: workspace.tgz
           retention-days: 1
 
-  test:
+  # Stage 2 - builds + database (parallel, after setup)
+  build-api:
     needs: setup
     runs-on: ubuntu-latest
 
     steps:
       - *checkout
       - *setup-node
-      - *setup-python
-
       - &download-workspace
         name: Download workspace
         uses: actions/download-artifact@v4
@@ -86,42 +85,6 @@ jobs:
       - &unpack-workspace
         name: Unpack workspace
         run: tar -xzf workspace.tgz && rm workspace.tgz
-
-      # Created in each job (not shipped in the artifact) so secrets never
-      # end up in a downloadable artifact.
-      - &create-env
-        name: Create .env file
-        run: |
-          echo "DATABASE_URL=${{ secrets.DATABASE_URL }}" >> .env
-          echo "DATABASE_PORT=${{ secrets.DATABASE_PORT }}" >> .env
-          echo "DATABASE_USERNAME=${{ secrets.DATABASE_USERNAME }}" >> .env
-          echo "DATABASE_PASSWORD=${{ secrets.DATABASE_PASSWORD }}" >> .env
-          echo "DATABASE_NAME=${{ secrets.DATABASE_NAME }}" >> .env
-          echo "SECRET_KEY=${{ secrets.SECRET_KEY }}" >> .env
-          echo "MAIL_HOST=${{ secrets.MAIL_HOST }}" >> .env
-          echo "MAIL_PORT=${{ secrets.MAIL_PORT }}" >> .env
-          echo "MAIL_USER=${{ secrets.MAIL_USER }}" >> .env
-          echo "MAIL_PASS=${{ secrets.MAIL_PASS }}" >> .env
-          echo "MAIL_FROM=${{ secrets.MAIL_FROM }}" >> .env
-          echo "APP_URL=${{ secrets.APP_URL }}" >> .env
-          echo "FRONTEND_URL=${{ secrets.FRONTEND_URL }}" >> .env
-          echo "ACCESS_TOKEN_TIME=${{ secrets.ACCESS_TOKEN_TIME }}" >> .env
-          echo "REFRESH_TOKEN_TIME=${{ secrets.REFRESH_TOKEN_TIME }}" >> .env
-          echo "CALCULATOR_GRPC_PORT=${{ secrets.CALCULATOR_GRPC_PORT }}" >> .env
-          echo "CALCULATOR_GRPC_URL=${{ secrets.CALCULATOR_GRPC_URL }}" >> .env
-
-      - name: Run tests
-        run: npm run test
-
-  build-api:
-    needs: setup
-    runs-on: ubuntu-latest
-
-    steps:
-      - *checkout
-      - *setup-node
-      - *download-workspace
-      - *unpack-workspace
 
       - name: Build API
         run: npm run build
@@ -165,29 +128,8 @@ jobs:
       - name: Build calculator Docker image
         run: docker build ./calculator
 
-  run-calculator:
+  run-database:
     needs: setup
-    runs-on: ubuntu-latest
-
-    steps:
-      - *checkout
-      - *setup-node
-      - *setup-python
-      - *download-workspace
-      - *unpack-workspace
-
-      - &start-calculator
-        name: Start calculator
-        run: |
-          npm run start:calculator > calculator.log 2>&1 &
-          calculator/.venv/bin/python -c "import grpc; grpc.channel_ready_future(grpc.insecure_channel('localhost:50051')).result(timeout=30)" \
-            || { cat calculator.log; exit 1; }
-          echo "Calculator is accepting gRPC connections on :50051"
-
-  run-api:
-    needs: 
-      - setup
-      - build-api
     runs-on: ubuntu-latest
 
     # Throwaway MySQL for the API to connect to.
@@ -215,64 +157,34 @@ jobs:
       DATABASE_NAME: neurocyte
       CALCULATOR_GRPC_URL: localhost:50051
 
+
     steps:
       - *checkout
       - *setup-node
-      - *setup-python
       - *download-workspace
       - *unpack-workspace
-      - *create-env
-      - *start-calculator
-
-      - &run-migrations
-        name: Run migrations
-        run: npm run migrate
-        working-directory: api
-
-      - name: Build and start API
-        working-directory: api
+      # Created in each job (not shipped in the artifact) so secrets never
+      # end up in a downloadable artifact.
+      - &create-env
+        name: Create .env file
         run: |
-          npm run build
-          npm run start:prod > api.log 2>&1 &
-          curl --retry 30 --retry-connrefused --retry-delay 2 -fsS http://localhost:3000/ \
-            || { cat api.log; exit 1; }
-          echo
-          echo "API is responding on :3000"
-
-  run-frontend:
-    needs: 
-      - setup
-      - build-frontend
-    runs-on: ubuntu-latest
-
-    steps:
-      - *checkout
-      - *setup-node
-      - *download-workspace
-      - *unpack-workspace
-
-      - name: Build and serve frontend
-        working-directory: frontend
-        run: |
-          npm run build
-          npm run preview -- --port 4173 --strictPort > frontend.log 2>&1 &
-          curl --retry 30 --retry-connrefused --retry-delay 2 -fsS http://localhost:4173/ -o /dev/null \
-            || { cat frontend.log; exit 1; }
-          echo "Frontend is being served on :4173"
-
-  # Defined after run-api because it reuses run-api's MySQL service and env.
-  run-database:
-    needs: setup
-    runs-on: ubuntu-latest
-    services: *mysql-service
-    env: *api-ci-env
-
-    steps:
-      - *checkout
-      - *setup-node
-      - *download-workspace
-      - *unpack-workspace
-      - *create-env
+          echo "DATABASE_URL=${{ secrets.DATABASE_URL }}" >> .env
+          echo "DATABASE_PORT=${{ secrets.DATABASE_PORT }}" >> .env
+          echo "DATABASE_USERNAME=${{ secrets.DATABASE_USERNAME }}" >> .env
+          echo "DATABASE_PASSWORD=${{ secrets.DATABASE_PASSWORD }}" >> .env
+          echo "DATABASE_NAME=${{ secrets.DATABASE_NAME }}" >> .env
+          echo "SECRET_KEY=${{ secrets.SECRET_KEY }}" >> .env
+          echo "MAIL_HOST=${{ secrets.MAIL_HOST }}" >> .env
+          echo "MAIL_PORT=${{ secrets.MAIL_PORT }}" >> .env
+          echo "MAIL_USER=${{ secrets.MAIL_USER }}" >> .env
+          echo "MAIL_PASS=${{ secrets.MAIL_PASS }}" >> .env
+          echo "MAIL_FROM=${{ secrets.MAIL_FROM }}" >> .env
+          echo "APP_URL=${{ secrets.APP_URL }}" >> .env
+          echo "FRONTEND_URL=${{ secrets.FRONTEND_URL }}" >> .env
+          echo "ACCESS_TOKEN_TIME=${{ secrets.ACCESS_TOKEN_TIME }}" >> .env
+          echo "REFRESH_TOKEN_TIME=${{ secrets.REFRESH_TOKEN_TIME }}" >> .env
+          echo "CALCULATOR_GRPC_PORT=${{ secrets.CALCULATOR_GRPC_PORT }}" >> .env
+          echo "CALCULATOR_GRPC_URL=${{ secrets.CALCULATOR_GRPC_URL }}" >> .env
 
       - name: Run migrations and seed
         working-directory: api
@@ -308,17 +220,93 @@ jobs:
           echo "Actions seeded: $seeded_actions / $expected_actions"
           [ "$seeded_actions" -eq "$expected_actions" ]
 
-  run-all:
-    needs: 
-      - setup
+  # Stage 3 - run each service on its own (parallel)
+  run-calculator:
+    needs:
       - build-api
       - build-frontend
       - build-calculator
+      - run-database
+    runs-on: ubuntu-latest
+
+    steps:
+      - *checkout
+      - *setup-node
+      - *setup-python
+      - *download-workspace
+      - *unpack-workspace
+
+      - &start-calculator
+        name: Start calculator
+        run: |
+          npm run start:calculator > calculator.log 2>&1 &
+          calculator/.venv/bin/python -c "import grpc; grpc.channel_ready_future(grpc.insecure_channel('localhost:50051')).result(timeout=30)" \
+            || { cat calculator.log; exit 1; }
+          echo "Calculator is accepting gRPC connections on :50051"
+
+  run-api:
+    needs:
+      - build-api
+      - build-frontend
+      - build-calculator
+      - run-database
+    runs-on: ubuntu-latest
+    services: *mysql-service
+    env: *api-ci-env
+
+    steps:
+      - *checkout
+      - *setup-node
+      - *setup-python
+      - *download-workspace
+      - *unpack-workspace
+      - *create-env
+      - *start-calculator
+
+      - &run-migrations
+        name: Run migrations
+        run: npm run migrate
+        working-directory: api
+
+      - name: Build and start API
+        working-directory: api
+        run: |
+          npm run build
+          npm run start:prod > api.log 2>&1 &
+          curl --retry 30 --retry-connrefused --retry-delay 2 -fsS http://localhost:3000/ \
+            || { cat api.log; exit 1; }
+          echo
+          echo "API is responding on :3000"
+
+  run-frontend:
+    needs:
+      - build-api
+      - build-frontend
+      - build-calculator
+      - run-database
+    runs-on: ubuntu-latest
+
+    steps:
+      - *checkout
+      - *setup-node
+      - *download-workspace
+      - *unpack-workspace
+
+      - name: Build and serve frontend
+        working-directory: frontend
+        run: |
+          npm run build
+          npm run preview -- --port 4173 --strictPort > frontend.log 2>&1 &
+          curl --retry 30 --retry-connrefused --retry-delay 2 -fsS http://localhost:4173/ -o /dev/null \
+            || { cat frontend.log; exit 1; }
+          echo "Frontend is being served on :4173"
+
+  # Stage 4 - all services together via root `npm run start`
+  run-all:
+    needs:
       - run-calculator
       - run-api
       - run-frontend
-      - run-database
-
     runs-on: ubuntu-latest
     services: *mysql-service
     env: *api-ci-env
@@ -356,19 +344,25 @@ jobs:
         # levels deep (e.g. nest start -> node dist/src/main).
         run: pkill -f "calculator/app.py|nest start|dist/src/main|vite" || true
 
+  # Stage 5 - tests
+  test:
+    needs: run-all
+    runs-on: ubuntu-latest
 
+    steps:
+      - *checkout
+      - *setup-node
+      - *setup-python
+      - *download-workspace
+      - *unpack-workspace
+      - *create-env
+
+      - name: Run tests
+        run: npm run test
+
+  # Stage 6 - coverage gate
   coverage:
-    needs:
-      - setup
-      - test
-      - build-api
-      - build-frontend
-      - build-calculator
-      - run-calculator
-      - run-api
-      - run-frontend
-      - run-database
-      - run-all
+    needs: test
     runs-on: ubuntu-latest
 
     steps:
@@ -384,20 +378,9 @@ jobs:
       - name: Check test coverage
         run: npm run test:cov
 
-  # Runs last: waits for every other job to pass first.
+  # Stage 7 - lint (last)
   lint:
-    needs:
-      - setup
-      - test
-      - coverage
-      - build-api
-      - build-frontend
-      - build-calculator
-      - run-calculator
-      - run-api
-      - run-frontend
-      - run-database
-      - run-all
+    needs: coverage
     runs-on: ubuntu-latest
 
     steps:
