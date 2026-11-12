@@ -1383,7 +1383,7 @@ export class PatientsService implements OnModuleInit {
           .font('Helvetica-Bold')
           .text(`${index + 1}. ${formatToTitleCase(record.tycType)}`);
         doc.fontSize(11).font('Helvetica');
-        doc.text(`   Started: ${record.recordedAt.toLocaleString()}`);
+
         doc.text(`   Severity: ${record.severityScale}`);
         doc.text(`   Premonitory urge: ${record.premonitoryUrgeLevel}`);
         doc.text(
@@ -1394,7 +1394,8 @@ export class PatientsService implements OnModuleInit {
           }`,
         );
         doc.text(`   Medication taken: ${record.medicationTaken}`);
-        doc.text(`   Notes: ${record.notes}`);
+        doc.text(`   Notes: ${record.notes || 'N/A'}`);
+        doc.text(`   Recorded At: ${record.recordedAt.toLocaleString()}`);
         doc.moveDown(0.5);
       }
     }

@@ -1,4 +1,5 @@
 import { Test, TestingModule } from '@nestjs/testing';
+import PDFDocument from 'pdfkit';
 import { Brackets } from 'typeorm';
 import { PatientsService } from './patients.service';
 import { getRepositoryToken } from '@nestjs/typeorm';
@@ -1581,10 +1582,26 @@ describe('PatientsService', () => {
       },
     ] as any[];
 
+    const mockTouretteSyndrome = [
+      {
+        id: 1,
+        recordedAt: new Date('2026-10-10T12:00:00Z'),
+        tycType: 'Motor Vocal',
+        severityScale: 10,
+        triggers: ['Excitement'],
+        premonitoryUrgeLevel: 5,
+        notes: 'Test Notes',
+        medicationTaken: 'Aspirin, Caffetine',
+      },
+    ];
+
     beforeEach(() => {
       mockPatientHistoryRepository.find.mockResolvedValue(mockMedicalHistory);
       mockFamilyHistoryRepository.find.mockResolvedValue(mockFamilyHistory);
       mockSeizureLogRepository.find.mockResolvedValue(mockSeizureLogs);
+      mockTouretteSyndromeRepository.find.mockResolvedValue(
+        mockTouretteSyndrome,
+      );
     });
 
     const mockPatient = {
@@ -1628,7 +1645,8 @@ describe('PatientsService', () => {
         RoleEnum.DOCTOR,
       );
 
-      expect(pageCount(result)).toBe(1);
+      // History, family history, seizure logs and the Tourette record span 2 pages.
+      expect(pageCount(result)).toBe(2);
     });
 
     it('should keep the page count driven by content for multi-page reports', async () => {
@@ -1647,8 +1665,132 @@ describe('PatientsService', () => {
         RoleEnum.DOCTOR,
       );
 
-      // Without the footer the content alone spans 3 pages.
-      expect(pageCount(result)).toBe(3);
+      // Without the footer the content alone spans 4 pages.
+      expect(pageCount(result)).toBe(4);
+    });
+
+    describe('footer placement', () => {
+      const FOOTER_TEXT =
+        'Confidential – For authorized medical personnel only';
+
+      type FooterCall = { page: any; x: number; y: number };
+
+      // Spy on pdfkit (calling through) to record which page each footer is
+      // drawn on and where, plus the final list of buffered pages.
+      const captureFooters = () => {
+        const footers: FooterCall[] = [];
+        const result: { pages: any[]; contentPageCount?: number } = {
+          pages: [],
+        };
+
+        const proto = PDFDocument.prototype as any;
+        const originalText = proto.text;
+        const originalEnd = proto.end;
+
+        const textSpy = jest.spyOn(proto, 'text').mockImplementation(function (
+          this: any,
+          ...args: any[]
+        ) {
+          const [str, x, y] = args;
+          if (str === FOOTER_TEXT) {
+            // Pages that existed before the first footer = content pages.
+            result.contentPageCount ??= this.bufferedPageRange().count;
+            footers.push({ page: this.page, x, y });
+          }
+          return originalText.apply(this, args);
+        });
+
+        const endSpy = jest.spyOn(proto, 'end').mockImplementation(function (
+          this: any,
+        ) {
+          result.pages = [...this._pageBuffer];
+          return originalEnd.apply(this);
+        });
+
+        return {
+          footers,
+          result,
+          restore: () => {
+            textSpy.mockRestore();
+            endSpy.mockRestore();
+          },
+        };
+      };
+
+      let capture: ReturnType<typeof captureFooters>;
+
+      beforeEach(() => {
+        mockUserRepository.findOne.mockResolvedValue(mockDoctor);
+        mockPatientRepository.findOne.mockResolvedValue(mockPatient);
+        capture = captureFooters();
+      });
+
+      afterEach(() => capture.restore());
+
+      const expectFooterAtBottomOfEveryPage = () => {
+        const { footers, result } = capture;
+
+        expect(footers).toHaveLength(result.pages.length);
+        footers.forEach((footer, i) => {
+          // Drawn on the i-th page, not on a page added after the content.
+          expect(footer.page).toBe(result.pages[i]);
+          expect(footer.x).toBe(50);
+          expect(footer.y).toBe(footer.page.height - 40);
+          // Below the regular content area (inside the bottom margin).
+          expect(footer.y).toBeGreaterThan(footer.page.height - 50);
+        });
+      };
+
+      it('should draw the footer at the bottom of the second page for a 2-page report', async () => {
+        const pdf = await service.exportPatientPdf(
+          doctorId,
+          patientId,
+          RoleEnum.DOCTOR,
+        );
+
+        expect(pageCount(pdf)).toBe(2);
+        expect(capture.result.pages).toHaveLength(2);
+        expectFooterAtBottomOfEveryPage();
+        expect(capture.footers[1].page).toBe(capture.result.pages[1]);
+      });
+
+      it('should draw the footer at the bottom of every page for a multi-page report', async () => {
+        mockSeizureLogRepository.find.mockResolvedValue(
+          Array.from({ length: 12 }, (_, i) => ({
+            ...mockSeizureLogs[0],
+            id: i,
+          })),
+        );
+
+        const pdf = await service.exportPatientPdf(
+          doctorId,
+          patientId,
+          RoleEnum.DOCTOR,
+        );
+
+        expect(pageCount(pdf)).toBe(4);
+        expectFooterAtBottomOfEveryPage();
+      });
+
+      it('should not add pages when drawing the footer', async () => {
+        mockSeizureLogRepository.find.mockResolvedValue(
+          Array.from({ length: 12 }, (_, i) => ({
+            ...mockSeizureLogs[0],
+            id: i,
+          })),
+        );
+
+        const pdf = await service.exportPatientPdf(
+          doctorId,
+          patientId,
+          RoleEnum.DOCTOR,
+        );
+
+        expect(pageCount(pdf)).toBe(capture.result.contentPageCount);
+        expect(capture.result.pages).toHaveLength(
+          capture.result.contentPageCount!,
+        );
+      });
     });
 
     it('should fetch history and seizure logs from their repositories', async () => {
