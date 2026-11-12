@@ -1,4 +1,5 @@
-cd api && npm run lint && cd ..
+# Lint API + frontend (no auto-fix, warnings fail the commit).
+npm run lint
 
 # Run the full test suite with coverage gates (ratchet thresholds).
 # Backend:    api/package.json  -> jest coverageThreshold

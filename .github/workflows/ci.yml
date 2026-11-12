@@ -128,3 +128,16 @@ jobs:
       # project (jest config, vite.config.ts, calculator/pytest.ini).
       - name: Check test coverage
         run: npm run test:cov
+
+  lint:
+    needs: setup
+    runs-on: ubuntu-latest
+
+    steps:
+      - *checkout
+      - *setup-node
+      - *download-workspace
+      - *unpack-workspace
+
+      - name: Lint API and frontend
+        run: npm run lint
