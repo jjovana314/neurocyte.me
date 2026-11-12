@@ -141,20 +141,6 @@ jobs:
         run: npm run build
         working-directory: api
 
-      # Buildx + the GitHub Actions cache backend reuse unchanged image
-      # layers (e.g. `npm ci` when package-lock.json didn't change).
-      - &setup-buildx
-        name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-
-      - name: Build API Docker image
-        uses: docker/build-push-action@v6
-        with:
-          context: ./api
-          push: false
-          cache-from: type=gha,scope=api
-          cache-to: type=gha,mode=max,scope=api
-
   build-frontend:
     needs: setup
     runs-on: ubuntu-latest
@@ -182,14 +168,6 @@ jobs:
 
       - *setup-buildx
 
-      - name: Build frontend Docker image
-        uses: docker/build-push-action@v6
-        with:
-          context: ./frontend
-          push: false
-          cache-from: type=gha,scope=frontend
-          cache-to: type=gha,mode=max,scope=frontend
-
   build-calculator:
     needs: setup
     runs-on: ubuntu-latest
@@ -204,9 +182,6 @@ jobs:
       - name: Compile calculator
         run: .venv/bin/python -m compileall -q app.py edss_calculator.py ncs_calculator.py generated
         working-directory: calculator
-
-      - name: Build calculator Docker image
-        run: docker build ./calculator
 
   run-database:
     needs: setup
