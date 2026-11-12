@@ -49,7 +49,7 @@ npm run setup:calculator   # creates calculator/.venv and installs grpcio/grpcio
 ```
 
 ### 3. Backend Setup
-Copy `api/env.example` to `api/.env` and fill in your database, JWT, and mail settings, then:
+Copy `.env.example` to `.env` in the **repo root** and fill in your database, JWT, mail, and calculator settings. This single file is used by the API, the frontend (Vite, `VITE_`-prefixed vars only), the calculator service, and Docker Compose. Then:
 ```sh
 cd api
 npm install
@@ -78,7 +78,7 @@ npm run start:calculator   # from the repo root, starts the gRPC server on :5005
 ```
 You should see `Calculator gRPC server listening on port 50051`. Or use `npm run start` from the repo root, which launches the calculator, API, and frontend together in one command.
 
-The service listens on port `50051` by default (override with the `CALCULATOR_GRPC_PORT` env var). On the API side, `CALCULATOR_GRPC_URL` in `api/.env` must point at that same host:port (e.g. `localhost:50051`) — it has **no built-in default**, so it must be set explicitly.
+The service listens on port `50051` by default (override with the `CALCULATOR_GRPC_PORT` env var). On the API side, `CALCULATOR_GRPC_URL` in the root `.env` must point at that same host:port (e.g. `localhost:50051`) — it has **no built-in default**, so it must be set explicitly.
 
 ### 6. Frontend Setup (React + Vite + TypeScript)
 ```sh
@@ -93,7 +93,7 @@ The frontend, the API, the calculator service, and the MySQL database can all be
 docker compose up --build
 ```
 This builds `api/Dockerfile`, `calculator/Dockerfile` and `frontend/Dockerfile` and starts them alongside a `mysql:8.4` container. Migrations are applied and the base roles/actions are seeded on every API start, before it boots (see `api/docker-entrypoint.sh`). The MySQL data is persisted in the `db-data` named volume, so it survives container restarts (`docker compose down -v` removes it). 
-The API reaches the calculator over the docker network at `calculator:50051`. The app is served at `http://localhost:5173`, matching `api/.env`'s `FRONTEND_URL`. It reuses `api/.env` for app secrets. See the comments in `docker-compose.yml` for details.
+The API reaches the calculator over the docker network at `calculator:50051`. The app is served at `http://localhost:5173`, matching `.env`'s `FRONTEND_URL`. It reuses the root `.env` for app secrets. See the comments in `docker-compose.yml` for details.
 
 ### Additional Scripts
 - **Root convenience scripts** (from the repo root): `npm run start` (runs the calculator service, API, and frontend dev servers together), `npm run build` (builds API + frontend), `npm run setup:calculator` / `npm run start:calculator` (calculator service), `npm run generate:proto` (regenerate the gRPC stubs for both services from the `.proto` files)

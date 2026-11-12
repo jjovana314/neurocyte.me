@@ -7,7 +7,7 @@ import { RoleEnum } from '../src/auth/enums/role.enum';
 import { IRoleSeed } from '../src/auth/interfaces/roles.interface';
 import rolesJson from '../src/auth/resources/roles.json';
 
-dotenv.config();
+dotenv.config({ path: process.env.ENV_FILE ?? '../.env' });
 
 const AppDataSource = new DataSource({
   type: 'mysql',

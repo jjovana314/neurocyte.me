@@ -1,0 +1,68 @@
+name: CI Pipeline
+
+on:
+  push:
+    branches: ["master", "main"]
+  pull_request:
+    branches: ["main", "master"]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "26"
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: calculator/requirements.txt
+
+      - name: Install calculator dependencies
+        run: npm run setup:calculator
+
+      - name: Install root dependencies
+        run: npm install
+
+      - name: Install API dependencies
+        run: npm ci
+        working-directory: api
+
+      - name: Generate API gRPC client stubs
+        run: npm run generate:calculator-proto
+        working-directory: api
+
+      - name: Install frontend dependencies
+        run: npm ci
+        working-directory: frontend
+
+      - name: Create .env file
+        run: |
+          echo "DATABASE_URL=${{ secrets.DATABASE_URL }}" >> .env
+          echo "DATABASE_PORT=${{ secrets.DATABASE_PORT }}" >> .env
+          echo "DATABASE_USERNAME=${{ secrets.DATABASE_USERNAME }}" >> .env
+          echo "DATABASE_PASSWORD=${{ secrets.DATABASE_PASSWORD }}" >> .env
+          echo "DATABASE_NAME=${{ secrets.DATABASE_NAME }}" >> .env
+          echo "SECRET_KEY=${{ secrets.SECRET_KEY }}" >> .env
+          echo "MAIL_HOST=${{ secrets.MAIL_HOST }}" >> .env
+          echo "MAIL_PORT=${{ secrets.MAIL_PORT }}" >> .env
+          echo "MAIL_USER=${{ secrets.MAIL_USER }}" >> .env
+          echo "MAIL_PASS=${{ secrets.MAIL_PASS }}" >> .env
+          echo "MAIL_FROM=${{ secrets.MAIL_FROM }}" >> .env
+          echo "APP_URL=${{ secrets.APP_URL }}" >> .env
+          echo "FRONTEND_URL=${{ secrets.FRONTEND_URL }}" >> .env
+          echo "ACCESS_TOKEN_TIME=${{ secrets.ACCESS_TOKEN_TIME }}" >> .env
+          echo "REFRESH_TOKEN_TIME=${{ secrets.REFRESH_TOKEN_TIME }}" >> .env
+          echo "CALCULATOR_GRPC_PORT=${{ secrets.CALCULATOR_GRPC_PORT }}" >> .env
+          echo "CALCULATOR_GRPC_URL=${{ secrets.CALCULATOR_GRPC_URL }}" >> .env
+
+      - name: Run tests
+        run: npm run test

@@ -42,6 +42,9 @@ COPY scripts/migrations ./dist/scripts/migrations
 COPY docker-entrypoint.sh ./
 RUN chmod +x docker-entrypoint.sh
 
+# Config comes from docker-compose (env_file: ./.env); point the loader at an
+# empty placeholder since the repo-root .env isn't in the image.
+ENV ENV_FILE=.env
 RUN touch .env
 
 EXPOSE 3000

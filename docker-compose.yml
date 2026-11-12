@@ -1,8 +1,8 @@
 # Dockerized app: frontend, API, its MySQL database, and the calculator
 # gRPC service.
 #
-# Usage: copy api/env.example to api/.env (if you haven't already, see
-# README.md) and run `docker compose up --build`.
+# Usage: copy .env.example to .env in the repo root (if you haven't already,
+# see README.md) and run `docker compose up --build`.
 services:
   db:
     image: mysql:8.4
@@ -47,10 +47,10 @@ services:
     # Picks up SECRET_KEY, MAIL_*, ACCESS_TOKEN_TIME, REFRESH_TOKEN_TIME,
     # FRONTEND_URL, APP_URL, etc. from your existing local dev config.
     env_file:
-      - ./api/.env
+      - ./.env
     environment:
       # These must point at the docker network rather than whatever
-      # api/.env has configured for host-based (non-docker) dev.
+      # .env has configured for host-based (non-docker) dev.
       DATABASE_URL: db
       DATABASE_PORT: '3306'
       DATABASE_USERNAME: root
@@ -67,7 +67,7 @@ services:
     depends_on:
       - api
     ports:
-      # Host port matches api/.env's FRONTEND_URL (http://localhost:5173),
+      # Host port matches .env's FRONTEND_URL (http://localhost:5173),
       # used in password-reset/deactivation email links.
       - '5173:80'
 

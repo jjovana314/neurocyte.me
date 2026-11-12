@@ -35,7 +35,7 @@ fs.writeFileSync(
   ),
 );
 
-// TypeScript client stubs (api/src/calculator/generated/calculator.ts) -
+// TypeScript client stubs (api/src/calculator-client/generated/calculator.ts) -
 // requires `npm install` in api/ first (grpc-tools, ts-proto).
 run('npm run generate:calculator-proto', path.join(repoRoot, 'api'));
 

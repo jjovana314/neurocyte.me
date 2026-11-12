@@ -19,6 +19,25 @@ from ncs_calculator import (
 )
 from generated import calculator_pb2, calculator_pb2_grpc
 
+
+def load_root_env() -> None:
+    """Load the repo-root .env (shared with api/ and frontend/), if present.
+
+    Already-set environment variables win, so docker-compose / CI values
+    aren't overridden.
+    """
+    env_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", ".env")
+    if not os.path.isfile(env_path):
+        return
+    with open(env_path, encoding="utf-8") as env_file:
+        for line in env_file:
+            line = line.strip()
+            if not line or line.startswith("#") or "=" not in line:
+                continue
+            key, value = line.split("=", 1)
+            os.environ.setdefault(key.strip(), value.strip().strip("\"'"))
+
+
 logger = logging.getLogger(__name__)
 
 
@@ -110,6 +129,7 @@ class CalculatorServicer(calculator_pb2_grpc.CalculatorServiceServicer):
 
 
 def serve() -> None:
+    load_root_env()
     port = os.environ.get("CALCULATOR_GRPC_PORT", "50051")
     server = grpc.server(futures.ThreadPoolExecutor(max_workers=10))
     calculator_pb2_grpc.add_CalculatorServiceServicer_to_server(
