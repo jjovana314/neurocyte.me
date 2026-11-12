@@ -26,6 +26,10 @@ jobs:
         run: npm ci
         working-directory: api
 
+      - name: Generate API gRPC client stubs
+        run: npm run generate:calculator-proto
+        working-directory: api
+
       - name: Install frontend dependencies
         run: npm ci
         working-directory: frontend
