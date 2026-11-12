@@ -113,23 +113,6 @@ jobs:
       - name: Run tests
         run: npm run test
 
-  coverage:
-    needs: setup
-    runs-on: ubuntu-latest
-
-    steps:
-      - *checkout
-      - *setup-node
-      - *setup-python
-      - *download-workspace
-      - *unpack-workspace
-      - *create-env
-
-      # Fails if coverage drops below the thresholds configured in each
-      # project (jest config, vite.config.ts, calculator/pytest.ini).
-      - name: Check test coverage
-        run: npm run test:cov
-
   build-api:
     needs: setup
     runs-on: ubuntu-latest
@@ -202,7 +185,9 @@ jobs:
           echo "Calculator is accepting gRPC connections on :50051"
 
   run-api:
-    needs: setup
+    needs: 
+      - setup
+      - build-api
     runs-on: ubuntu-latest
 
     # Throwaway MySQL for the API to connect to.
@@ -255,7 +240,9 @@ jobs:
           echo "API is responding on :3000"
 
   run-frontend:
-    needs: setup
+    needs: 
+      - setup
+      - build-frontend
     runs-on: ubuntu-latest
 
     steps:
@@ -322,7 +309,16 @@ jobs:
           [ "$seeded_actions" -eq "$expected_actions" ]
 
   run-all:
-    needs: setup
+    needs: 
+      - setup
+      - build-api
+      - build-frontend
+      - build-calculator
+      - run-calculator
+      - run-api
+      - run-frontend
+      - run-database
+
     runs-on: ubuntu-latest
     services: *mysql-service
     env: *api-ci-env
@@ -359,6 +355,34 @@ jobs:
         # Match each service by name: `npm run start` spawns them several
         # levels deep (e.g. nest start -> node dist/src/main).
         run: pkill -f "calculator/app.py|nest start|dist/src/main|vite" || true
+
+
+  coverage:
+    needs:
+      - setup
+      - test
+      - build-api
+      - build-frontend
+      - build-calculator
+      - run-calculator
+      - run-api
+      - run-frontend
+      - run-database
+      - run-all
+    runs-on: ubuntu-latest
+
+    steps:
+      - *checkout
+      - *setup-node
+      - *setup-python
+      - *download-workspace
+      - *unpack-workspace
+      - *create-env
+
+      # Fails if coverage drops below the thresholds configured in each
+      # project (jest config, vite.config.ts, calculator/pytest.ini).
+      - name: Check test coverage
+        run: npm run test:cov
 
   # Runs last: waits for every other job to pass first.
   lint:
