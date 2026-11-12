@@ -1351,7 +1351,7 @@ export class PatientsService implements OnModuleInit {
           }`,
         );
         doc.text(
-          `   Motor Features: ${record.motorFeatures?.length ? record.motorFeatures.join(', ') : 'None'}`,
+          `   Motor Features: ${record.motorFeatures?.length ? record.motorFeatures.map(formatToTitleCase).join(', ') : 'None'}`,
         );
         doc.text(
           `   Triggers: ${
@@ -1394,7 +1394,7 @@ export class PatientsService implements OnModuleInit {
               : 'None'
           }`,
         );
-        doc.text(`   Medication taken: ${record.medicationTaken}`);
+        doc.text(`   Medication taken: ${record.medicationTaken || 'None'}`);
         doc.text(`   Notes: ${record.notes || 'N/A'}`);
         doc.text(`   Recorded At: ${record.recordedAt.toLocaleString()}`);
         doc.moveDown(0.5);
