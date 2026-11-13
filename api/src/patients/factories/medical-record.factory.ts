@@ -20,7 +20,7 @@ export class MedicalRecordFactory implements OnModuleInit {
       );
   }
 
-  async generateMedicalRecord(type: MedicalRecordType) {
+  generateMedicalRecord(type: MedicalRecordType) {
     switch (type) {
       case MedicalRecordType.EDSS_ASSESSMENT:
         return new EdssAssessmentBuild(this.calculatorService);

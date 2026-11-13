@@ -34,7 +34,6 @@ import {
   CreateMigraineLogDto,
   CreateSeizureLogDto,
   CreateNcsStudyDto,
-  EdssAssessmentDataDto,
   ImportCsvResponseDto,
   UpdatePatientNotesDto,
 } from './dtos';
@@ -61,6 +60,10 @@ import { TouretteTrigger } from './enums/touretteTrigger';
 import { TouretteSyndrome } from './entities/tourette-syndrome.entity';
 import { UpdateTouretteSyndromeDto } from './dtos/update-tourette-syndrome.dto';
 import { formatToTitleCase } from './utils/format-to-title-case';
+import {
+  MedicalRecordFactory,
+  MedicalRecordType,
+} from './factories/medical-record.factory';
 
 @Injectable()
 export class PatientsService implements OnModuleInit {
@@ -85,6 +88,7 @@ export class PatientsService implements OnModuleInit {
     @InjectRepository(User) private userRepository: Repository<User>,
     private readonly logger: PinoLogger,
     @Inject('CALCULATOR_PACKAGE') private readonly calculatorClient: ClientGrpc,
+    private readonly medicalRecordGenerator: MedicalRecordFactory,
   ) {}
 
   onModuleInit() {
@@ -118,8 +122,11 @@ export class PatientsService implements OnModuleInit {
 
     // Build (and validate) any embedded initial records before saving the
     // patient, so an invalid one fails before persisting anything.
+    const edssBuilder = this.medicalRecordGenerator.generateMedicalRecord(
+      MedicalRecordType.EDSS_ASSESSMENT,
+    );
     const edssAssessment = createPatientDto.edss
-      ? await this.buildEdssAssessment(createPatientDto.edss)
+      ? await edssBuilder.build(createPatientDto.edss)
       : undefined;
     const migraineLog = createPatientDto.migraineLog
       ? this.buildMigraineLog(createPatientDto.migraineLog)
@@ -823,62 +830,6 @@ export class PatientsService implements OnModuleInit {
     return familyHistory;
   }
 
-  // Validates the raw FSS grades and derives the composite score - the
-  // client never supplies totalScore directly. Building this before any
-  // patient save means an invalid assessment fails before persisting
-  // anything.
-  private async buildEdssAssessment(
-    data: EdssAssessmentDataDto,
-  ): Promise<EdssAssesment> {
-    const ambulation = {
-      unassistedWalkingDistanceMeters: data.unassistedWalkingDistanceMeters,
-      requiresUnilateralAid: data.requiresUnilateralAid || false,
-      requiresBilateralAid: data.requiresBilateralAid || false,
-      wheelchairBound: data.wheelchairBound || false,
-    };
-
-    let totalScore: number;
-
-    // todo: fix this, add error handler and parser for errors from other service
-    try {
-      const response = await firstValueFrom(
-        this.calculatorService.calculateEdss({
-          pyramidalSystem: data.pyramidalSystem,
-          cerebellarSystem: data.cerebellarSystem,
-          brainstemSystem: data.brainstemSystem,
-          sensorySystem: data.sensorySystem,
-          bowelBladderSystem: data.bowelBladderSystem,
-          visualSystem: data.visualSystem,
-          mentalSystem: data.mentalSystem,
-          ...ambulation,
-        }),
-      );
-      totalScore = response.totalScore;
-    } catch (error: any) {
-      if (error?.code === GrpcStatus.INVALID_ARGUMENT) {
-        throw new BadRequestException(error.details);
-      }
-      throw error;
-    }
-
-    const assessment = new EdssAssesment();
-    assessment.pyramidalSystem = data.pyramidalSystem;
-    assessment.cerebellarSystem = data.cerebellarSystem;
-    assessment.brainstemSystem = data.brainstemSystem;
-    assessment.sensorySystem = data.sensorySystem;
-    assessment.bowelBladderSystem = data.bowelBladderSystem;
-    assessment.visualSystem = data.visualSystem;
-    assessment.mentalSystem = data.mentalSystem;
-    assessment.unassistedWalkingDistanceMeters =
-      ambulation.unassistedWalkingDistanceMeters ?? null;
-    assessment.requiresUnilateralAid = ambulation.requiresUnilateralAid;
-    assessment.requiresBilateralAid = ambulation.requiresBilateralAid;
-    assessment.wheelchairBound = ambulation.wheelchairBound;
-    assessment.totalScore = totalScore;
-
-    return assessment;
-  }
-
   // Validates and constructs a migraine log entry without persisting it or
   // touching patientId, so it can be validated before a patient save
   // (createPatient) or attached to an existing patient (addMigraineLog).
@@ -1025,8 +976,11 @@ export class PatientsService implements OnModuleInit {
 
     // Build (and validate) the EDSS assessment before saving, so an invalid
     // assessment doesn't let the notes update partially apply.
+    const edssBuilder = this.medicalRecordGenerator.generateMedicalRecord(
+      MedicalRecordType.EDSS_ASSESSMENT,
+    );
     const edssAssessment = updatePatientDto.edss
-      ? await this.buildEdssAssessment(updatePatientDto.edss)
+      ? await edssBuilder.build(updatePatientDto.edss)
       : null;
 
     patient.notes = updatePatientDto.notes;

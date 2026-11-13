@@ -16,6 +16,7 @@ import { join } from 'path';
 import { config } from 'src/config/config';
 import { CALCULATOR_PACKAGE_NAME } from 'src/calculator-client/generated/calculator';
 import { TouretteSyndrome } from './entities/tourette-syndrome.entity';
+import { MedicalRecordFactory } from './factories/medical-record.factory';
 
 @Module({
   imports: [
@@ -47,7 +48,7 @@ import { TouretteSyndrome } from './entities/tourette-syndrome.entity';
     UserModule,
   ],
   controllers: [PatientsController],
-  providers: [PatientsService],
+  providers: [PatientsService, MedicalRecordFactory],
   exports: [PatientsService, ClientsModule],
 })
 export class PatientsModule {}

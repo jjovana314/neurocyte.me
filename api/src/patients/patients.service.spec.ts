@@ -29,6 +29,7 @@ import { of, throwError } from 'rxjs';
 import { status as GrpcStatus } from '@grpc/grpc-js';
 import { CALCULATOR_SERVICE_NAME } from 'src/calculator-client/generated/calculator';
 import { RoleEnum } from 'src/auth/enums/role.enum';
+import { MedicalRecordFactory } from './factories/medical-record.factory';
 
 describe('PatientsService', () => {
   let service: PatientsService;
@@ -119,6 +120,7 @@ describe('PatientsService', () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         PatientsService,
+        MedicalRecordFactory,
         {
           provide: 'CALCULATOR_PACKAGE',
           useValue: mockCalculatorClientGrpc,
