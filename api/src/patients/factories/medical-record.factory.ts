@@ -4,6 +4,7 @@ import {
   CALCULATOR_SERVICE_NAME,
   CalculatorServiceClient,
 } from 'src/calculator-client/generated/calculator';
+import { EdssAssessmentBuild } from './builders/edss-assessment.builder';
 
 @Injectable()
 export class MedicalRecordFactory implements OnModuleInit {
@@ -19,18 +20,19 @@ export class MedicalRecordFactory implements OnModuleInit {
       );
   }
 
-  // async generateMedicalRecord(type: MedicalRecordType) {
-  //   switch (type) {
-  //     case MedicalRecordType.EDSS_ASSESSMENT:
-  //     // return edss assesment build data
-  //     case MedicalRecordType.SEIZURE_LOG:
-  //     //
-  //     case MedicalRecordType.NCS_STUDY:
-  //     //
-  //     case MedicalRecordType.MIGRAINE_LOG:
-  //     //
-  //   }
-  // }
+  async generateMedicalRecord(type: MedicalRecordType) {
+    switch (type) {
+      case MedicalRecordType.EDSS_ASSESSMENT:
+        return new EdssAssessmentBuild(this.calculatorService);
+      // return edss assesment build data
+      // case MedicalRecordType.SEIZURE_LOG:
+      // //
+      // case MedicalRecordType.NCS_STUDY:
+      // //
+      // case MedicalRecordType.MIGRAINE_LOG:
+      //
+    }
+  }
 }
 
 export enum MedicalRecordType {
