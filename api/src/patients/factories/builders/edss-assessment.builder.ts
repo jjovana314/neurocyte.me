@@ -4,12 +4,14 @@ import { firstValueFrom } from 'rxjs';
 import { CalculatorServiceClient } from 'src/calculator-client/generated/calculator';
 import { EdssAssessmentDataDto } from 'src/patients/dtos';
 import { EdssAssesment } from 'src/patients/entities/edss-assesment.entity';
+import { MedicalRecordBuilder } from './medical-record.builder';
 
-export class EdssAssessmentBuild {
-  private readonly calculatorService: CalculatorServiceClient;
-
-  constructor(calculatorServiceClient: CalculatorServiceClient) {
-    this.calculatorService = calculatorServiceClient;
+export class EdssAssessmentBuild extends MedicalRecordBuilder<
+  EdssAssessmentDataDto,
+  EdssAssesment
+> {
+  constructor(private readonly calculatorService: CalculatorServiceClient) {
+    super();
   }
 
   public async build(data: EdssAssessmentDataDto): Promise<EdssAssesment> {

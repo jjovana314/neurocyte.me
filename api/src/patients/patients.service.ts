@@ -17,11 +17,6 @@ import { PatientHistory } from './entities/patient-history.entity';
 import { FamilyHistory, DiseaseType } from './entities/family-history.entity';
 import { EdssAssesment } from './entities/edss-assesment.entity';
 import { MigraineLog } from './entities/migraine-log.entity';
-import {
-  OnsetVector,
-  MotorFeature,
-  SeizureTrigger,
-} from './enums/seizureEnums';
 import { SeizureLog } from './entities/seizure-log.entity';
 import { NcsStudy, NcsStudyType } from './entities/ncs-study.entity';
 import { User } from 'src/user/entities/user.entity';
@@ -125,14 +120,20 @@ export class PatientsService implements OnModuleInit {
     const edssBuilder = this.medicalRecordGenerator.generateMedicalRecord(
       MedicalRecordType.EDSS_ASSESSMENT,
     );
+    const seizureBuilder = this.medicalRecordGenerator.generateMedicalRecord(
+      MedicalRecordType.SEIZURE_LOG,
+    );
+    const migraineBuilder = this.medicalRecordGenerator.generateMedicalRecord(
+      MedicalRecordType.MIGRAINE_LOG,
+    );
     const edssAssessment = createPatientDto.edss
       ? await edssBuilder.build(createPatientDto.edss)
       : undefined;
     const migraineLog = createPatientDto.migraineLog
-      ? this.buildMigraineLog(createPatientDto.migraineLog)
+      ? await migraineBuilder.build(createPatientDto.migraineLog)
       : undefined;
     const seizureLog = createPatientDto.seizureLog
-      ? this.buildSeizureLog(createPatientDto.seizureLog)
+      ? await seizureBuilder.build(createPatientDto.seizureLog)
       : undefined;
 
     const patient = new Patient();
@@ -407,8 +408,11 @@ export class PatientsService implements OnModuleInit {
       );
       throw new AccessToPatientForbiddenException();
     }
-
-    const migraineLog = this.buildMigraineLog(createMigraineLogDto);
+    const migraineLogBuilder =
+      await this.medicalRecordGenerator.generateMedicalRecord(
+        MedicalRecordType.MIGRAINE_LOG,
+      );
+    const migraineLog = await migraineLogBuilder.build(createMigraineLogDto);
     migraineLog.patientId = createMigraineLogDto.patientId;
 
     const savedMigraineLog = await this.migraineLogRepository.save(migraineLog);
@@ -463,7 +467,9 @@ export class PatientsService implements OnModuleInit {
       throw new AccessToPatientForbiddenException();
     }
 
-    const seizureLog = this.buildSeizureLog(createSeizureLogDto);
+    const seizureLog = await this.medicalRecordGenerator
+      .generateMedicalRecord(MedicalRecordType.SEIZURE_LOG)
+      .build(createSeizureLogDto);
     seizureLog.patientId = createSeizureLogDto.patientId;
 
     const savedSeizureLog = await this.seizureLogRepository.save(seizureLog);
@@ -828,111 +834,6 @@ export class PatientsService implements OnModuleInit {
     });
 
     return familyHistory;
-  }
-
-  // Validates and constructs a migraine log entry without persisting it or
-  // touching patientId, so it can be validated before a patient save
-  // (createPatient) or attached to an existing patient (addMigraineLog).
-  private buildMigraineLog(
-    dto: Omit<CreateMigraineLogDto, 'patientId'>,
-  ): MigraineLog {
-    const date = dateValidation(dto.occurredAt, 'occurredAt', true);
-    if (
-      dto.painSeverity == null ||
-      !Number.isInteger(dto.painSeverity) ||
-      dto.painSeverity < 1 ||
-      dto.painSeverity > 10
-    ) {
-      throw new BadRequestException(
-        'Pain severity is required and must be an integer between 1 and 10',
-      );
-    }
-
-    const migraineLog = new MigraineLog();
-    migraineLog.occurredAt = date;
-    migraineLog.durationMinutes = dto.durationMinutes ?? null;
-    migraineLog.painSeverity = dto.painSeverity;
-    migraineLog.auraPresent = dto.auraPresent || false;
-    migraineLog.triggers = dto.triggers || '';
-    migraineLog.symptoms = dto.symptoms || '';
-    migraineLog.medicationTaken = dto.medicationTaken || '';
-    migraineLog.notes = dto.notes || '';
-
-    return migraineLog;
-  }
-
-  // Validates and constructs a seizure log entry without persisting it or
-  // touching patientId, so it can be validated before a patient save
-  // (createPatient) or attached to an existing patient (addSeizureLog).
-  private buildSeizureLog(
-    seizureData: Omit<CreateSeizureLogDto, 'patientId'>,
-  ): SeizureLog {
-    if (!Object.values(OnsetVector).includes(seizureData.onsetVector)) {
-      throw new BadRequestException(
-        'onsetVector is required and must be one of FOCAL_AWARE, FOCAL_IMPAIRED_AWARENESS, GENERALIZED',
-      );
-    }
-    if (!seizureData.ictusStart || !seizureData.ictusEnd) {
-      throw new BadRequestException('ictusStart and ictusEnd are required');
-    }
-
-    const ictusStart = new Date(seizureData.ictusStart);
-    const ictusEnd = new Date(seizureData.ictusEnd);
-    if (
-      Number.isNaN(ictusStart.getTime()) ||
-      Number.isNaN(ictusEnd.getTime())
-    ) {
-      throw new BadRequestException(
-        'ictusStart and ictusEnd must be valid dates',
-      );
-    }
-    if (ictusStart.getTime() > Date.now() || ictusEnd.getTime() > Date.now()) {
-      throw new BadRequestException(
-        'ictusStart and ictusEnd cannot be in the future',
-      );
-    }
-    if (ictusEnd.getTime() < ictusStart.getTime()) {
-      throw new BadRequestException('ictusEnd must not be before ictusStart');
-    }
-
-    const motorFeatures = seizureData.motorFeatures || [];
-    if (motorFeatures.some((f) => !Object.values(MotorFeature).includes(f))) {
-      throw new BadRequestException(
-        'motorFeatures may only contain TONIC, CLONIC, ATONIC, AUTOMATISMS',
-      );
-    }
-
-    const triggers = seizureData.triggers || [];
-    if (triggers.some((t) => !Object.values(SeizureTrigger).includes(t))) {
-      throw new BadRequestException(
-        'triggers may only contain SLEEP_DEPRIVATION, MISSED_DOSE, HIGH_STRESS, ILLNESS',
-      );
-    }
-
-    if (
-      seizureData.postictalDurationMinutes != null &&
-      (!Number.isInteger(seizureData.postictalDurationMinutes) ||
-        seizureData.postictalDurationMinutes < 0)
-    ) {
-      throw new BadRequestException(
-        'postictalDurationMinutes must be a non-negative integer',
-      );
-    }
-
-    const seizureLog = new SeizureLog();
-    seizureLog.onsetVector = seizureData.onsetVector;
-    seizureLog.motorFeatures = motorFeatures;
-    seizureLog.ictusStart = ictusStart;
-    seizureLog.ictusEnd = ictusEnd;
-    seizureLog.ictusDurationSeconds = Math.round(
-      (ictusEnd.getTime() - ictusStart.getTime()) / 1000,
-    );
-    seizureLog.postictalDurationMinutes =
-      seizureData.postictalDurationMinutes ?? null;
-    seizureLog.triggers = triggers;
-    seizureLog.notes = seizureData.notes || '';
-
-    return seizureLog;
   }
 
   async getPatientEdssAssessments(
