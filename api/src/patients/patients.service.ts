@@ -9,19 +9,12 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Brackets, Repository } from 'typeorm';
 import { PinoLogger } from 'nestjs-pino';
 import { ClientGrpc } from '@nestjs/microservices';
-import { status as GrpcStatus } from '@grpc/grpc-js';
-import { firstValueFrom } from 'rxjs';
 import { errorHandler } from './decorators/error-handler-decorator';
 import { Patient } from './entities/patient.entity';
 import { PatientHistory } from './entities/patient-history.entity';
 import { FamilyHistory, DiseaseType } from './entities/family-history.entity';
 import { EdssAssesment } from './entities/edss-assesment.entity';
 import { MigraineLog } from './entities/migraine-log.entity';
-import {
-  OnsetVector,
-  MotorFeature,
-  SeizureTrigger,
-} from './enums/seizureEnums';
 import { SeizureLog } from './entities/seizure-log.entity';
 import { NcsStudy, NcsStudyType } from './entities/ncs-study.entity';
 import { User } from 'src/user/entities/user.entity';
@@ -34,7 +27,6 @@ import {
   CreateMigraineLogDto,
   CreateSeizureLogDto,
   CreateNcsStudyDto,
-  EdssAssessmentDataDto,
   ImportCsvResponseDto,
   UpdatePatientNotesDto,
 } from './dtos';
@@ -42,8 +34,6 @@ import { maskString } from './utils/masking';
 import {
   CALCULATOR_SERVICE_NAME,
   CalculatorServiceClient,
-  NcsResponse,
-  StudyType as GrpcStudyType,
 } from 'src/calculator-client/generated/calculator';
 import {
   PatientCreateForbiddenException,
@@ -61,6 +51,10 @@ import { TouretteTrigger } from './enums/touretteTrigger';
 import { TouretteSyndrome } from './entities/tourette-syndrome.entity';
 import { UpdateTouretteSyndromeDto } from './dtos/update-tourette-syndrome.dto';
 import { formatToTitleCase } from './utils/format-to-title-case';
+import {
+  MedicalRecordFactory,
+  MedicalRecordType,
+} from './factories/medical-record.factory';
 
 @Injectable()
 export class PatientsService implements OnModuleInit {
@@ -85,6 +79,7 @@ export class PatientsService implements OnModuleInit {
     @InjectRepository(User) private userRepository: Repository<User>,
     private readonly logger: PinoLogger,
     @Inject('CALCULATOR_PACKAGE') private readonly calculatorClient: ClientGrpc,
+    private readonly medicalRecordGenerator: MedicalRecordFactory,
   ) {}
 
   onModuleInit() {
@@ -118,14 +113,23 @@ export class PatientsService implements OnModuleInit {
 
     // Build (and validate) any embedded initial records before saving the
     // patient, so an invalid one fails before persisting anything.
+    const edssBuilder = this.medicalRecordGenerator.generateMedicalRecord(
+      MedicalRecordType.EDSS_ASSESSMENT,
+    );
+    const seizureBuilder = this.medicalRecordGenerator.generateMedicalRecord(
+      MedicalRecordType.SEIZURE_LOG,
+    );
+    const migraineBuilder = this.medicalRecordGenerator.generateMedicalRecord(
+      MedicalRecordType.MIGRAINE_LOG,
+    );
     const edssAssessment = createPatientDto.edss
-      ? await this.buildEdssAssessment(createPatientDto.edss)
+      ? await edssBuilder.build(createPatientDto.edss)
       : undefined;
     const migraineLog = createPatientDto.migraineLog
-      ? this.buildMigraineLog(createPatientDto.migraineLog)
+      ? await migraineBuilder.build(createPatientDto.migraineLog)
       : undefined;
     const seizureLog = createPatientDto.seizureLog
-      ? this.buildSeizureLog(createPatientDto.seizureLog)
+      ? await seizureBuilder.build(createPatientDto.seizureLog)
       : undefined;
 
     const patient = new Patient();
@@ -369,7 +373,9 @@ export class PatientsService implements OnModuleInit {
       throw new AccessToPatientForbiddenException();
     }
 
-    const ncsStudy = await this.buildNcsStudy(request);
+    const ncsStudy = await this.medicalRecordGenerator
+      .generateMedicalRecord(MedicalRecordType.NCS_STUDY)
+      .build(request);
     ncsStudy.patientId = patientId;
 
     await this.ncsStudyRepository.save(ncsStudy);
@@ -400,8 +406,11 @@ export class PatientsService implements OnModuleInit {
       );
       throw new AccessToPatientForbiddenException();
     }
-
-    const migraineLog = this.buildMigraineLog(createMigraineLogDto);
+    const migraineLogBuilder =
+      this.medicalRecordGenerator.generateMedicalRecord(
+        MedicalRecordType.MIGRAINE_LOG,
+      );
+    const migraineLog = await migraineLogBuilder.build(createMigraineLogDto);
     migraineLog.patientId = createMigraineLogDto.patientId;
 
     const savedMigraineLog = await this.migraineLogRepository.save(migraineLog);
@@ -456,7 +465,9 @@ export class PatientsService implements OnModuleInit {
       throw new AccessToPatientForbiddenException();
     }
 
-    const seizureLog = this.buildSeizureLog(createSeizureLogDto);
+    const seizureLog = await this.medicalRecordGenerator
+      .generateMedicalRecord(MedicalRecordType.SEIZURE_LOG)
+      .build(createSeizureLogDto);
     seizureLog.patientId = createSeizureLogDto.patientId;
 
     const savedSeizureLog = await this.seizureLogRepository.save(seizureLog);
@@ -511,7 +522,9 @@ export class PatientsService implements OnModuleInit {
       throw new AccessToPatientForbiddenException();
     }
 
-    const ncsStudy = await this.buildNcsStudy(createNcsStudyDto);
+    const ncsStudy = await this.medicalRecordGenerator
+      .generateMedicalRecord(MedicalRecordType.NCS_STUDY)
+      .build(createNcsStudyDto);
     ncsStudy.patientId = createNcsStudyDto.patientId;
 
     const savedNcsStudy = await this.ncsStudyRepository.save(ncsStudy);
@@ -599,7 +612,9 @@ export class PatientsService implements OnModuleInit {
       }
 
       try {
-        const ncsStudy = await this.buildNcsStudy(dto);
+        const ncsStudy = await this.medicalRecordGenerator
+          .generateMedicalRecord(MedicalRecordType.NCS_STUDY)
+          .build(dto);
         ncsStudy.patientId = patientId;
         await this.ncsStudyRepository.save(ncsStudy);
         result.imported++;
@@ -674,72 +689,6 @@ export class PatientsService implements OnModuleInit {
     }
 
     return dto;
-  }
-
-  // Sends the raw electrophysiological measurements to the calculator
-  // service and stores both the input and the derived diagnostic result -
-  // the client never supplies the derived fields directly.
-  private async buildNcsStudy(
-    dto: Omit<CreateNcsStudyDto, 'patientId'>,
-  ): Promise<NcsStudy> {
-    const grpcStudyType =
-      dto.studyType === NcsStudyType.MOTOR
-        ? GrpcStudyType.MOTOR
-        : GrpcStudyType.SENSORY;
-
-    let response: NcsResponse;
-
-    // todo: fix this, add error handler and parser for errors from other service
-    try {
-      response = await firstValueFrom(
-        this.calculatorService.calculateNcs({
-          nerveName: dto.nerveName,
-          studyType: grpcStudyType,
-          distanceMm: dto.distanceMm,
-          distalSite: {
-            latencyMs: dto.distalSite.latencyMs,
-            amplitude: dto.distalSite.amplitude,
-            durationMs: dto.distalSite.durationMs,
-          },
-          proximalSite: dto.proximalSite
-            ? {
-                latencyMs: dto.proximalSite.latencyMs,
-                amplitude: dto.proximalSite.amplitude,
-                durationMs: dto.proximalSite.durationMs,
-              }
-            : undefined,
-          skinTemperatureCelsius: dto.skinTemperatureCelsius,
-        }),
-      );
-    } catch (error: any) {
-      if (error?.code === GrpcStatus.INVALID_ARGUMENT) {
-        throw new BadRequestException(error.details);
-      }
-      throw error;
-    }
-
-    const ncsStudy = new NcsStudy();
-    ncsStudy.nerveName = dto.nerveName;
-    ncsStudy.studyType = dto.studyType;
-    ncsStudy.distanceMm = dto.distanceMm;
-    ncsStudy.distalLatencyMs = dto.distalSite.latencyMs;
-    ncsStudy.distalAmplitude = dto.distalSite.amplitude;
-    ncsStudy.distalDurationMs = dto.distalSite.durationMs ?? null;
-    ncsStudy.proximalLatencyMs = dto.proximalSite?.latencyMs ?? null;
-    ncsStudy.proximalAmplitude = dto.proximalSite?.amplitude ?? null;
-    ncsStudy.proximalDurationMs = dto.proximalSite?.durationMs ?? null;
-    ncsStudy.skinTemperatureCelsius = dto.skinTemperatureCelsius ?? null;
-    ncsStudy.conductionVelocityMPerS = response.conductionVelocityMPerS ?? null;
-    ncsStudy.amplitudeDropPercent = response.amplitudeDropPercent ?? null;
-    ncsStudy.temporalDispersionPercent =
-      response.temporalDispersionPercent ?? null;
-    ncsStudy.isNormal = response.isNormal;
-    ncsStudy.axonalLoss = response.axonalLoss;
-    ncsStudy.demyelination = response.demyelination;
-    ncsStudy.conductionBlock = response.conductionBlock;
-    ncsStudy.diagnosticSummary = response.diagnosticSummary;
-
-    return ncsStudy;
   }
 
   @errorHandler
@@ -823,167 +772,6 @@ export class PatientsService implements OnModuleInit {
     return familyHistory;
   }
 
-  // Validates the raw FSS grades and derives the composite score - the
-  // client never supplies totalScore directly. Building this before any
-  // patient save means an invalid assessment fails before persisting
-  // anything.
-  private async buildEdssAssessment(
-    data: EdssAssessmentDataDto,
-  ): Promise<EdssAssesment> {
-    const ambulation = {
-      unassistedWalkingDistanceMeters: data.unassistedWalkingDistanceMeters,
-      requiresUnilateralAid: data.requiresUnilateralAid || false,
-      requiresBilateralAid: data.requiresBilateralAid || false,
-      wheelchairBound: data.wheelchairBound || false,
-    };
-
-    let totalScore: number;
-
-    // todo: fix this, add error handler and parser for errors from other service
-    try {
-      const response = await firstValueFrom(
-        this.calculatorService.calculateEdss({
-          pyramidalSystem: data.pyramidalSystem,
-          cerebellarSystem: data.cerebellarSystem,
-          brainstemSystem: data.brainstemSystem,
-          sensorySystem: data.sensorySystem,
-          bowelBladderSystem: data.bowelBladderSystem,
-          visualSystem: data.visualSystem,
-          mentalSystem: data.mentalSystem,
-          ...ambulation,
-        }),
-      );
-      totalScore = response.totalScore;
-    } catch (error: any) {
-      if (error?.code === GrpcStatus.INVALID_ARGUMENT) {
-        throw new BadRequestException(error.details);
-      }
-      throw error;
-    }
-
-    const assessment = new EdssAssesment();
-    assessment.pyramidalSystem = data.pyramidalSystem;
-    assessment.cerebellarSystem = data.cerebellarSystem;
-    assessment.brainstemSystem = data.brainstemSystem;
-    assessment.sensorySystem = data.sensorySystem;
-    assessment.bowelBladderSystem = data.bowelBladderSystem;
-    assessment.visualSystem = data.visualSystem;
-    assessment.mentalSystem = data.mentalSystem;
-    assessment.unassistedWalkingDistanceMeters =
-      ambulation.unassistedWalkingDistanceMeters ?? null;
-    assessment.requiresUnilateralAid = ambulation.requiresUnilateralAid;
-    assessment.requiresBilateralAid = ambulation.requiresBilateralAid;
-    assessment.wheelchairBound = ambulation.wheelchairBound;
-    assessment.totalScore = totalScore;
-
-    return assessment;
-  }
-
-  // Validates and constructs a migraine log entry without persisting it or
-  // touching patientId, so it can be validated before a patient save
-  // (createPatient) or attached to an existing patient (addMigraineLog).
-  private buildMigraineLog(
-    dto: Omit<CreateMigraineLogDto, 'patientId'>,
-  ): MigraineLog {
-    const date = dateValidation(dto.occurredAt, 'occurredAt', true);
-    if (
-      dto.painSeverity == null ||
-      !Number.isInteger(dto.painSeverity) ||
-      dto.painSeverity < 1 ||
-      dto.painSeverity > 10
-    ) {
-      throw new BadRequestException(
-        'Pain severity is required and must be an integer between 1 and 10',
-      );
-    }
-
-    const migraineLog = new MigraineLog();
-    migraineLog.occurredAt = date;
-    migraineLog.durationMinutes = dto.durationMinutes ?? null;
-    migraineLog.painSeverity = dto.painSeverity;
-    migraineLog.auraPresent = dto.auraPresent || false;
-    migraineLog.triggers = dto.triggers || '';
-    migraineLog.symptoms = dto.symptoms || '';
-    migraineLog.medicationTaken = dto.medicationTaken || '';
-    migraineLog.notes = dto.notes || '';
-
-    return migraineLog;
-  }
-
-  // Validates and constructs a seizure log entry without persisting it or
-  // touching patientId, so it can be validated before a patient save
-  // (createPatient) or attached to an existing patient (addSeizureLog).
-  private buildSeizureLog(
-    seizureData: Omit<CreateSeizureLogDto, 'patientId'>,
-  ): SeizureLog {
-    if (!Object.values(OnsetVector).includes(seizureData.onsetVector)) {
-      throw new BadRequestException(
-        'onsetVector is required and must be one of FOCAL_AWARE, FOCAL_IMPAIRED_AWARENESS, GENERALIZED',
-      );
-    }
-    if (!seizureData.ictusStart || !seizureData.ictusEnd) {
-      throw new BadRequestException('ictusStart and ictusEnd are required');
-    }
-
-    const ictusStart = new Date(seizureData.ictusStart);
-    const ictusEnd = new Date(seizureData.ictusEnd);
-    if (
-      Number.isNaN(ictusStart.getTime()) ||
-      Number.isNaN(ictusEnd.getTime())
-    ) {
-      throw new BadRequestException(
-        'ictusStart and ictusEnd must be valid dates',
-      );
-    }
-    if (ictusStart.getTime() > Date.now() || ictusEnd.getTime() > Date.now()) {
-      throw new BadRequestException(
-        'ictusStart and ictusEnd cannot be in the future',
-      );
-    }
-    if (ictusEnd.getTime() < ictusStart.getTime()) {
-      throw new BadRequestException('ictusEnd must not be before ictusStart');
-    }
-
-    const motorFeatures = seizureData.motorFeatures || [];
-    if (motorFeatures.some((f) => !Object.values(MotorFeature).includes(f))) {
-      throw new BadRequestException(
-        'motorFeatures may only contain TONIC, CLONIC, ATONIC, AUTOMATISMS',
-      );
-    }
-
-    const triggers = seizureData.triggers || [];
-    if (triggers.some((t) => !Object.values(SeizureTrigger).includes(t))) {
-      throw new BadRequestException(
-        'triggers may only contain SLEEP_DEPRIVATION, MISSED_DOSE, HIGH_STRESS, ILLNESS',
-      );
-    }
-
-    if (
-      seizureData.postictalDurationMinutes != null &&
-      (!Number.isInteger(seizureData.postictalDurationMinutes) ||
-        seizureData.postictalDurationMinutes < 0)
-    ) {
-      throw new BadRequestException(
-        'postictalDurationMinutes must be a non-negative integer',
-      );
-    }
-
-    const seizureLog = new SeizureLog();
-    seizureLog.onsetVector = seizureData.onsetVector;
-    seizureLog.motorFeatures = motorFeatures;
-    seizureLog.ictusStart = ictusStart;
-    seizureLog.ictusEnd = ictusEnd;
-    seizureLog.ictusDurationSeconds = Math.round(
-      (ictusEnd.getTime() - ictusStart.getTime()) / 1000,
-    );
-    seizureLog.postictalDurationMinutes =
-      seizureData.postictalDurationMinutes ?? null;
-    seizureLog.triggers = triggers;
-    seizureLog.notes = seizureData.notes || '';
-
-    return seizureLog;
-  }
-
   async getPatientEdssAssessments(
     doctorId: number,
     patientId: number,
@@ -1025,8 +813,11 @@ export class PatientsService implements OnModuleInit {
 
     // Build (and validate) the EDSS assessment before saving, so an invalid
     // assessment doesn't let the notes update partially apply.
+    const edssBuilder = this.medicalRecordGenerator.generateMedicalRecord(
+      MedicalRecordType.EDSS_ASSESSMENT,
+    );
     const edssAssessment = updatePatientDto.edss
-      ? await this.buildEdssAssessment(updatePatientDto.edss)
+      ? await edssBuilder.build(updatePatientDto.edss)
       : null;
 
     patient.notes = updatePatientDto.notes;
