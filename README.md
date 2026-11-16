@@ -30,7 +30,8 @@
 - **Backend:** NestJS, TypeORM, MySQL, gRPC (`@nestjs/microservices`, `@grpc/grpc-js`) with generated TypeScript client stubs (`ts-proto`) for calling the calculator service
 - **Calculator service:** Python, gRPC (`grpcio`) — hosts clinical scoring algorithms (EDSS scoring and nerve conduction study analysis) behind a language-agnostic RPC contract, called by the API over gRPC
 - **Auth:** Passport (JWT strategy), bcrypt password hashing
-- **Other:** pdfkit (PDF generation), Nodemailer (transactional email), nestjs-pino (structured logging)
+- **Mail sidecar:** AWS CDK (SQS + Lambda + SES), run locally on LocalStack; the API enqueues emails with `@aws-sdk/client-sqs` (see [api/mail-service/README.md](api/mail-service/README.md))
+- **Other:** pdfkit (PDF generation), nestjs-pino (structured logging)
 
 ---
 
@@ -94,6 +95,16 @@ docker compose up --build
 ```
 This builds `api/Dockerfile`, `calculator/Dockerfile` and `frontend/Dockerfile` and starts them alongside a `mysql:8.4` container. Migrations are applied and the base roles/actions are seeded on every API start, before it boots (see `api/docker-entrypoint.sh`). The MySQL data is persisted in the `db-data` named volume, so it survives container restarts (`docker compose down -v` removes it). 
 The API reaches the calculator over the docker network at `calculator:50051`. The app is served at `http://localhost:5173`, matching `.env`'s `FRONTEND_URL`. It reuses the root `.env` for app secrets. See the comments in `docker-compose.yml` for details.
+
+### 8. Mail Service (LocalStack)
+Password-reset and deactivation emails are sent asynchronously by the `api/mail-service/` sidecar (SQS queue → Lambda → SES). The API only puts a message on the queue. To run it locally, start LocalStack and deploy the stack once:
+```sh
+docker compose up -d localstack
+cd api/mail-service && npm install
+npm run local:bootstrap   # first time only
+npm run local:deploy
+```
+Sent emails can be inspected at `http://localhost:4566/_aws/ses`. See [api/mail-service/README.md](api/mail-service/README.md) for details.
 
 ### Additional Scripts
 - **Root convenience scripts** (from the repo root): `npm run start` (runs the calculator service, API, and frontend dev servers together), `npm run build` (builds API + frontend), `npm run setup:calculator` / `npm run start:calculator` (calculator service), `npm run generate:proto` (regenerate the gRPC stubs for both services from the `.proto` files)

@@ -1,0 +1,43 @@
+{
+  "name": "neurocyte-mail-service",
+  "version": "0.0.1",
+  "private": true,
+  "license": "UNLICENSED",
+  "description": "Async email sidecar: SQS queue + Lambda that sends mail via SES. Deployed with CDK (LocalStack locally).",
+  "scripts": {
+    "build": "tsc --noEmit",
+    "test": "jest",
+    "synth": "cdk synth",
+    "local:bootstrap": "cdklocal bootstrap",
+    "local:deploy": "cdklocal deploy --require-approval never",
+    "local:destroy": "cdklocal destroy --force"
+  },
+  "jest": {
+    "testEnvironment": "node",
+    "roots": [
+      "<rootDir>/lambda",
+      "<rootDir>/lib"
+    ],
+    "testRegex": ".*\\.spec\\.ts$",
+    "transform": {
+      "^.+\\.ts$": "ts-jest"
+    }
+  },
+  "dependencies": {
+    "@aws-sdk/client-ses": "^3.1169.0"
+  },
+  "devDependencies": {
+    "@types/aws-lambda": "^8.10.164",
+    "@types/jest": "^30.0.0",
+    "@types/node": "^26.6.6",
+    "aws-cdk": "^2.1148.1",
+    "aws-cdk-lib": "^2.277.0",
+    "aws-cdk-local": "^3.1.0",
+    "constructs": "^10.8.1",
+    "esbuild": "^0.28.2",
+    "jest": "^30.5.2",
+    "ts-jest": "^29.4.15",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.9.3"
+  }
+}
