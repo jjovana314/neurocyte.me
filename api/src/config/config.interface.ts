@@ -5,11 +5,9 @@ export interface Config {
   DATABASE_URL: string;
   DATABASE_NAME: string;
   DATABASE_PORT: string;
-  MAIL_HOST: string;
-  MAIL_PORT: string;
-  MAIL_USER: string;
-  MAIL_PASS: string;
-  MAIL_FROM: string;
+  AWS_REGION: string;
+  AWS_ENDPOINT_URL: string;
+  MAIL_QUEUE_URL: string;
   APP_URL: string;
   FRONTEND_URL: string;
   ACCESS_TOKEN_TIME: string;

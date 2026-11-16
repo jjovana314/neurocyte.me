@@ -27,25 +27,19 @@ export const config = createProfiguration<Config>(
       default: '',
       env: 'DATABASE_PORT',
     },
-    MAIL_HOST: {
-      default: '',
-      env: 'MAIL_HOST',
+    AWS_REGION: {
+      default: 'us-east-1',
+      env: 'AWS_REGION',
     },
-    MAIL_PORT: {
+    // Set to http://localhost:4566 to talk to LocalStack; leave empty for real AWS.
+    AWS_ENDPOINT_URL: {
       default: '',
-      env: 'MAIL_PORT',
+      env: 'AWS_ENDPOINT_URL',
     },
-    MAIL_USER: {
+    // SQS queue consumed by the mail-service Lambda (see api/mail-service/).
+    MAIL_QUEUE_URL: {
       default: '',
-      env: 'MAIL_USER',
-    },
-    MAIL_PASS: {
-      default: '',
-      env: 'MAIL_PASS',
-    },
-    MAIL_FROM: {
-      default: '',
-      env: 'MAIL_FROM',
+      env: 'MAIL_QUEUE_URL',
     },
     APP_URL: {
       default: '',

@@ -1,5 +1,5 @@
-# Dockerized app: frontend, API, its MySQL database, and the calculator
-# gRPC service.
+# Dockerized app: frontend, API, its MySQL database, the calculator
+# gRPC service, and LocalStack (local AWS for the mail-service sidecar).
 #
 # Usage: copy .env.example to .env in the repo root (if you haven't already,
 # see README.md) and run `docker compose up --build`.
@@ -35,6 +35,21 @@ services:
     ports:
       - '50051:50051'
 
+  # Local AWS (SQS, Lambda, SES, ...) for the mail-service sidecar.
+  # Deploy the stack into it with `npm run local:deploy --prefix api/mail-service`
+  # (see api/mail-service/README.md). Sent emails: http://localhost:4566/_aws/ses
+  localstack:
+    image: localstack/localstack:4
+    restart: unless-stopped
+    environment:
+      # Only needed if your LocalStack image/plan requires an auth token.
+      LOCALSTACK_AUTH_TOKEN: ${LOCALSTACK_AUTH_TOKEN:-}
+    ports:
+      - '4566:4566'
+    volumes:
+      # LocalStack runs each Lambda in its own container.
+      - /var/run/docker.sock:/var/run/docker.sock
+
   api:
     build:
       context: ./api
@@ -44,7 +59,9 @@ services:
         condition: service_healthy
       calculator:
         condition: service_started
-    # Picks up SECRET_KEY, MAIL_*, ACCESS_TOKEN_TIME, REFRESH_TOKEN_TIME,
+      localstack:
+        condition: service_started
+    # Picks up SECRET_KEY, ACCESS_TOKEN_TIME, REFRESH_TOKEN_TIME,
     # FRONTEND_URL, APP_URL, etc. from your existing local dev config.
     env_file:
       - ./.env
@@ -57,6 +74,12 @@ services:
       DATABASE_PASSWORD: neurocyte_dev
       DATABASE_NAME: neurocyte
       CALCULATOR_GRPC_URL: calculator:50051
+      # Mail goes to the LocalStack SQS queue; LocalStack accepts any keys.
+      AWS_REGION: us-east-1
+      AWS_ENDPOINT_URL: http://localstack:4566
+      AWS_ACCESS_KEY_ID: test
+      AWS_SECRET_ACCESS_KEY: test
+      MAIL_QUEUE_URL: http://localstack:4566/000000000000/neurocyte-mail
     ports:
       - '3000:3000'
 

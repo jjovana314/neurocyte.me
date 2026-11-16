@@ -1,18 +1,28 @@
 import { Injectable } from '@nestjs/common';
-import * as nodemailer from 'nodemailer';
+import { SendMessageCommand, SQSClient } from '@aws-sdk/client-sqs';
 import { config } from 'src/config/config';
+
+/**
+ * Shape of a message on the mail queue. Must match `EmailMessage` in
+ * api/mail-service/lambda/send-email.ts, which consumes the queue and sends the
+ * email through SES.
+ */
+export interface EmailMessage {
+  to: string;
+  subject: string;
+  html: string;
+}
 
 @Injectable()
 export class MailService {
-  private transporter: nodemailer.Transporter;
+  private readonly sqs: SQSClient;
 
   constructor() {
-    this.transporter = nodemailer.createTransport({
-      // host: config.get().MAIL_HOST,
-      auth: {
-        user: config.get().MAIL_FROM,
-        pass: config.get().MAIL_PASS,
-      },
+    const { AWS_REGION, AWS_ENDPOINT_URL } = config.get();
+    this.sqs = new SQSClient({
+      region: AWS_REGION,
+      // Points the SDK at LocalStack locally; empty means real AWS.
+      ...(AWS_ENDPOINT_URL ? { endpoint: AWS_ENDPOINT_URL } : {}),
     });
   }
 
@@ -21,8 +31,7 @@ export class MailService {
     resetLink: string,
     userName: string,
   ): Promise<void> {
-    await this.transporter.sendMail({
-      from: config.get().MAIL_FROM,
+    await this.enqueue({
       to: toEmail,
       subject: 'Password Reset Request',
       html: `
@@ -39,8 +48,7 @@ export class MailService {
     deactivationLink: string,
     userName: string,
   ): Promise<void> {
-    await this.transporter.sendMail({
-      from: config.get().MAIL_FROM,
+    await this.enqueue({
       to: adminEmail,
       subject: 'User Deactivation Request',
       html: `
@@ -50,5 +58,14 @@ export class MailService {
         <p>If you did not expect this request, you can ignore this email.</p>
       `,
     });
+  }
+
+  private async enqueue(message: EmailMessage): Promise<void> {
+    await this.sqs.send(
+      new SendMessageCommand({
+        QueueUrl: config.get().MAIL_QUEUE_URL,
+        MessageBody: JSON.stringify(message),
+      }),
+    );
   }
 }
