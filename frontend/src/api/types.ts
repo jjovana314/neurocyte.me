@@ -263,6 +263,8 @@ export interface ImportCsvResponse {
 
 export interface SearchPatientsParams {
   query?: string;
+  // Comma-separated PatientRecordType values; patient must have ALL of them.
+  recordTypes?: string;
   page?: number;
   pageSize?: number;
   sortBy?: string;

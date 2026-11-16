@@ -147,6 +147,7 @@ describe('PatientsController', () => {
         RoleEnum.DOCTOR,
         {
           query: 'jane',
+          recordTypes: [],
           options: {
             page: 2,
             pageSize: 10,
@@ -176,6 +177,7 @@ describe('PatientsController', () => {
         RoleEnum.DOCTOR,
         {
           query: undefined,
+          recordTypes: [],
           options: {
             page: NaN,
             pageSize: NaN,
@@ -185,6 +187,27 @@ describe('PatientsController', () => {
         },
       );
       expect(result).toBe(mockResult);
+    });
+    it('should parse comma-separated and repeated recordTypes into a list', async () => {
+      mockPatientsService.search.mockResolvedValue({ patients: [], total: 0 });
+
+      await controller.searchPatients(
+        mockUser,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        ['edssAssessments, migraineLogs', 'ncsStudies', ''],
+      );
+
+      expect(mockPatientsService.search).toHaveBeenCalledWith(
+        1,
+        RoleEnum.DOCTOR,
+        expect.objectContaining({
+          recordTypes: ['edssAssessments', 'migraineLogs', 'ncsStudies'],
+        }),
+      );
     });
   });
 
