@@ -4,6 +4,7 @@ import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tansta
 import { deletePatient, exportCsv, exportPatientPdf, searchPatients } from '../api/patients';
 import ExpandedRow from './ExpandedRow';
 import React from 'react';
+import { RECORD_TYPE_OPTIONS, type PatientRecordType } from '../constants/recordTypes';
 
 const PAGE_SIZE = 20;
 const SEARCH_DEBOUNCE_MS = 300;
@@ -48,6 +49,7 @@ export default function PatientTable({ role }: Props) {
   const [page, setPage] = useState(1);
   const [sortBy, setSortBy] = useState<SortableColumn>('createdAt');
   const [order, setOrder] = useState<'ASC' | 'DESC'>('DESC');
+  const [recordTypes, setRecordTypes] = useState<PatientRecordType[]>([]);
 
   const [patientToDelete, setPatientToDelete] = useState<{ id: number; name: string } | null>(null);
 
@@ -60,10 +62,11 @@ export default function PatientTable({ role }: Props) {
   }, [search]);
 
   const { data, isLoading, isFetching, error } = useQuery({
-    queryKey: ['patients', debouncedSearch, page, sortBy, order],
+    queryKey: ['patients', debouncedSearch, recordTypes, page, sortBy, order],
     queryFn: () =>
       searchPatients({
         query: debouncedSearch || undefined,
+        recordTypes: recordTypes.length ? recordTypes.join(',') : undefined,
         page,
         pageSize: PAGE_SIZE,
         sortBy,
@@ -71,6 +74,13 @@ export default function PatientTable({ role }: Props) {
       }),
     placeholderData: keepPreviousData,
   });
+
+  function toggleRecordType(type: PatientRecordType) {
+    setRecordTypes((prev) =>
+      prev.includes(type) ? prev.filter((t) => t !== type) : [...prev, type],
+    );
+    setPage(1);
+  }
 
   function handleSort(column: SortableColumn) {
     if (sortBy === column) {
@@ -158,6 +168,28 @@ export default function PatientTable({ role }: Props) {
           {csvExportError && <p className="status-msg error">{csvExportError}</p>}
         </div>
       </div>
+
+      <fieldset className="record-type-filter">
+        <legend>Has all of:</legend>
+        {RECORD_TYPE_OPTIONS.map(({ value, label }) => (
+          <label key={value} className="record-type-option">
+            <input
+              type="checkbox"
+              checked={recordTypes.includes(value)}
+              onChange={() => toggleRecordType(value)}
+            />
+            {label}
+          </label>
+        ))}
+        {recordTypes.length > 0 && (
+          <button type="button" className="btn btn-sm btn-secondary" onClick={() => {
+              setRecordTypes([]);
+              setPage(1);
+            }}>
+            Clear
+          </button>
+        )}
+      </fieldset>
 
       {list.length === 0 ? (
         <p className="status-msg">No patients found.</p>

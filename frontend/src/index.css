@@ -144,6 +144,28 @@ body {
 .search-input {
   width: 400px;
 }
+.record-type-filter {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 16px;
+  margin: 0 0 16px;
+  padding: 0;
+  border: none;
+  font-size: 13px;
+}
+.record-type-filter legend {
+  float: left;
+  margin-right: 4px;
+  color: #666;
+}
+.record-type-option {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  white-space: nowrap;
+}
 .pagination {
   display: flex;
   align-items: center;

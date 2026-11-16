@@ -112,9 +112,16 @@ export class PatientsController {
     @Query('pageSize') pageSize: string,
     @Query('sortBy') sortBy: string,
     @Query('order') order: 'ASC' | 'DESC',
+    // Comma-separated (`recordTypes=a,b`) or repeated (`recordTypes=a&recordTypes=b`).
+    @Query('recordTypes') recordTypes?: string | string[],
   ): Promise<PatientSearchResult> {
     const searchPatientDto: SearchPatientDto = {
       query,
+      recordTypes: [recordTypes ?? []]
+        .flat()
+        .flatMap((value) => value.split(','))
+        .map((value) => value.trim())
+        .filter(Boolean),
       options: {
         page: parseInt(page, 10),
         pageSize: parseInt(pageSize, 10),

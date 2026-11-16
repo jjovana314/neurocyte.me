@@ -45,6 +45,10 @@ import { dateValidation } from './utils/validation';
 import { SearchPatientDto } from './dtos/search-patient.dto';
 import { PatientSearchResult } from './interfaces/search-result.interface';
 import { RoleEnum } from 'src/auth/enums/role.enum';
+import {
+  PatientRecordType,
+  isPatientRecordType,
+} from './enums/patient-record-type';
 import { CreateTouretteSyndromeDto } from './dtos/create-tourette-syndrome.dto';
 import { TycType } from './enums/touretteTycType';
 import { TouretteTrigger } from './enums/touretteTrigger';
@@ -167,8 +171,10 @@ export class PatientsService implements OnModuleInit {
   }
 
   // Free-text search bar: matches a single query term against name, email
-  // and phone with OR semantics (any field matching is a hit), scoped to
-  // the requesting doctor's own patients unless they're a Support Engineer.
+  // and phone with OR semantics (any field matching is a hit). The record
+  // type checklist is ANDed on top: the patient must have at least one
+  // record of every selected type. Results are scoped to the requesting
+  // doctor's own patients unless they're a Support Engineer.
   @errorHandler
   async search(
     doctorId: number,
@@ -215,6 +221,16 @@ export class PatientsService implements OnModuleInit {
       );
     }
 
+    // Each record type is already LEFT JOINed under an alias equal to its
+    // enum value, so "has at least one" is just a non-null id on that join.
+    // A patient who has records of a type has them on every joined row, so
+    // this keeps their full set of records loaded.
+    for (const recordType of this.resolveRecordTypes(
+      searchPatient.recordTypes,
+    )) {
+      qb.andWhere(`${recordType}.id IS NOT NULL`);
+    }
+
     const sortColumn = this.resolveSearchSortColumn(
       searchPatient.options?.sortBy,
     );
@@ -231,6 +247,19 @@ export class PatientsService implements OnModuleInit {
     );
 
     return { patients, total };
+  }
+
+  // Record types end up interpolated into raw SQL, so anything outside the
+  // enum is rejected rather than silently dropped.
+  private resolveRecordTypes(recordTypes?: string[]): PatientRecordType[] {
+    const unique = [...new Set(recordTypes ?? [])];
+    const invalid = unique.filter((type) => !isPatientRecordType(type));
+    if (invalid.length) {
+      throw new BadRequestException(
+        `Invalid record type(s): ${invalid.join(', ')}. Allowed: ${Object.values(PatientRecordType).join(', ')}`,
+      );
+    }
+    return unique as PatientRecordType[];
   }
 
   // orderBy() takes a raw column name, so the sort field must come from an

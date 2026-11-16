@@ -1414,6 +1414,63 @@ describe('PatientsService', () => {
       });
     });
 
+    it('requires a record of every selected type (AND)', async () => {
+      await service.search(1, RoleEnum.DOCTOR, {
+        recordTypes: ['edssAssessments', 'migraineLogs', 'ncsStudies'],
+      });
+
+      expect(mockQueryBuilder.andWhere).toHaveBeenCalledWith(
+        'edssAssessments.id IS NOT NULL',
+      );
+      expect(mockQueryBuilder.andWhere).toHaveBeenCalledWith(
+        'migraineLogs.id IS NOT NULL',
+      );
+      expect(mockQueryBuilder.andWhere).toHaveBeenCalledWith(
+        'ncsStudies.id IS NOT NULL',
+      );
+    });
+
+    it('combines the record type filter with the text search', async () => {
+      await service.search(1, RoleEnum.DOCTOR, {
+        query: 'jane',
+        recordTypes: ['touretteSyndrom'],
+      });
+
+      getBracketsWhereFactory();
+      expect(mockQueryBuilder.andWhere).toHaveBeenCalledWith(
+        'touretteSyndrom.id IS NOT NULL',
+      );
+    });
+
+    it('ignores duplicate record types', async () => {
+      await service.search(1, RoleEnum.DOCTOR, {
+        recordTypes: ['seizureLogs', 'seizureLogs'],
+      });
+
+      const seizureCalls = mockQueryBuilder.andWhere.mock.calls.filter(
+        ([arg]) => arg === 'seizureLogs.id IS NOT NULL',
+      );
+      expect(seizureCalls).toHaveLength(1);
+    });
+
+    it('rejects unknown record types instead of interpolating them into SQL', async () => {
+      await expect(
+        service.search(1, RoleEnum.DOCTOR, {
+          recordTypes: ['edssAssessments', 'patient.id = 1 OR 1'],
+        }),
+      ).rejects.toThrow(BadRequestException);
+      expect(mockQueryBuilder.getManyAndCount).not.toHaveBeenCalled();
+    });
+
+    it('adds no record type filter when none are selected', async () => {
+      await service.search(1, RoleEnum.DOCTOR, { recordTypes: [] });
+
+      const recordTypeCalls = mockQueryBuilder.andWhere.mock.calls.filter(
+        ([arg]) => typeof arg === 'string' && arg.endsWith('.id IS NOT NULL'),
+      );
+      expect(recordTypeCalls).toHaveLength(0);
+    });
+
     it('also matches by id when the query term is numeric', async () => {
       await service.search(1, RoleEnum.DOCTOR, { query: '42' });
 
