@@ -1,10 +1,6 @@
 import { SESClient, SendEmailCommand } from '@aws-sdk/client-ses';
 import type { SQSBatchResponse, SQSEvent, SQSRecord } from 'aws-lambda';
 
-/**
- * Message published by the NestJS API (api/src/user/mail.service.ts).
- * Keep the two definitions in sync.
- */
 export interface EmailMessage {
   to: string;
   subject: string;
@@ -21,11 +17,6 @@ export function parseMessage(body: string): EmailMessage {
   return parsed as EmailMessage;
 }
 
-/**
- * Builds the SQS handler. Each record is sent on its own; failed records are
- * reported back so SQS retries only those (and moves them to the DLQ after
- * maxReceiveCount attempts) instead of redelivering the whole batch.
- */
 export function createHandler(ses: Pick<SESClient, 'send'>, from: string) {
   const sendRecord = async (record: SQSRecord) => {
     const { to, subject, html } = parseMessage(record.body);

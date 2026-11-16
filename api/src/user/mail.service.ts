@@ -13,10 +13,6 @@ export interface EmailMessage {
   html: string;
 }
 
-/**
- * Sends emails asynchronously: instead of talking to SMTP during the HTTP
- * request, it drops a message on SQS and the mail-service Lambda delivers it.
- */
 @Injectable()
 export class MailService {
   private readonly sqs: SQSClient;

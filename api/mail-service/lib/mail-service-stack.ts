@@ -13,13 +13,8 @@ export interface MailServiceStackProps extends StackProps {
   mailFrom: string;
 }
 
-/** Fixed so the queue URL is predictable for the API's MAIL_QUEUE_URL. */
 export const MAIL_QUEUE_NAME = 'neurocyte-mail';
 
-/**
- * API --SendMessage--> SQS (neurocyte-mail) --> Lambda (send-email) --> SES
- *                       \-- after 3 failed attempts --> DLQ
- */
 export class MailServiceStack extends Stack {
   constructor(scope: Construct, id: string, props: MailServiceStackProps) {
     super(scope, id, props);
