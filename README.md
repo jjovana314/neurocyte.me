@@ -91,23 +91,22 @@ npm run dev
 ### 7. Docker (Full Stack)
 The frontend, the API, the calculator service, and the MySQL database can all be run in Docker instead of steps 2-6 above. From the repo root:
 ```sh
-docker compose up --build
+npm run docker:up
 ```
-This builds `api/Dockerfile`, `calculator/Dockerfile` and `frontend/Dockerfile` and starts them alongside a `mysql:8.4` container. Migrations are applied and the base roles/actions are seeded on every API start, before it boots (see `api/docker-entrypoint.sh`). The MySQL data is persisted in the `db-data` named volume, so it survives container restarts (`docker compose down -v` removes it). 
+This runs `docker compose up -d --build --wait` and then deploys the mail-service stack into LocalStack (see section 8). It builds `api/Dockerfile`, `calculator/Dockerfile` and `frontend/Dockerfile` and starts them alongside a `mysql:8.4` container. Migrations are applied and the base roles/actions are seeded on every API start, before it boots (see `api/docker-entrypoint.sh`). The MySQL data is persisted in the `db-data` named volume, so it survives container restarts (`docker compose down -v` removes it). 
 The API reaches the calculator over the docker network at `calculator:50051`. The app is served at `http://localhost:5173`, matching `.env`'s `FRONTEND_URL`. It reuses the root `.env` for app secrets. See the comments in `docker-compose.yml` for details.
 
 ### 8. Mail Service (LocalStack)
-Password-reset and deactivation emails are sent asynchronously by the `api/mail-service/` sidecar (SQS queue → Lambda → SES). The API only puts a message on the queue. To run it locally, start LocalStack and deploy the stack once:
+Password-reset and deactivation emails are sent asynchronously by the `api/mail-service/` sidecar (SQS queue → Lambda → SES). The API only puts a message on the queue. To run it locally, install its dependencies once (`cd api/mail-service && npm install`), then start LocalStack and deploy the stack:
 ```sh
 docker compose up -d localstack
-cd api/mail-service && npm install
-npm run local:bootstrap   # first time only
-npm run local:deploy
+npm run mail:deploy       # from the repo root: CDK bootstrap + deploy
 ```
+The free LocalStack edition keeps no state, so **every LocalStack restart wipes the queue** and the API fails with `QueueDoesNotExist` until you run `npm run mail:deploy` again. `npm run docker:up` does this for you.
 Sent emails can be inspected at `http://localhost:4566/_aws/ses`. See [api/mail-service/README.md](api/mail-service/README.md) for details.
 
 ### Additional Scripts
-- **Root convenience scripts** (from the repo root): `npm run start` (runs the calculator service, API, and frontend dev servers together), `npm run build` (builds API + frontend), `npm run setup:calculator` / `npm run start:calculator` (calculator service), `npm run generate:proto` (regenerate the gRPC stubs for both services from the `.proto` files)
+- **Root convenience scripts** (from the repo root): `npm run start` (runs the calculator service, API, and frontend dev servers together), `npm run build` (builds API + frontend), `npm run setup:calculator` / `npm run start:calculator` (calculator service), `npm run generate:proto` (regenerate the gRPC stubs for both services from the `.proto` files), `npm run docker:up` (full Docker stack + mail-service deploy), `npm run mail:deploy` (redeploy the mail-service into LocalStack)
 - **Backend:** `npm run test` / `npm run test:cov` (unit tests), `npm run test:e2e` (end-to-end tests), `npm run lint`, `npm run format`
 - **Calculator:** `npm run test:calculator` (from the repo root) runs the Python unit tests under `calculator/tests` with pytest
 - **Frontend:** `npm run build` (type-check + production bundle), `npm run test` (unit tests, Vitest + React Testing Library) / `npm run test:watch`, `npm run lint`, `npm run preview` (serve the production build locally)

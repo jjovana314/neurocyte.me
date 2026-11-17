@@ -64,12 +64,11 @@ npx awslocal sqs receive-message \
 
 If you don't have `awslocal`, use `aws --endpoint-url http://localhost:4566 ...` instead.
 
-If SES rejects the sender with "Email address is not verified", verify it by hand:
-`aws --endpoint-url http://localhost:4566 ses verify-email-identity --email-address noreply@neurocyte.me`
+`local:deploy` passes `-c local=true`, which leaves out the `AWS::SES::EmailIdentity` resource. That resource is created through the SESv2 API, which the free LocalStack edition doesn't emulate. Instead, [scripts/verify-local-sender.ts](scripts/verify-local-sender.ts) verifies the sender through the SES v1 API after the deploy. If SES still rejects the sender with "Email address is not verified", run `npx ts-node scripts/verify-local-sender.ts` again.
 
 ## Configuration
 
-- **Sender address:** defaults to `mailFrom` in [cdk.json](cdk.json). Override it with `MAIL_FROM=... npm run local:deploy`.
+- **Sender address:** `MAIL_FROM` in the repo-root `.env` (required). A `MAIL_FROM=...` set in the shell takes precedence.
 - **Region:** `us-east-1`. Override it with `CDK_DEFAULT_REGION`.
 
 ## Real AWS

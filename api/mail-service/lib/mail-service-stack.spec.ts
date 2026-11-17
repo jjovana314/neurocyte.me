@@ -42,4 +42,14 @@ describe('MailServiceStack', () => {
       },
     });
   });
+
+  it('skips the SESv2-backed identity when deploying to LocalStack', () => {
+    const local = Template.fromStack(
+      new MailServiceStack(new App(), 'Local', {
+        mailFrom: 'noreply@test.io',
+        local: true,
+      }),
+    );
+    local.resourceCountIs('AWS::SES::EmailIdentity', 0);
+  });
 });

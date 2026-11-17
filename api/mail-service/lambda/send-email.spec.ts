@@ -33,12 +33,17 @@ describe('parseMessage', () => {
 
 describe('send-email handler', () => {
   const send = jest.fn();
-  const handler = createHandler({ send } as never, 'noreply@neurocyte.me');
+  const logger = { info: jest.fn(), error: jest.fn() };
+  const handler = createHandler(
+    { send } as never,
+    'noreply@neurocyte.me',
+    logger as never,
+  );
 
   beforeEach(() => {
     send.mockReset().mockResolvedValue({});
-    jest.spyOn(console, 'log').mockImplementation(() => undefined);
-    jest.spyOn(console, 'error').mockImplementation(() => undefined);
+    logger.info.mockReset();
+    logger.error.mockReset();
   });
 
   it('sends the email through SES from the configured sender', async () => {
@@ -77,9 +82,10 @@ describe('send-email handler', () => {
     send.mockRejectedValueOnce(new Error('boom'));
     await handler(event(record('m1', valid)));
 
+    expect(logger.error).toHaveBeenCalledTimes(1);
     const logged = JSON.stringify([
-      (console.log as jest.Mock).mock.calls,
-      (console.error as jest.Mock).mock.calls,
+      logger.info.mock.calls,
+      logger.error.mock.calls,
     ]);
     expect(logged).not.toContain('user@x.io');
     expect(logged).not.toContain('token=abc');

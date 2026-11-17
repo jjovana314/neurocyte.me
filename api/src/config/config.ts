@@ -1,5 +1,30 @@
+import { existsSync } from 'fs';
+import * as path from 'path';
 import { createProfiguration } from '@golevelup/profiguration';
 import { Config } from './config.interface';
+
+/**
+ * The single env file lives in the repo root. This config is loaded from
+ * api/ (the API and its scripts) and from api/mail-service/ (the CDK app and
+ * its Lambda), so walk up from the working directory to the nearest .env.
+ * Returns no files when there is none (e.g. inside the Lambda, where values
+ * come from real environment variables), since strict mode throws on a
+ * missing file.
+ */
+function findEnvFile(): string[] {
+  let dir = process.cwd();
+  for (;;) {
+    const candidate = path.join(dir, '.env');
+    if (existsSync(candidate)) {
+      return [candidate];
+    }
+    const parent = path.dirname(dir);
+    if (parent === dir) {
+      return [];
+    }
+    dir = parent;
+  }
+}
 
 export const config = createProfiguration<Config>(
   {
@@ -41,6 +66,11 @@ export const config = createProfiguration<Config>(
       default: '',
       env: 'MAIL_QUEUE_URL',
     },
+    // Sender address for the mail-service (CDK stack + Lambda).
+    MAIL_FROM: {
+      default: '',
+      env: 'MAIL_FROM',
+    },
     APP_URL: {
       default: '',
       env: 'APP_URL',
@@ -67,8 +97,7 @@ export const config = createProfiguration<Config>(
     verbose: true,
     loadRelativeTo: 'cwd',
     configureEnv: () => ({
-      // Single env file lives in the repo root; scripts run with cwd = api/.
-      files: process.env.ENV_FILE ?? '../.env',
+      files: process.env.ENV_FILE ?? findEnvFile(),
     }),
   },
 );
