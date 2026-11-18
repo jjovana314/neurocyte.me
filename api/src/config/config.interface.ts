@@ -8,6 +8,7 @@ export interface Config {
   AWS_REGION: string;
   AWS_ENDPOINT_URL: string;
   MAIL_QUEUE_URL: string;
+  MAIL_FROM: string;
   APP_URL: string;
   FRONTEND_URL: string;
   ACCESS_TOKEN_TIME: string;

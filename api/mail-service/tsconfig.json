@@ -9,6 +9,6 @@
     "types": ["node", "jest"],
     "noEmit": true
   },
-  "include": ["bin", "lib", "lambda"],
+  "include": ["bin", "lib", "lambda", "scripts"],
   "exclude": ["node_modules", "cdk.out"]
 }

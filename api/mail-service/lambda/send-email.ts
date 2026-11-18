@@ -1,5 +1,8 @@
 import { SESClient, SendEmailCommand } from '@aws-sdk/client-ses';
 import type { SQSBatchResponse, SQSEvent, SQSRecord } from 'aws-lambda';
+import type { Logger } from 'pino';
+import { config } from '../../src/config/config';
+import { createLogger } from '../../src/logger/logger.config';
 
 export interface EmailMessage {
   to: string;
@@ -17,7 +20,11 @@ export function parseMessage(body: string): EmailMessage {
   return parsed as EmailMessage;
 }
 
-export function createHandler(ses: Pick<SESClient, 'send'>, from: string) {
+export function createHandler(
+  ses: Pick<SESClient, 'send'>,
+  from: string,
+  logger: Pick<Logger, 'info' | 'error'>,
+) {
   const sendRecord = async (record: SQSRecord) => {
     const { to, subject, html } = parseMessage(record.body);
     await ses.send(
@@ -38,12 +45,12 @@ export function createHandler(ses: Pick<SESClient, 'send'>, from: string) {
     for (const record of event.Records) {
       try {
         await sendRecord(record);
-        console.log(`Sent email for message ${record.messageId}`);
+        logger.info({ messageId: record.messageId }, 'Sent email');
       } catch (error) {
         // Log only the message id: the body holds the recipient and reset token.
-        console.error(
-          `Failed to send email for message ${record.messageId}:`,
-          (error as Error).message,
+        logger.error(
+          { messageId: record.messageId, error: (error as Error).message },
+          'Failed to send email',
         );
         batchItemFailures.push({ itemIdentifier: record.messageId });
       }
@@ -55,7 +62,9 @@ export function createHandler(ses: Pick<SESClient, 'send'>, from: string) {
 
 // Inside LocalStack, the SDK picks up AWS_ENDPOINT_URL that LocalStack
 // injects into the Lambda container, so no endpoint override is needed here.
+// MAIL_FROM is set on the function by the stack (there's no .env in Lambda).
 export const handler = createHandler(
   new SESClient({}),
-  process.env.MAIL_FROM ?? '',
+  config.get().MAIL_FROM,
+  createLogger('send-email'),
 );

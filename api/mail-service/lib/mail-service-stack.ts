@@ -11,6 +11,13 @@ import { Construct } from 'constructs';
 export interface MailServiceStackProps extends StackProps {
   /** Sender address; must be a verified SES identity. */
   mailFrom: string;
+  /**
+   * Deploying to LocalStack. AWS::SES::EmailIdentity is backed by SESv2, which
+   * the free LocalStack edition doesn't emulate (and it doesn't run custom
+   * resources either), so the resource is skipped and `npm run local:deploy`
+   * verifies the sender afterwards via scripts/verify-local-sender.ts.
+   */
+  local?: boolean;
 }
 
 export const MAIL_QUEUE_NAME = 'neurocyte-mail';
@@ -31,9 +38,11 @@ export class MailServiceStack extends Stack {
       deadLetterQueue: { queue: deadLetterQueue, maxReceiveCount: 3 },
     });
 
-    new ses.EmailIdentity(this, 'SenderIdentity', {
-      identity: ses.Identity.email(props.mailFrom),
-    });
+    if (!props.local) {
+      new ses.EmailIdentity(this, 'SenderIdentity', {
+        identity: ses.Identity.email(props.mailFrom),
+      });
+    }
 
     const sendEmail = new NodejsFunction(this, 'SendEmailFunction', {
       entry: path.join(__dirname, '../lambda/send-email.ts'),

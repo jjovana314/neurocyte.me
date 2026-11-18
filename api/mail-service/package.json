@@ -8,9 +8,9 @@
     "build": "tsc --noEmit",
     "test": "jest",
     "synth": "cdk synth",
-    "local:bootstrap": "cdklocal bootstrap",
-    "local:deploy": "cdklocal deploy --require-approval never",
-    "local:destroy": "cdklocal destroy --force"
+    "local:bootstrap": "lstk cdk bootstrap",
+    "local:deploy": "lstk cdk deploy --require-approval never -c local=true && ts-node scripts/verify-local-sender.ts",
+    "local:destroy": "lstk cdk destroy --force -c local=true"
   },
   "jest": {
     "testEnvironment": "node",
@@ -24,7 +24,8 @@
     }
   },
   "dependencies": {
-    "@aws-sdk/client-ses": "^3.1169.0"
+    "@aws-sdk/client-ses": "^3.1169.0",
+    "@localstack/lstk": "^1.4.5"
   },
   "devDependencies": {
     "@types/aws-lambda": "^8.10.164",
