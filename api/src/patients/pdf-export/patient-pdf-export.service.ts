@@ -30,8 +30,14 @@ export class PatientPdfExportService {
   ): Promise<Buffer> {
     const isSupportEngineer = roleName === RoleEnum.SUPPORT_ENGINEER;
 
-    const doctor = await this.patientsService.findUserById(doctorId);
-    const patient = await this.patientsService.getPatient(doctorId, patientId);
+    const patient = await this.patientsService.getPatient(
+      doctorId,
+      patientId,
+      roleName,
+    );
+    // The requester may be a Support Engineer, so the attending doctor is
+    // always the patient's own doctor, not whoever is exporting.
+    const doctor = await this.patientsService.findUserById(patient.doctorId);
     const records = await this.patientsService.findPatientRecords(patientId);
 
     const pdf = new PatientPdfDocument().addTitle(

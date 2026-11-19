@@ -548,6 +548,26 @@ describe('PatientPdfExportService', () => {
       expect(mockLogger.info).not.toHaveBeenCalled();
     });
 
+    it("should name the patient's own doctor, not the exporting Support Engineer", async () => {
+      const supportEngineerId = 27;
+
+      await service.exportPatientPdf(
+        supportEngineerId,
+        patientId,
+        RoleEnum.SUPPORT_ENGINEER,
+      );
+
+      expect(mockPatientsService.getPatient).toHaveBeenCalledWith(
+        supportEngineerId,
+        patientId,
+        RoleEnum.SUPPORT_ENGINEER,
+      );
+      expect(mockPatientsService.findUserById).toHaveBeenCalledWith(doctorId);
+      expect(mockPatientsService.findUserById).not.toHaveBeenCalledWith(
+        supportEngineerId,
+      );
+    });
+
     it('should fetch the doctor, patient and records from PatientsService', async () => {
       mockPatientsService.findUserById.mockResolvedValue(mockDoctor);
       mockPatientsService.getPatient.mockResolvedValue(mockPatient);
@@ -563,6 +583,7 @@ describe('PatientPdfExportService', () => {
       expect(mockPatientsService.getPatient).toHaveBeenCalledWith(
         doctorId,
         patientId,
+        RoleEnum.DOCTOR,
       );
       expect(mockPatientsService.findPatientRecords).toHaveBeenCalledWith(
         patientId,

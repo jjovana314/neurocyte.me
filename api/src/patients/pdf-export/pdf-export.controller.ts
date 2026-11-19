@@ -1,7 +1,6 @@
 import {
   Controller,
   Get,
-  Header,
   Param,
   ParseIntPipe,
   StreamableFile,
@@ -22,8 +21,6 @@ export class PdfExportController {
 
   @Get(':patientId/export')
   @UseGuards(RolesGuard)
-  @Header('Content-Type', 'application/pdf')
-  @Header('Content-Disposition', 'attachment; filename="patient-report.pdf"')
   async exportPatientPdf(
     @CurrentUser() user: JwtUser,
     @Param('patientId', ParseIntPipe) patientId: number,
@@ -33,6 +30,11 @@ export class PdfExportController {
       patientId,
       user.role.name,
     );
-    return new StreamableFile(buffer);
+    // Headers are set on the file itself (not via @Header) so that error
+    // responses keep their JSON Content-Type.
+    return new StreamableFile(buffer, {
+      type: 'application/pdf',
+      disposition: 'attachment; filename="patient-report.pdf"',
+    });
   }
 }

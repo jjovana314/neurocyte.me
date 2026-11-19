@@ -1360,6 +1360,24 @@ describe('PatientsService', () => {
         expect.stringContaining('Doctor 1 attempted to access patient 5'),
       );
     });
+
+    it('should let a Support Engineer read a patient owned by another doctor', async () => {
+      const patient = { id: 5, doctorId: 2 };
+      mockPatientRepository.findOne.mockResolvedValue(patient);
+
+      await expect(
+        service.getPatient(1, 5, RoleEnum.SUPPORT_ENGINEER),
+      ).resolves.toBe(patient);
+      expect(mockLogger.warn).not.toHaveBeenCalled();
+    });
+
+    it("should still forbid a Doctor from reading another doctor's patient", async () => {
+      mockPatientRepository.findOne.mockResolvedValue({ id: 5, doctorId: 2 });
+
+      await expect(service.getPatient(1, 5, RoleEnum.DOCTOR)).rejects.toThrow(
+        ForbiddenException,
+      );
+    });
   });
 
   describe('findUserById', () => {

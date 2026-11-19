@@ -63,6 +63,8 @@ function onsetVectorLabel(onsetVector: Patient['seizureLogs'][number]['onsetVect
 
 interface Props {
   patient: Patient;
+  /** When true, all add/edit controls are hidden and the patient's data is view-only. */
+  readOnly?: boolean;
 }
 
 function ambulationSummary(assessment: Patient['edssAssessments'][number]): string {
@@ -75,7 +77,7 @@ function ambulationSummary(assessment: Patient['edssAssessments'][number]): stri
   return '—';
 }
 
-export default function ExpandedRow({ patient }: Props) {
+export default function ExpandedRow({ patient, readOnly = false }: Props) {
   const queryClient = useQueryClient();
   const [editing, setEditing] = useState(false);
   const [notes, setNotes] = useState(patient.notes ?? '');
@@ -146,7 +148,7 @@ export default function ExpandedRow({ patient }: Props) {
   return (
     <div className="expanded-row" onClick={(e) => e.stopPropagation()}>
       <div className="expanded-toolbar">
-        {!editing && (
+        {!readOnly && !editing && (
           <button className="btn btn-sm" onClick={startEditing}>
             Edit notes / Add EDSS assessment
           </button>
@@ -155,7 +157,7 @@ export default function ExpandedRow({ patient }: Props) {
 
       {!editing && ncsImportResult && <NcsCsvImportResult result={ncsImportResult} />}
 
-      {editing && (
+      {!readOnly && editing && (
         <div className="expanded-section">
           <h4>Edit Patient</h4>
           <form onSubmit={handleSubmit}>
@@ -276,14 +278,14 @@ export default function ExpandedRow({ patient }: Props) {
       <div className="expanded-section">
         <div className="section-header">
           <h4>Migraine Log</h4>
-          {!addingMigraineLog && (
+          {!readOnly && !addingMigraineLog && (
             <button className="btn btn-sm" onClick={() => setAddingMigraineLog(true)}>
               Add migraine log
             </button>
           )}
         </div>
 
-        {addingMigraineLog && (
+        {!readOnly && addingMigraineLog && (
           <MigraineLogForm
             patientId={patient.id}
             idPrefix={`migraine-${patient.id}`}
@@ -331,14 +333,14 @@ export default function ExpandedRow({ patient }: Props) {
       <div className="expanded-section">
         <div className="section-header">
           <h4>Seizure Log</h4>
-          {!addingSeizureLog && (
+          {!readOnly && !addingSeizureLog && (
             <button className="btn btn-sm" onClick={() => setAddingSeizureLog(true)}>
               Add seizure log
             </button>
           )}
         </div>
 
-        {addingSeizureLog && (
+        {!readOnly && addingSeizureLog && (
           <SeizureLogForm
             patientId={patient.id}
             idPrefix={`seizure-${patient.id}`}
@@ -394,14 +396,14 @@ export default function ExpandedRow({ patient }: Props) {
       <div className="expanded-section">
         <div className="section-header">
           <h4>Tourette Syndrome</h4>
-          {!addingTourette && !editingTouretteRecord && (
+          {!readOnly && !addingTourette && !editingTouretteRecord && (
             <button className="btn btn-sm" onClick={() => setAddingTourette(true)}>
               Add Tourette record
             </button>
           )}
         </div>
 
-        {addingTourette && (
+        {!readOnly && addingTourette && (
           <TouretteSyndromeForm
             patientId={patient.id}
             idPrefix={`tourette-${patient.id}`}
@@ -410,7 +412,7 @@ export default function ExpandedRow({ patient }: Props) {
           />
         )}
 
-        {editingTouretteRecord && (
+        {!readOnly && editingTouretteRecord && (
           <TouretteSyndromeForm
             key={editingTouretteRecord.id}
             patientId={patient.id}
@@ -435,7 +437,7 @@ export default function ExpandedRow({ patient }: Props) {
                   <th>Triggers</th>
                   <th>Medication</th>
                   <th>Notes</th>
-                  <th />
+                  {!readOnly && <th />}
                 </tr>
               </thead>
               <tbody>
@@ -452,18 +454,20 @@ export default function ExpandedRow({ patient }: Props) {
                     </td>
                     <td>{record.medicationTaken || '—'}</td>
                     <td>{record.notes || '—'}</td>
-                    <td>
-                      <button
-                        className="btn btn-sm"
-                        onClick={() => {
-                          setAddingTourette(false);
-                          setEditingTouretteId(record.id);
-                        }}
-                        disabled={editingTouretteId === record.id}
-                      >
-                        Edit
-                      </button>
-                    </td>
+                    {!readOnly && (
+                      <td>
+                        <button
+                          className="btn btn-sm"
+                          onClick={() => {
+                            setAddingTourette(false);
+                            setEditingTouretteId(record.id);
+                          }}
+                          disabled={editingTouretteId === record.id}
+                        >
+                          Edit
+                        </button>
+                      </td>
+                    )}
                   </tr>
                 ))}
               </tbody>
@@ -475,14 +479,14 @@ export default function ExpandedRow({ patient }: Props) {
       <div className="expanded-section">
         <div className="section-header">
           <h4>Nerve Conduction Studies</h4>
-          {!addingNcsStudy && (
+          {!readOnly && !addingNcsStudy && (
             <button className="btn btn-sm" onClick={() => setAddingNcsStudy(true)}>
               Add NCS study
             </button>
           )}
         </div>
 
-        {addingNcsStudy && (
+        {!readOnly && addingNcsStudy && (
           <NcsStudyForm
             patientId={patient.id}
             idPrefix={`ncs-${patient.id}`}
@@ -541,14 +545,14 @@ export default function ExpandedRow({ patient }: Props) {
       <div className="expanded-section">
         <div className="section-header">
           <h4>Medical History</h4>
-          {!addingMedicalHistory && (
+          {!readOnly && !addingMedicalHistory && (
             <button className="btn btn-sm" onClick={() => setAddingMedicalHistory(true)}>
               Add medical history
             </button>
           )}
         </div>
 
-        {addingMedicalHistory && (
+        {!readOnly && addingMedicalHistory && (
           <MedicalHistoryForm
             patientId={patient.id}
             idPrefix={`medical-history-${patient.id}`}
@@ -592,14 +596,14 @@ export default function ExpandedRow({ patient }: Props) {
       <div className="expanded-section">
         <div className="section-header">
           <h4>Family History</h4>
-          {!addingFamilyHistory && (
+          {!readOnly && !addingFamilyHistory && (
             <button className="btn btn-sm" onClick={() => setAddingFamilyHistory(true)}>
               Add family history
             </button>
           )}
         </div>
 
-        {addingFamilyHistory && (
+        {!readOnly && addingFamilyHistory && (
           <FamilyHistoryForm
             patientId={patient.id}
             idPrefix={`family-history-${patient.id}`}
