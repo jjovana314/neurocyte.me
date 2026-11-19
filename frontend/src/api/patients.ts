@@ -134,7 +134,7 @@ export async function exportCsv(): Promise<void> {
 }
 
 export async function exportPatientPdf(patientId: number): Promise<void> {
-  const response = await client.get(`/patients/${patientId}/export/pdf`, {
+  const response = await client.get(`/pdf/${patientId}/export`, {
     responseType: 'blob',
   });
   const url = URL.createObjectURL(new Blob([response.data], { type: 'application/pdf' }));

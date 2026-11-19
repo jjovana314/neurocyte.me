@@ -115,7 +115,7 @@ Sent emails can be inspected at `http://localhost:4566/_aws/ses`. See [api/mail-
 
 ## API Overview
 
-All `/patients` and most `/user` routes require a `Bearer` JWT obtained from `/auth/login` or `/auth/register`.
+All `/patients`, `/pdf` and most `/user` routes require a `Bearer` JWT obtained from `/auth/login` or `/auth/register`.
 
 **Auth** (`/auth`): `POST /login`, `POST /register`, `POST /forgot-password`, `POST /reset-password`, `GET /roles`
 
@@ -138,7 +138,8 @@ All `/patients` and most `/user` routes require a `Bearer` JWT obtained from `/a
 | `POST /:id/ncs-studies/import` | Bulk-import nerve conduction studies for one patient from a CSV file (each row scored via the calculator service) |
 | `GET /export/csv` | Export all accessible patients + history as CSV |
 | `POST /import/csv` | Bulk-import patients + history from a CSV file |
-| `GET /:id/export/pdf` | Generate a PDF report for one patient |
+
+**PDF export** (`/pdf`): `GET /:patientId/export` — generate a PDF report for one patient
 
 ---
 
