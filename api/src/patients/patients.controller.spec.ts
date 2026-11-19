@@ -14,7 +14,6 @@ describe('PatientsController', () => {
     createPatient: jest.fn(),
     search: jest.fn(),
     exportPatientDataCsv: jest.fn(),
-    exportPatientPdf: jest.fn(),
     importCsvData: jest.fn(),
     getPatient: jest.fn(),
     updatePatientNotes: jest.fn(),
@@ -597,33 +596,6 @@ describe('PatientsController', () => {
         buffer,
       );
       expect(result).toBe(mockResponse);
-    });
-  });
-
-  describe('exportPatientPdf', () => {
-    it('should call patientsService.exportPatientPdf with user id and parsed patient id', async () => {
-      const pdfBuffer = Buffer.from('%PDF-1.4 fake-pdf-content');
-      mockPatientsService.exportPatientPdf.mockResolvedValue(pdfBuffer);
-
-      const result = await controller.exportPatientPdf(mockUser, 10);
-
-      expect(mockPatientsService.exportPatientPdf).toHaveBeenCalledWith(
-        1,
-        10,
-        RoleEnum.DOCTOR,
-      );
-      // StreamableFile wraps the buffer
-      expect(result).toBeDefined();
-    });
-
-    it('should return a StreamableFile instance', async () => {
-      const { StreamableFile } = await import('@nestjs/common');
-      const pdfBuffer = Buffer.from('%PDF-1.4 fake-pdf-content');
-      mockPatientsService.exportPatientPdf.mockResolvedValue(pdfBuffer);
-
-      const result = await controller.exportPatientPdf(mockUser, 10);
-
-      expect(result).toBeInstanceOf(StreamableFile);
     });
   });
 });

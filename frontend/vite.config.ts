@@ -11,6 +11,7 @@ export default defineConfig({
     proxy: {
       "/auth": "http://localhost:3000",
       "/patients": "http://localhost:3000",
+      "/pdf": "http://localhost:3000",
     },
   },
   build: {

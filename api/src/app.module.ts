@@ -6,12 +6,14 @@ import { UserModule } from './user/user.module';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { config } from 'src/config/config';
 import { PatientsModule } from './patients/patients.module';
+import { PdfExportModule } from './patients/pdf-export/pdf-export.module';
 
 @Module({
   imports: [
     AuthModule,
     UserModule,
     PatientsModule,
+    PdfExportModule,
     TypeOrmModule.forRoot({
       type: 'mysql',
       host: config.get().DATABASE_URL,

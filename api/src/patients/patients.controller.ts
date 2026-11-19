@@ -16,7 +16,6 @@ import {
   ParseFilePipe,
   FileTypeValidator,
   ParseIntPipe,
-  StreamableFile,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { AuthGuard } from '@nestjs/passport';
@@ -68,22 +67,6 @@ export class PatientsController {
   @Header('Content-Disposition', 'attachment; filename="patient_export.csv"')
   async exportCsv(@CurrentUser() user: JwtUser): Promise<string> {
     return this.patientsService.exportPatientDataCsv(user.id, user.role.name);
-  }
-
-  @Get(':id/export/pdf')
-  @UseGuards(RolesGuard)
-  @Header('Content-Type', 'application/pdf')
-  @Header('Content-Disposition', 'attachment; filename="patient-report.pdf"')
-  async exportPatientPdf(
-    @CurrentUser() user: JwtUser,
-    @Param('id', ParseIntPipe) patientId: number,
-  ): Promise<StreamableFile> {
-    const buffer = await this.patientsService.exportPatientPdf(
-      user.id,
-      patientId,
-      user.role.name,
-    );
-    return new StreamableFile(buffer);
   }
 
   @Post('import/csv')
