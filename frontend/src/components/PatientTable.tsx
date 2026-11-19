@@ -269,7 +269,7 @@ export default function PatientTable({ role }: Props) {
                 {expandedId === patient.id && (
                   <tr className="expanded-tr">
                     <td colSpan={8} style={{ padding: 0 }}>
-                      <ExpandedRow patient={patient} />
+                      <ExpandedRow patient={patient} readOnly={role === 'Support Engineer'} />
                     </td>
                   </tr>
                 )}

@@ -196,3 +196,41 @@ describe('ExpandedRow Tourette syndrome', () => {
     );
   });
 });
+
+describe('ExpandedRow read-only mode', () => {
+  const patientWithRecords: Patient = {
+    ...mockPatient,
+    medicalHistory: [mockCreatedHistory],
+    touretteSyndrom: [mockTouretteRecord],
+  };
+
+  it('hides every add/edit control when readOnly is set', () => {
+    renderWithQueryClient(<ExpandedRow patient={patientWithRecords} readOnly />);
+
+    expect(screen.queryByRole('button')).not.toBeInTheDocument();
+  });
+
+  it('still shows the patient data when readOnly is set', () => {
+    renderWithQueryClient(<ExpandedRow patient={patientWithRecords} readOnly />);
+
+    expect(screen.getByText('Migraine')).toBeInTheDocument();
+    expect(screen.getByText('worse at school')).toBeInTheDocument();
+  });
+
+  it('shows the add/edit controls by default', () => {
+    renderWithQueryClient(<ExpandedRow patient={patientWithRecords} />);
+
+    for (const name of [
+      /edit notes \/ add edss assessment/i,
+      /add migraine log/i,
+      /add seizure log/i,
+      /add tourette record/i,
+      /add ncs study/i,
+      /add medical history/i,
+      /add family history/i,
+      /^edit$/i,
+    ]) {
+      expect(screen.getByRole('button', { name })).toBeInTheDocument();
+    }
+  });
+});

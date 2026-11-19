@@ -718,7 +718,11 @@ export class PatientsService implements OnModuleInit {
   }
 
   @errorHandler
-  async getPatient(doctorId: number, patientId: number): Promise<Patient> {
+  async getPatient(
+    doctorId: number,
+    patientId: number,
+    roleName?: string,
+  ): Promise<Patient> {
     const patient = await this.patientRepository.findOne({
       where: { id: patientId },
       relations: [
@@ -737,8 +741,12 @@ export class PatientsService implements OnModuleInit {
       throw new NotFoundException(`Patient with ID ${patientId} not found`);
     }
 
-    // Verify that the requester is the doctor who created this patient
-    if (patient.doctorId !== doctorId) {
+    // Support Engineers have read access to every patient (same as search);
+    // everyone else may only access patients they created.
+    if (
+      roleName !== RoleEnum.SUPPORT_ENGINEER &&
+      patient.doctorId !== doctorId
+    ) {
       this.logger.warn(
         `Doctor ${doctorId} attempted to access patient ${patientId} created by doctor ${patient.doctorId}`,
       );
