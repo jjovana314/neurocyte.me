@@ -9,6 +9,7 @@ import { User } from 'src/user/entities/user.entity';
 import { UserModule } from 'src/user/user.module';
 import { PdfExportController } from './pdf-export.controller';
 import { PatientPdfExportService } from './patient-pdf-export.service';
+import { PatientsModule } from '../patients.module';
 
 @Module({
   imports: [
@@ -20,6 +21,8 @@ import { PatientPdfExportService } from './patient-pdf-export.service';
       TouretteSyndrome,
       User,
     ]),
+    // Provides PatientsService
+    PatientsModule,
     // RolesGuard depends on UserService
     UserModule,
   ],

@@ -55,6 +55,7 @@ import {
   MedicalRecordFactory,
   MedicalRecordType,
 } from './factories/medical-record.factory';
+import { PatientRecords } from './interfaces/medical-records.interface';
 
 @Injectable()
 export class PatientsService implements OnModuleInit {
@@ -1241,5 +1242,23 @@ export class PatientsService implements OnModuleInit {
     Object.assign(touretteSyndrome, updateData);
     await this.touretteSyndromeRepository.save(touretteSyndrome);
     return await this.getPatient(doctorId, patientId);
+  }
+
+  async findPatientRecords(patientId: number): Promise<PatientRecords> {
+    const byRecordedAtDesc = {
+      where: { patientId },
+      order: { recordedAt: 'DESC' as const },
+    };
+    const [medicalHistory, familyHistory, seizureLogs, touretteSyndrome] =
+      await Promise.all([
+        this.patientHistoryRepository.find(byRecordedAtDesc),
+        this.familyHistoryRepository.find(byRecordedAtDesc),
+        this.seizureLogRepository.find({
+          where: { patientId },
+          order: { ictusStart: 'DESC' },
+        }),
+        this.touretteSyndromeRepository.find(byRecordedAtDesc),
+      ]);
+    return { medicalHistory, familyHistory, seizureLogs, touretteSyndrome };
   }
 }

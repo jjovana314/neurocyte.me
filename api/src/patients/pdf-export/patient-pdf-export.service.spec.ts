@@ -1,54 +1,28 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { getRepositoryToken } from '@nestjs/typeorm';
 import { ForbiddenException, NotFoundException } from '@nestjs/common';
 import { PinoLogger } from 'nestjs-pino';
 import PDFDocument from 'pdfkit';
 import { PatientPdfExportService } from './patient-pdf-export.service';
-import { Patient } from '../entities/patient.entity';
-import { PatientHistory } from '../entities/patient-history.entity';
-import { FamilyHistory } from '../entities/family-history.entity';
-import { SeizureLog } from '../entities/seizure-log.entity';
-import { TouretteSyndrome } from '../entities/tourette-syndrome.entity';
-import { User } from 'src/user/entities/user.entity';
 import { RoleEnum } from 'src/auth/enums/role.enum';
+import { PatientsService } from '../patients.service';
+import { PatientRecords } from '../interfaces/medical-records.interface';
 
 describe('PatientPdfExportService', () => {
   let service: PatientPdfExportService;
 
-  const mockPatientRepository = { findOne: jest.fn() };
-  const mockPatientHistoryRepository = { find: jest.fn() };
-  const mockFamilyHistoryRepository = { find: jest.fn() };
-  const mockSeizureLogRepository = { find: jest.fn() };
-  const mockTouretteSyndromeRepository = { find: jest.fn() };
-  const mockUserRepository = { findOne: jest.fn() };
   const mockLogger = { info: jest.fn(), error: jest.fn(), warn: jest.fn() };
+  const mockPatientsService = {
+    findUserById: jest.fn(),
+    getPatient: jest.fn(),
+    findPatientRecords: jest.fn(),
+  };
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         PatientPdfExportService,
-        {
-          provide: getRepositoryToken(Patient),
-          useValue: mockPatientRepository,
-        },
-        {
-          provide: getRepositoryToken(PatientHistory),
-          useValue: mockPatientHistoryRepository,
-        },
-        {
-          provide: getRepositoryToken(FamilyHistory),
-          useValue: mockFamilyHistoryRepository,
-        },
-        {
-          provide: getRepositoryToken(SeizureLog),
-          useValue: mockSeizureLogRepository,
-        },
-        {
-          provide: getRepositoryToken(TouretteSyndrome),
-          useValue: mockTouretteSyndromeRepository,
-        },
-        { provide: getRepositoryToken(User), useValue: mockUserRepository },
         { provide: PinoLogger, useValue: mockLogger },
+        { provide: PatientsService, useValue: mockPatientsService },
       ],
     }).compile();
 
@@ -122,15 +96,6 @@ describe('PatientPdfExportService', () => {
       },
     ];
 
-    beforeEach(() => {
-      mockPatientHistoryRepository.find.mockResolvedValue(mockMedicalHistory);
-      mockFamilyHistoryRepository.find.mockResolvedValue(mockFamilyHistory);
-      mockSeizureLogRepository.find.mockResolvedValue(mockSeizureLogs);
-      mockTouretteSyndromeRepository.find.mockResolvedValue(
-        mockTouretteSyndrome,
-      );
-    });
-
     const mockPatient = {
       id: patientId,
       doctorId,
@@ -140,9 +105,26 @@ describe('PatientPdfExportService', () => {
       updatedAt: new Date('2025-06-01T10:00:00Z'),
     } as any;
 
+    const mockRecords = (
+      overrides: Partial<Record<keyof PatientRecords, unknown[]>> = {},
+    ) =>
+      mockPatientsService.findPatientRecords.mockResolvedValue({
+        medicalHistory: mockMedicalHistory,
+        familyHistory: mockFamilyHistory,
+        seizureLogs: mockSeizureLogs,
+        touretteSyndrome: mockTouretteSyndrome,
+        ...overrides,
+      });
+
+    beforeEach(() => {
+      mockPatientsService.findUserById.mockResolvedValue(mockDoctor);
+      mockPatientsService.getPatient.mockResolvedValue(mockPatient);
+      mockRecords();
+    });
+
     it('should return a Buffer containing a PDF', async () => {
-      mockUserRepository.findOne.mockResolvedValue(mockDoctor);
-      mockPatientRepository.findOne.mockResolvedValue(mockPatient);
+      mockPatientsService.findUserById.mockResolvedValue(mockDoctor);
+      mockPatientsService.getPatient.mockResolvedValue(mockPatient);
 
       const result = await service.exportPatientPdf(
         doctorId,
@@ -163,8 +145,8 @@ describe('PatientPdfExportService', () => {
       );
 
     it('should not push the footer onto an extra blank page', async () => {
-      mockUserRepository.findOne.mockResolvedValue(mockDoctor);
-      mockPatientRepository.findOne.mockResolvedValue(mockPatient);
+      mockPatientsService.findUserById.mockResolvedValue(mockDoctor);
+      mockPatientsService.getPatient.mockResolvedValue(mockPatient);
 
       const result = await service.exportPatientPdf(
         doctorId,
@@ -177,14 +159,14 @@ describe('PatientPdfExportService', () => {
     });
 
     it('should keep the page count driven by content for multi-page reports', async () => {
-      mockUserRepository.findOne.mockResolvedValue(mockDoctor);
-      mockPatientRepository.findOne.mockResolvedValue(mockPatient);
-      mockSeizureLogRepository.find.mockResolvedValue(
-        Array.from({ length: 12 }, (_, i) => ({
+      mockPatientsService.findUserById.mockResolvedValue(mockDoctor);
+      mockPatientsService.getPatient.mockResolvedValue(mockPatient);
+      mockRecords({
+        seizureLogs: Array.from({ length: 12 }, (_, i) => ({
           ...mockSeizureLogs[0],
           id: i,
         })),
-      );
+      });
 
       const result = await service.exportPatientPdf(
         doctorId,
@@ -247,8 +229,8 @@ describe('PatientPdfExportService', () => {
       let capture: ReturnType<typeof captureFooters>;
 
       beforeEach(() => {
-        mockUserRepository.findOne.mockResolvedValue(mockDoctor);
-        mockPatientRepository.findOne.mockResolvedValue(mockPatient);
+        mockPatientsService.findUserById.mockResolvedValue(mockDoctor);
+        mockPatientsService.getPatient.mockResolvedValue(mockPatient);
         capture = captureFooters();
       });
 
@@ -282,12 +264,12 @@ describe('PatientPdfExportService', () => {
       });
 
       it('should draw the footer at the bottom of every page for a multi-page report', async () => {
-        mockSeizureLogRepository.find.mockResolvedValue(
-          Array.from({ length: 12 }, (_, i) => ({
+        mockRecords({
+          seizureLogs: Array.from({ length: 12 }, (_, i) => ({
             ...mockSeizureLogs[0],
             id: i,
           })),
-        );
+        });
 
         const pdf = await service.exportPatientPdf(
           doctorId,
@@ -300,12 +282,12 @@ describe('PatientPdfExportService', () => {
       });
 
       it('should not add pages when drawing the footer', async () => {
-        mockSeizureLogRepository.find.mockResolvedValue(
-          Array.from({ length: 12 }, (_, i) => ({
+        mockRecords({
+          seizureLogs: Array.from({ length: 12 }, (_, i) => ({
             ...mockSeizureLogs[0],
             id: i,
           })),
-        );
+        });
 
         const pdf = await service.exportPatientPdf(
           doctorId,
@@ -359,8 +341,8 @@ describe('PatientPdfExportService', () => {
       };
 
       beforeEach(() => {
-        mockUserRepository.findOne.mockResolvedValue(mockDoctor);
-        mockPatientRepository.findOne.mockResolvedValue(mockPatient);
+        mockPatientsService.findUserById.mockResolvedValue(mockDoctor);
+        mockPatientsService.getPatient.mockResolvedValue(mockPatient);
       });
 
       it.each([1, 3, 7, 12])(
@@ -368,18 +350,12 @@ describe('PatientPdfExportService', () => {
         async (count) => {
           const many = <T>(rows: T[]) =>
             Array.from({ length: count }, (_, i) => ({ ...rows[0], id: i }));
-          mockPatientHistoryRepository.find.mockResolvedValue(
-            many(mockMedicalHistory),
-          );
-          mockFamilyHistoryRepository.find.mockResolvedValue(
-            many(mockFamilyHistory),
-          );
-          mockSeizureLogRepository.find.mockResolvedValue(
-            many(mockSeizureLogs),
-          );
-          mockTouretteSyndromeRepository.find.mockResolvedValue(
-            many(mockTouretteSyndrome),
-          );
+          mockRecords({
+            medicalHistory: many(mockMedicalHistory),
+            familyHistory: many(mockFamilyHistory),
+            seizureLogs: many(mockSeizureLogs),
+            touretteSyndrome: many(mockTouretteSyndrome),
+          });
 
           const calls = await captureTextCalls();
 
@@ -421,9 +397,160 @@ describe('PatientPdfExportService', () => {
       });
     });
 
-    it('should fetch history and seizure logs from their repositories', async () => {
-      mockUserRepository.findOne.mockResolvedValue(mockDoctor);
-      mockPatientRepository.findOne.mockResolvedValue(mockPatient);
+    describe('report content', () => {
+      // Runs an export and returns every string drawn, in order.
+      const renderTexts = async (role: string): Promise<string[]> => {
+        const texts: string[] = [];
+        const proto = PDFDocument.prototype as any;
+        const originalText = proto.text;
+        const spy = jest.spyOn(proto, 'text').mockImplementation(function (
+          this: any,
+          ...args: any[]
+        ) {
+          if (typeof args[0] === 'string') texts.push(args[0]);
+          return originalText.apply(this, args);
+        });
+        try {
+          await service.exportPatientPdf(doctorId, patientId, role);
+        } finally {
+          spy.mockRestore();
+        }
+        return texts;
+      };
+
+      // Info rows are drawn as "Label: " followed by the value.
+      const fieldValue = (texts: string[], label: string) => {
+        const i = texts.indexOf(`${label}: `);
+        if (i < 0) throw new Error(`Field "${label}" was not rendered`);
+        return texts[i + 1];
+      };
+
+      const patientWithContact = {
+        ...mockPatient,
+        phone: '+381601234567',
+        email: 'john@example.com',
+      };
+
+      it('should show patient contact details unmasked to the owning doctor', async () => {
+        mockPatientsService.getPatient.mockResolvedValue(patientWithContact);
+
+        const texts = await renderTexts(RoleEnum.DOCTOR);
+
+        expect(fieldValue(texts, 'Patient Name')).toBe('John Doe');
+        expect(fieldValue(texts, 'Phone')).toBe('+381601234567');
+        expect(fieldValue(texts, 'Email')).toBe('john@example.com');
+      });
+
+      it('should mask patient name, phone and email for a Support Engineer', async () => {
+        mockPatientsService.getPatient.mockResolvedValue(patientWithContact);
+
+        const texts = await renderTexts(RoleEnum.SUPPORT_ENGINEER);
+
+        expect(fieldValue(texts, 'Patient Name')).toBe('xxxxxx');
+        expect(fieldValue(texts, 'Phone')).toBe('xxxxxx');
+        expect(fieldValue(texts, 'Email')).toBe('xxxxxx');
+        expect(texts).not.toContain('John Doe');
+        expect(texts).not.toContain('+381601234567');
+        expect(texts).not.toContain('john@example.com');
+      });
+
+      it('should not mask the patient ID or doctor details for a Support Engineer', async () => {
+        mockPatientsService.getPatient.mockResolvedValue(patientWithContact);
+
+        const texts = await renderTexts(RoleEnum.SUPPORT_ENGINEER);
+
+        expect(fieldValue(texts, 'Patient ID')).toBe(String(patientId));
+        expect(fieldValue(texts, 'Attending Doctor')).toBe('Jane Smith');
+        expect(fieldValue(texts, 'Doctor Email')).toBe(mockDoctor.email);
+      });
+
+      it.each([RoleEnum.DOCTOR, RoleEnum.SUPPORT_ENGINEER])(
+        'should show N/A for missing contact details (%s)',
+        async (role) => {
+          mockPatientsService.getPatient.mockResolvedValue({
+            ...mockPatient,
+            phone: null,
+            email: null,
+          });
+
+          const texts = await renderTexts(role);
+
+          expect(fieldValue(texts, 'Phone')).toBe('N/A');
+          expect(fieldValue(texts, 'Email')).toBe('N/A');
+        },
+      );
+
+      it('should show an empty message for every section without records', async () => {
+        mockRecords({
+          medicalHistory: [],
+          familyHistory: [],
+          seizureLogs: [],
+          touretteSyndrome: [],
+        });
+
+        const texts = await renderTexts(RoleEnum.DOCTOR);
+
+        expect(texts).toEqual(
+          expect.arrayContaining([
+            'No medical history recorded.',
+            'No family history recorded.',
+            'No seizure logs recorded.',
+            'No tourette syndrome recorded.',
+          ]),
+        );
+      });
+
+      it('should number and title the records in each section', async () => {
+        const texts = await renderTexts(RoleEnum.DOCTOR);
+        const titles = texts.filter((t) => /^\d+\. /.test(t));
+
+        expect(titles).toEqual([
+          '1. Epilepsy',
+          '1. Alzheimer (Mother)',
+          '1. Focal aware',
+          '1. Motor vocal',
+        ]);
+      });
+    });
+
+    it('should log the export on success', async () => {
+      await service.exportPatientPdf(doctorId, patientId, RoleEnum.DOCTOR);
+
+      expect(mockLogger.info).toHaveBeenCalledWith(
+        `Patient ${patientId} PDF exported by doctor ${doctorId}`,
+      );
+      expect(mockLogger.error).not.toHaveBeenCalled();
+    });
+
+    it('should not load records when the patient cannot be accessed', async () => {
+      mockPatientsService.getPatient.mockRejectedValue(
+        new ForbiddenException(),
+      );
+
+      await expect(
+        service.exportPatientPdf(doctorId, patientId, RoleEnum.DOCTOR),
+      ).rejects.toThrow(ForbiddenException);
+      expect(mockPatientsService.findPatientRecords).not.toHaveBeenCalled();
+      expect(mockLogger.info).not.toHaveBeenCalled();
+    });
+
+    it('should log and rethrow when loading records fails', async () => {
+      mockPatientsService.findPatientRecords.mockRejectedValue(
+        new Error('db down'),
+      );
+
+      await expect(
+        service.exportPatientPdf(doctorId, patientId, RoleEnum.DOCTOR),
+      ).rejects.toThrow('db down');
+      expect(mockLogger.error).toHaveBeenCalledWith(
+        'Error in exportPatientPdf: db down',
+      );
+      expect(mockLogger.info).not.toHaveBeenCalled();
+    });
+
+    it('should fetch the doctor, patient and records from PatientsService', async () => {
+      mockPatientsService.findUserById.mockResolvedValue(mockDoctor);
+      mockPatientsService.getPatient.mockResolvedValue(mockPatient);
 
       const result = await service.exportPatientPdf(
         doctorId,
@@ -432,23 +559,19 @@ describe('PatientPdfExportService', () => {
       );
 
       expect(result.slice(0, 4).toString()).toBe('%PDF');
-      expect(mockPatientHistoryRepository.find).toHaveBeenCalledWith({
-        where: { patientId },
-        order: { recordedAt: 'DESC' },
-      });
-      expect(mockFamilyHistoryRepository.find).toHaveBeenCalledWith({
-        where: { patientId },
-        order: { recordedAt: 'DESC' },
-      });
-      expect(mockSeizureLogRepository.find).toHaveBeenCalledWith({
-        where: { patientId },
-        order: { ictusStart: 'DESC' },
-      });
+      expect(mockPatientsService.findUserById).toHaveBeenCalledWith(doctorId);
+      expect(mockPatientsService.getPatient).toHaveBeenCalledWith(
+        doctorId,
+        patientId,
+      );
+      expect(mockPatientsService.findPatientRecords).toHaveBeenCalledWith(
+        patientId,
+      );
     });
 
     it('should allow a Support Engineer to export a patient they do not own', async () => {
-      mockUserRepository.findOne.mockResolvedValue(mockDoctor);
-      mockPatientRepository.findOne.mockResolvedValue({
+      mockPatientsService.findUserById.mockResolvedValue(mockDoctor);
+      mockPatientsService.getPatient.mockResolvedValue({
         ...mockPatient,
         doctorId: 999,
       });
@@ -463,7 +586,9 @@ describe('PatientPdfExportService', () => {
     });
 
     it('should throw NotFoundException when doctor does not exist', async () => {
-      mockUserRepository.findOne.mockResolvedValue(null);
+      mockPatientsService.findUserById.mockRejectedValue(
+        new NotFoundException(),
+      );
 
       await expect(
         service.exportPatientPdf(doctorId, patientId, RoleEnum.DOCTOR),
@@ -471,8 +596,8 @@ describe('PatientPdfExportService', () => {
     });
 
     it('should throw NotFoundException when patient does not exist', async () => {
-      mockUserRepository.findOne.mockResolvedValue(mockDoctor);
-      mockPatientRepository.findOne.mockResolvedValue(null);
+      mockPatientsService.findUserById.mockResolvedValue(mockDoctor);
+      mockPatientsService.getPatient.mockRejectedValue(new NotFoundException());
 
       await expect(
         service.exportPatientPdf(doctorId, patientId, RoleEnum.DOCTOR),
@@ -480,11 +605,10 @@ describe('PatientPdfExportService', () => {
     });
 
     it('should throw ForbiddenException when doctor does not own the patient', async () => {
-      mockUserRepository.findOne.mockResolvedValue(mockDoctor);
-      mockPatientRepository.findOne.mockResolvedValue({
-        ...mockPatient,
-        doctorId: 999,
-      });
+      mockPatientsService.findUserById.mockResolvedValue(mockDoctor);
+      mockPatientsService.getPatient.mockRejectedValue(
+        new ForbiddenException(),
+      );
 
       await expect(
         service.exportPatientPdf(doctorId, patientId, RoleEnum.DOCTOR),
@@ -492,13 +616,14 @@ describe('PatientPdfExportService', () => {
     });
 
     it('should handle patient with no medical or family history', async () => {
-      mockUserRepository.findOne.mockResolvedValue(mockDoctor);
-      mockPatientRepository.findOne.mockResolvedValue({
-        ...mockPatient,
+      mockPatientsService.findUserById.mockResolvedValue(mockDoctor);
+      mockPatientsService.getPatient.mockResolvedValue({ ...mockPatient });
+      mockRecords({
+        medicalHistory: [],
+        familyHistory: [],
+        seizureLogs: [],
+        touretteSyndrome: [],
       });
-      mockPatientHistoryRepository.find.mockResolvedValue([]);
-      mockFamilyHistoryRepository.find.mockResolvedValue([]);
-      mockSeizureLogRepository.find.mockResolvedValue([]);
 
       const result = await service.exportPatientPdf(
         doctorId,
@@ -511,15 +636,18 @@ describe('PatientPdfExportService', () => {
     });
 
     it('should handle patient with null name and notes gracefully', async () => {
-      mockUserRepository.findOne.mockResolvedValue(mockDoctor);
-      mockPatientRepository.findOne.mockResolvedValue({
+      mockPatientsService.findUserById.mockResolvedValue(mockDoctor);
+      mockPatientsService.getPatient.mockResolvedValue({
         ...mockPatient,
         name: null,
         notes: null,
       });
-      mockPatientHistoryRepository.find.mockResolvedValue([]);
-      mockFamilyHistoryRepository.find.mockResolvedValue([]);
-      mockSeizureLogRepository.find.mockResolvedValue([]);
+      mockRecords({
+        medicalHistory: [],
+        familyHistory: [],
+        seizureLogs: [],
+        touretteSyndrome: [],
+      });
 
       const result = await service.exportPatientPdf(
         doctorId,

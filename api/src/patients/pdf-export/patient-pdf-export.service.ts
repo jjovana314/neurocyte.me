@@ -1,6 +1,4 @@
 import { Injectable } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
 import { PinoLogger } from 'nestjs-pino';
 import { errorHandler } from '../decorators/error-handler-decorator';
 import { Patient } from '../entities/patient.entity';
@@ -10,38 +8,18 @@ import { SeizureLog } from '../entities/seizure-log.entity';
 import { TouretteSyndrome } from '../entities/tourette-syndrome.entity';
 import { User } from 'src/user/entities/user.entity';
 import { RoleEnum } from 'src/auth/enums/role.enum';
-import {
-  UserNotFoundException,
-  PatientNotFoundException,
-  AccessToPatientForbiddenException,
-} from 'src/common/exceptions';
 import { maskString } from '../utils/masking';
 import { formatToTitleCase } from '../utils/format-to-title-case';
 import { PatientPdfDocument } from './patient-pdf-document';
+import { PatientsService } from '../patients.service';
 
 const FOOTER_TEXT = 'Confidential – For authorized medical personnel only';
-
-interface PatientRecords {
-  medicalHistory: PatientHistory[];
-  familyHistory: FamilyHistory[];
-  seizureLogs: SeizureLog[];
-  touretteSyndrome: TouretteSyndrome[];
-}
 
 @Injectable()
 export class PatientPdfExportService {
   constructor(
-    @InjectRepository(Patient) private patientRepository: Repository<Patient>,
-    @InjectRepository(PatientHistory)
-    private patientHistoryRepository: Repository<PatientHistory>,
-    @InjectRepository(FamilyHistory)
-    private familyHistoryRepository: Repository<FamilyHistory>,
-    @InjectRepository(SeizureLog)
-    private seizureLogRepository: Repository<SeizureLog>,
-    @InjectRepository(TouretteSyndrome)
-    private touretteSyndromeRepository: Repository<TouretteSyndrome>,
-    @InjectRepository(User) private userRepository: Repository<User>,
     private readonly logger: PinoLogger,
+    private readonly patientsService: PatientsService,
   ) {}
 
   @errorHandler
@@ -52,13 +30,9 @@ export class PatientPdfExportService {
   ): Promise<Buffer> {
     const isSupportEngineer = roleName === RoleEnum.SUPPORT_ENGINEER;
 
-    const doctor = await this.findDoctor(doctorId);
-    const patient = await this.findAccessiblePatient(
-      doctorId,
-      patientId,
-      isSupportEngineer,
-    );
-    const records = await this.findPatientRecords(patientId);
+    const doctor = await this.patientsService.findUserById(doctorId);
+    const patient = await this.patientsService.getPatient(doctorId, patientId);
+    const records = await this.patientsService.findPatientRecords(patientId);
 
     const pdf = new PatientPdfDocument().addTitle(
       'Patient Report',
@@ -81,57 +55,6 @@ export class PatientPdfExportService {
 
     this.logger.info(`Patient ${patientId} PDF exported by doctor ${doctorId}`);
     return buffer;
-  }
-
-  // - Data access
-
-  private async findDoctor(doctorId: number): Promise<User> {
-    const doctor = await this.userRepository.findOne({
-      where: { id: doctorId },
-      relations: ['role'],
-    });
-    if (!doctor) {
-      throw new UserNotFoundException(doctorId);
-    }
-    return doctor;
-  }
-
-  private async findAccessiblePatient(
-    doctorId: number,
-    patientId: number,
-    isSupportEngineer: boolean,
-  ): Promise<Patient> {
-    const patient = await this.patientRepository.findOne({
-      where: { id: patientId },
-    });
-    if (!patient) {
-      throw new PatientNotFoundException(patientId);
-    }
-    if (!isSupportEngineer && patient.doctorId !== doctorId) {
-      this.logger.warn(
-        `Doctor ${doctorId} attempted to export PDF for patient ${patientId} created by doctor ${patient.doctorId}`,
-      );
-      throw new AccessToPatientForbiddenException();
-    }
-    return patient;
-  }
-
-  private async findPatientRecords(patientId: number): Promise<PatientRecords> {
-    const byRecordedAtDesc = {
-      where: { patientId },
-      order: { recordedAt: 'DESC' as const },
-    };
-    const [medicalHistory, familyHistory, seizureLogs, touretteSyndrome] =
-      await Promise.all([
-        this.patientHistoryRepository.find(byRecordedAtDesc),
-        this.familyHistoryRepository.find(byRecordedAtDesc),
-        this.seizureLogRepository.find({
-          where: { patientId },
-          order: { ictusStart: 'DESC' },
-        }),
-        this.touretteSyndromeRepository.find(byRecordedAtDesc),
-      ]);
-    return { medicalHistory, familyHistory, seizureLogs, touretteSyndrome };
   }
 
   // - Sections

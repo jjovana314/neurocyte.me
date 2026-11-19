@@ -29,6 +29,7 @@ import { status as GrpcStatus } from '@grpc/grpc-js';
 import { CALCULATOR_SERVICE_NAME } from 'src/calculator-client/generated/calculator';
 import { RoleEnum } from 'src/auth/enums/role.enum';
 import { MedicalRecordFactory } from './factories/medical-record.factory';
+import { UserNotFoundException } from 'src/common/exceptions';
 
 describe('PatientsService', () => {
   let service: PatientsService;
@@ -1339,6 +1340,119 @@ describe('PatientsService', () => {
       expect(result.seizureLogs).toEqual([
         { id: 1, onsetVector: OnsetVector.GENERALIZED },
       ]);
+    });
+
+    it('should throw NotFoundException when the patient does not exist', async () => {
+      mockPatientRepository.findOne.mockResolvedValue(null);
+
+      await expect(service.getPatient(1, 404)).rejects.toThrow(
+        NotFoundException,
+      );
+    });
+
+    it('should throw ForbiddenException and log a warning when another doctor owns the patient', async () => {
+      mockPatientRepository.findOne.mockResolvedValue({ id: 5, doctorId: 2 });
+
+      await expect(service.getPatient(1, 5)).rejects.toThrow(
+        ForbiddenException,
+      );
+      expect(mockLogger.warn).toHaveBeenCalledWith(
+        expect.stringContaining('Doctor 1 attempted to access patient 5'),
+      );
+    });
+  });
+
+  describe('findUserById', () => {
+    it('should return the user with their role loaded', async () => {
+      const user = { id: 3, firstName: 'Jane', role: { name: 'DOCTOR' } };
+      mockUserRepository.findOne.mockResolvedValue(user);
+
+      await expect(service.findUserById(3)).resolves.toBe(user);
+      expect(mockUserRepository.findOne).toHaveBeenCalledWith({
+        where: { id: 3 },
+        relations: ['role'],
+      });
+    });
+
+    it('should throw UserNotFoundException when the user does not exist', async () => {
+      mockUserRepository.findOne.mockResolvedValue(null);
+
+      const promise = service.findUserById(99);
+      await expect(promise).rejects.toThrow(UserNotFoundException);
+      await expect(promise).rejects.toThrow('User with ID 99 not found');
+    });
+  });
+
+  describe('findPatientRecords', () => {
+    const patientId = 7;
+    const medicalHistory = [{ id: 1, disorder: 'Epilepsy' }];
+    const familyHistory = [{ id: 2, relation: 'Mother' }];
+    const seizureLogs = [{ id: 3, onsetVector: OnsetVector.FOCAL_AWARE }];
+    const touretteSyndrome = [{ id: 4, tycType: TycType.MOTOR_SIMPLE }];
+
+    beforeEach(() => {
+      mockPatientHistoryRepository.find.mockResolvedValue(medicalHistory);
+      mockFamilyHistoryRepository.find.mockResolvedValue(familyHistory);
+      mockSeizureLogRepository.find.mockResolvedValue(seizureLogs);
+      mockTouretteSyndromeRepository.find.mockResolvedValue(touretteSyndrome);
+    });
+
+    it('should return every record type keyed by section', async () => {
+      await expect(service.findPatientRecords(patientId)).resolves.toEqual({
+        medicalHistory,
+        familyHistory,
+        seizureLogs,
+        touretteSyndrome,
+      });
+    });
+
+    it('should order history and tourette records by recordedAt, newest first', async () => {
+      await service.findPatientRecords(patientId);
+
+      const byRecordedAtDesc = {
+        where: { patientId },
+        order: { recordedAt: 'DESC' },
+      };
+      expect(mockPatientHistoryRepository.find).toHaveBeenCalledWith(
+        byRecordedAtDesc,
+      );
+      expect(mockFamilyHistoryRepository.find).toHaveBeenCalledWith(
+        byRecordedAtDesc,
+      );
+      expect(mockTouretteSyndromeRepository.find).toHaveBeenCalledWith(
+        byRecordedAtDesc,
+      );
+    });
+
+    it('should order seizure logs by ictusStart, newest first', async () => {
+      await service.findPatientRecords(patientId);
+
+      expect(mockSeizureLogRepository.find).toHaveBeenCalledWith({
+        where: { patientId },
+        order: { ictusStart: 'DESC' },
+      });
+    });
+
+    it('should return empty arrays when the patient has no records', async () => {
+      mockPatientHistoryRepository.find.mockResolvedValue([]);
+      mockFamilyHistoryRepository.find.mockResolvedValue([]);
+      mockSeizureLogRepository.find.mockResolvedValue([]);
+      mockTouretteSyndromeRepository.find.mockResolvedValue([]);
+
+      await expect(service.findPatientRecords(patientId)).resolves.toEqual({
+        medicalHistory: [],
+        familyHistory: [],
+        seizureLogs: [],
+        touretteSyndrome: [],
+      });
+    });
+
+    it('should reject when any repository query fails', async () => {
+      mockSeizureLogRepository.find.mockRejectedValue(new Error('db down'));
+
+      await expect(service.findPatientRecords(patientId)).rejects.toThrow(
+        'db down',
+      );
     });
   });
 
