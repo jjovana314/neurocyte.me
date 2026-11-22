@@ -639,7 +639,7 @@ export class PatientsService implements OnModuleInit {
         result.errors.push({
           row: rowNum,
           reason:
-            'Missing or invalid required field(s): nerveName, studyType (MOTOR/SENSORY), distanceMm, distalLatencyMs, distalAmplitude',
+            'Missing or invalid some required fields while importing CSV data',
         });
         continue;
       }
@@ -1204,18 +1204,20 @@ export class PatientsService implements OnModuleInit {
     partial = false,
   ): void {
     const tycTypeOmitted = partial && touretteData.tycType === undefined;
+    const tycTypeValues = Object.values(TycType);
     if (
       !tycTypeOmitted &&
-      !Object.values(TycType).includes(touretteData.tycType as TycType)
+      !tycTypeValues.includes(touretteData.tycType as TycType)
     ) {
       throw new BadRequestException(
-        'tycType is required and must be one of MOTOR_SIMPLE, MOTOR_COMPLEX, VOCAL_SIMPLE, VOCAL_COMPLEX',
+        `tycType is required and must be one of ${tycTypeValues.join(', ')}`,
       );
     }
+    const touretteTriggerValues = Object.values(TouretteTrigger);
     const triggers = touretteData.triggers || [];
-    if (triggers.some((t) => !Object.values(TouretteTrigger).includes(t))) {
+    if (triggers.some((t) => !touretteTriggerValues.includes(t))) {
       throw new BadRequestException(
-        'triggers may only contain STRESS, EXCITEMENT, ANGER, FATIGUE, ILLNESS, BOREDOM, SENSORY_ENVIRONMENT, REBOUND_EFFECT',
+        `triggers may only contain ${touretteTriggerValues.join(', ')}`,
       );
     }
   }
