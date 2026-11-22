@@ -56,6 +56,7 @@ import {
   MedicalRecordType,
 } from './factories/medical-record.factory';
 import { PatientRecords } from './interfaces/medical-records.interface';
+import { maskString } from './utils/masking';
 
 @Injectable()
 export class PatientsService implements OnModuleInit {
@@ -238,6 +239,12 @@ export class PatientsService implements OnModuleInit {
       .skip((page - 1) * pageSize)
       .take(pageSize)
       .getManyAndCount();
+
+    if (roleName === RoleEnum.SUPPORT_ENGINEER && total > 0) {
+      for (const patient of patients) {
+        patient.name = maskString(patient.name);
+      }
+    }
 
     this.logger.info(
       `Patient search by user ${doctorId} (role: ${roleName}): "${term ?? ''}" matched ${total} result(s)`,
