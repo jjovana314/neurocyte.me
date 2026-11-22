@@ -5,6 +5,7 @@ import PatientTable from '../components/PatientTable';
 import AddPatientForm from '../components/AddPatientForm';
 import ImportCsv from '../components/ImportCsv';
 import Profile from '../components/Profile';
+import { ThemeToggle } from '../components/ThemeToggle';
 import { useAuth } from '../context/AuthContext';
 
 export default function DashboardPage() {
@@ -23,6 +24,7 @@ export default function DashboardPage() {
         <span className="topbar-title">Neurocyte</span>
         <div className="topbar-right">
           <span className="topbar-user">{user?.email}</span>
+          <ThemeToggle />
           <button className="btn btn-sm" onClick={handleLogout}>Sign out</button>
         </div>
       </header>
