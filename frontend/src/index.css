@@ -4,11 +4,45 @@
   padding: 0;
 }
 
+:root {
+  color-scheme: light;
+  --background: #ffffff;
+  --surface: #ffffff;
+  --surface-alt: #f7f7f7;
+  --surface-muted: #f9f9f9;
+  --text: #1a1a1a;
+  --text-secondary: #555555;
+  --text-muted: #888888;
+  --border: #e5e5e5;
+  --border-subtle: #f0f0f0;
+  --accent: #2563eb;
+  --accent-hover: #1d4ed8;
+  --card-bg: #ffffff;
+  --text-color: #1a1a1a;
+}
+
+:root[data-theme='dark'] {
+  color-scheme: dark;
+  --background: #111827;
+  --surface: #1f2937;
+  --surface-alt: #263244;
+  --surface-muted: #182230;
+  --text: #f3f4f6;
+  --text-secondary: #d1d5db;
+  --text-muted: #9ca3af;
+  --border: #374151;
+  --border-subtle: #303a48;
+  --accent: #60a5fa;
+  --accent-hover: #3b82f6;
+  --card-bg: #1f2937;
+  --text-color: #f3f4f6;
+}
+
 body {
   font-family: system-ui, -apple-system, 'Segoe UI', sans-serif;
   font-size: 14px;
-  color: #1a1a1a;
-  background: #ffffff;
+  color: var(--text);
+  background: var(--background);
   -webkit-font-smoothing: antialiased;
 }
 
@@ -647,4 +681,127 @@ textarea { resize: vertical; }
   font-weight: 500;
   color: #555;
   width: 140px;
+}
+
+.theme-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 0.875rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--text-color);
+  background-color: var(--card-bg);
+  border: 1px solid color-mix(in srgb, var(--text-color) 15%, transparent);
+  border-radius: 0.5rem;
+  cursor: pointer;
+  transition: background-color 0.2s ease, color 0.2s ease, border-color 0.2s ease;
+}
+
+.theme-toggle:hover {
+  border-color: color-mix(in srgb, var(--text-color) 35%, transparent);
+}
+
+.theme-toggle:focus-visible {
+  outline: 2px solid currentColor;
+  outline-offset: 2px;
+}
+
+/* ── Dark theme overrides ── */
+:root[data-theme='dark'] .topbar,
+:root[data-theme='dark'] .tab-nav,
+:root[data-theme='dark'] .btn,
+:root[data-theme='dark'] .btn-secondary,
+:root[data-theme='dark'] .mode-btn,
+:root[data-theme='dark'] .inner-table,
+:root[data-theme='dark'] .profile-table,
+:root[data-theme='dark'] .login-forms,
+:root[data-theme='dark'] input[type='text'],
+:root[data-theme='dark'] input[type='email'],
+:root[data-theme='dark'] input[type='password'],
+:root[data-theme='dark'] input[type='date'],
+:root[data-theme='dark'] input[type='file'],
+:root[data-theme='dark'] select,
+:root[data-theme='dark'] textarea {
+  background: var(--surface);
+  color: var(--text);
+}
+
+:root[data-theme='dark'] .topbar,
+:root[data-theme='dark'] .tab-nav,
+:root[data-theme='dark'] th,
+:root[data-theme='dark'] td,
+:root[data-theme='dark'] .inner-table,
+:root[data-theme='dark'] .profile-table,
+:root[data-theme='dark'] .mode-toggle,
+:root[data-theme='dark'] .import-result,
+:root[data-theme='dark'] .login-info,
+:root[data-theme='dark'] input,
+:root[data-theme='dark'] select,
+:root[data-theme='dark'] textarea,
+:root[data-theme='dark'] .btn,
+:root[data-theme='dark'] .disclosure-content,
+:root[data-theme='dark'] .edss-fields {
+  border-color: var(--border);
+}
+
+:root[data-theme='dark'] thead tr,
+:root[data-theme='dark'] .inner-table th,
+:root[data-theme='dark'] .expanded-tr td,
+:root[data-theme='dark'] .patient-row.expanded td,
+:root[data-theme='dark'] .migraine-log-form,
+:root[data-theme='dark'] .seizure-log-form,
+:root[data-theme='dark'] .tourette-syndrome-form,
+:root[data-theme='dark'] .import-result,
+:root[data-theme='dark'] .login-info {
+  background: var(--surface-alt);
+}
+
+:root[data-theme='dark'] .patient-row:hover td,
+:root[data-theme='dark'] .btn:hover:not(:disabled),
+:root[data-theme='dark'] .mode-btn:hover {
+  background: var(--surface-alt);
+}
+
+:root[data-theme='dark'] .topbar-user,
+:root[data-theme='dark'] .tab,
+:root[data-theme='dark'] .patient-count,
+:root[data-theme='dark'] .pagination-status,
+:root[data-theme='dark'] th,
+:root[data-theme='dark'] .sortable-th,
+:root[data-theme='dark'] .expanded-section h4,
+:root[data-theme='dark'] .profile-label,
+:root[data-theme='dark'] label,
+:root[data-theme='dark'] .login-info p,
+:root[data-theme='dark'] .feature-list li,
+:root[data-theme='dark'] .mode-btn,
+:root[data-theme='dark'] .disclosure-toggle,
+:root[data-theme='dark'] .checkbox-label,
+:root[data-theme='dark'] .notes-cell {
+  color: var(--text-secondary);
+}
+
+:root[data-theme='dark'] .topbar-title,
+:root[data-theme='dark'] .login-logo,
+:root[data-theme='dark'] .login-info h1,
+:root[data-theme='dark'] .form-container h3,
+:root[data-theme='dark'] .btn,
+:root[data-theme='dark'] .btn-secondary,
+:root[data-theme='dark'] input,
+:root[data-theme='dark'] select,
+:root[data-theme='dark'] textarea,
+:root[data-theme='dark'] td {
+  color: var(--text);
+}
+
+:root[data-theme='dark'] .tab-active {
+  color: var(--accent);
+  border-bottom-color: var(--accent);
+}
+
+:root[data-theme='dark'] .btn-primary,
+:root[data-theme='dark'] .mode-active {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #ffffff;
 }
