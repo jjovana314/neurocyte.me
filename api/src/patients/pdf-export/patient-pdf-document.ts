@@ -1,5 +1,22 @@
 import PDFDocument from 'pdfkit';
 import { once } from 'events';
+import {
+  COLOR_DIVIDER,
+  COLOR_FOOTER,
+  COLOR_MUTED,
+  COLOR_TEXT,
+  FIELD_INDENT,
+  FONT_BOLD,
+  FONT_REGULAR,
+  FOOTER_OFFSET,
+  PAGE_MARGIN,
+  SIZE_BODY,
+  SIZE_FOOTER,
+  SIZE_RECORD_TITLE,
+  SIZE_SECTION,
+  SIZE_SUBTITLE,
+  SIZE_TITLE,
+} from '../utils/pdf-constants';
 
 export type PdfInfoRow = [label: string, value: string];
 
@@ -8,25 +25,6 @@ export interface PdfRecordSectionOptions<T> {
   title: (record: T) => string;
   fields: (record: T) => PdfInfoRow[];
 }
-
-const PAGE_MARGIN = 50;
-const FOOTER_OFFSET = 40;
-const FIELD_INDENT = '   ';
-
-const FONT_REGULAR = 'Helvetica';
-const FONT_BOLD = 'Helvetica-Bold';
-
-const COLOR_TEXT = '#000000';
-const COLOR_MUTED = '#555555';
-const COLOR_FOOTER = '#888888';
-const COLOR_DIVIDER = '#cccccc';
-
-const SIZE_TITLE = 22;
-const SIZE_SECTION = 14;
-const SIZE_RECORD_TITLE = 12;
-const SIZE_BODY = 11;
-const SIZE_SUBTITLE = 10;
-const SIZE_FOOTER = 9;
 
 /**
  * Thin wrapper around pdfkit that lays out a patient report (title, sections
