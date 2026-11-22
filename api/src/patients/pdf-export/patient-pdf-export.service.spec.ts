@@ -95,6 +95,19 @@ describe('PatientPdfExportService', () => {
         medicationTaken: 'Aspirin, Caffetine',
       },
     ];
+    const mockMigraineLog = [
+      {
+        id: 1,
+        occurredAt: new Date('2026-11-20T09:30:00Z'),
+        durationMinutes: 90,
+        painSeverity: 8,
+        auraPresent: true,
+        triggers: 'STRESS',
+        symptoms: 'NAUSEA_LIGHT_SENSITIVITY',
+        medicationTaken: 'SUMATRIPTAN',
+        recordedAt: new Date('2026-11-20T10:00:00Z'),
+      },
+    ] as any[];
 
     const mockPatient = {
       id: patientId,
@@ -113,6 +126,7 @@ describe('PatientPdfExportService', () => {
         familyHistory: mockFamilyHistory,
         seizureLogs: mockSeizureLogs,
         touretteSyndrome: mockTouretteSyndrome,
+        migraineLog: mockMigraineLog,
         ...overrides,
       });
 
@@ -309,6 +323,7 @@ describe('PatientPdfExportService', () => {
         'Family History',
         'Seizure Logs',
         'Tourette syndrome',
+        'Migraine log',
       ];
 
       type TextCall = { text: string; page: any };
@@ -355,6 +370,7 @@ describe('PatientPdfExportService', () => {
             familyHistory: many(mockFamilyHistory),
             seizureLogs: many(mockSeizureLogs),
             touretteSyndrome: many(mockTouretteSyndrome),
+            migraineLog: many(mockMigraineLog),
           });
 
           const calls = await captureTextCalls();
@@ -486,6 +502,7 @@ describe('PatientPdfExportService', () => {
           familyHistory: [],
           seizureLogs: [],
           touretteSyndrome: [],
+          migraineLog: [],
         });
 
         const texts = await renderTexts(RoleEnum.DOCTOR);
@@ -496,6 +513,24 @@ describe('PatientPdfExportService', () => {
             'No family history recorded.',
             'No seizure logs recorded.',
             'No tourette syndrome recorded.',
+            'No migraine log recorded',
+          ]),
+        );
+      });
+
+      it('should render migraine log fields', async () => {
+        const texts = await renderTexts(RoleEnum.DOCTOR);
+
+        expect(texts).toEqual(
+          expect.arrayContaining([
+            'Migraine log',
+            `1. ${mockMigraineLog[0].occurredAt.toLocaleString()}`,
+            '   Duration (minutes): 90',
+            '   Pain severity: 8',
+            '   Aura present: Yes',
+            '   Triggers: Stress',
+            '   Symptoms: Nausea Light Sensitivity',
+            '   Medication taken: Sumatriptan',
           ]),
         );
       });
@@ -509,6 +544,7 @@ describe('PatientPdfExportService', () => {
           '1. Alzheimer (Mother)',
           '1. Focal aware',
           '1. Motor vocal',
+          `1. ${mockMigraineLog[0].occurredAt.toLocaleString()}`,
         ]);
       });
     });

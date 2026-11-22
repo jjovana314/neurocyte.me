@@ -1407,12 +1407,14 @@ describe('PatientsService', () => {
     const familyHistory = [{ id: 2, relation: 'Mother' }];
     const seizureLogs = [{ id: 3, onsetVector: OnsetVector.FOCAL_AWARE }];
     const touretteSyndrome = [{ id: 4, tycType: TycType.MOTOR_SIMPLE }];
+    const migraineLog = [{ id: 5, painSeverity: 6 }];
 
     beforeEach(() => {
       mockPatientHistoryRepository.find.mockResolvedValue(medicalHistory);
       mockFamilyHistoryRepository.find.mockResolvedValue(familyHistory);
       mockSeizureLogRepository.find.mockResolvedValue(seizureLogs);
       mockTouretteSyndromeRepository.find.mockResolvedValue(touretteSyndrome);
+      mockMigraineLogRepository.find.mockResolvedValue(migraineLog);
     });
 
     it('should return every record type keyed by section', async () => {
@@ -1421,10 +1423,11 @@ describe('PatientsService', () => {
         familyHistory,
         seizureLogs,
         touretteSyndrome,
+        migraineLog,
       });
     });
 
-    it('should order history and tourette records by recordedAt, newest first', async () => {
+    it('should order history, tourette and migraine records by recordedAt, newest first', async () => {
       await service.findPatientRecords(patientId);
 
       const byRecordedAtDesc = {
@@ -1438,6 +1441,9 @@ describe('PatientsService', () => {
         byRecordedAtDesc,
       );
       expect(mockTouretteSyndromeRepository.find).toHaveBeenCalledWith(
+        byRecordedAtDesc,
+      );
+      expect(mockMigraineLogRepository.find).toHaveBeenCalledWith(
         byRecordedAtDesc,
       );
     });
@@ -1456,12 +1462,14 @@ describe('PatientsService', () => {
       mockFamilyHistoryRepository.find.mockResolvedValue([]);
       mockSeizureLogRepository.find.mockResolvedValue([]);
       mockTouretteSyndromeRepository.find.mockResolvedValue([]);
+      mockMigraineLogRepository.find.mockResolvedValue([]);
 
       await expect(service.findPatientRecords(patientId)).resolves.toEqual({
         medicalHistory: [],
         familyHistory: [],
         seizureLogs: [],
         touretteSyndrome: [],
+        migraineLog: [],
       });
     });
 
