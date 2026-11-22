@@ -1257,16 +1257,28 @@ export class PatientsService implements OnModuleInit {
       where: { patientId },
       order: { recordedAt: 'DESC' as const },
     };
-    const [medicalHistory, familyHistory, seizureLogs, touretteSyndrome] =
-      await Promise.all([
-        this.patientHistoryRepository.find(byRecordedAtDesc),
-        this.familyHistoryRepository.find(byRecordedAtDesc),
-        this.seizureLogRepository.find({
-          where: { patientId },
-          order: { ictusStart: 'DESC' },
-        }),
-        this.touretteSyndromeRepository.find(byRecordedAtDesc),
-      ]);
-    return { medicalHistory, familyHistory, seizureLogs, touretteSyndrome };
+    const [
+      medicalHistory,
+      familyHistory,
+      seizureLogs,
+      touretteSyndrome,
+      migraineLog,
+    ] = await Promise.all([
+      this.patientHistoryRepository.find(byRecordedAtDesc),
+      this.familyHistoryRepository.find(byRecordedAtDesc),
+      this.seizureLogRepository.find({
+        where: { patientId },
+        order: { ictusStart: 'DESC' },
+      }),
+      this.touretteSyndromeRepository.find(byRecordedAtDesc),
+      this.migraineLogRepository.find(byRecordedAtDesc),
+    ]);
+    return {
+      medicalHistory,
+      familyHistory,
+      seizureLogs,
+      touretteSyndrome,
+      migraineLog,
+    };
   }
 }

@@ -12,6 +12,7 @@ import { maskString } from '../utils/masking';
 import { formatToTitleCase } from '../utils/format-to-title-case';
 import { PatientPdfDocument } from './patient-pdf-document';
 import { PatientsService } from '../patients.service';
+import { MigraineLog } from '../entities/migraine-log.entity';
 
 const FOOTER_TEXT = 'Confidential – For authorized medical personnel only';
 
@@ -51,6 +52,7 @@ export class PatientPdfExportService {
       (p) => this.addFamilyHistory(p, records.familyHistory),
       (p) => this.addSeizureLogs(p, records.seizureLogs),
       (p) => this.addTouretteSyndrome(p, records.touretteSyndrome),
+      (p) => this.addMigraineLog(p, records.migraineLog),
     ];
     sections.forEach((addSection, index) => {
       addSection(pdf);
@@ -148,6 +150,28 @@ export class PatientPdfExportService {
             : 'None',
         ],
         ['Notes', r.notes || 'N/A'],
+        ['Recorded At', r.recordedAt?.toLocaleString() ?? 'N/A'],
+      ],
+    });
+  }
+
+  private addMigraineLog(
+    pdf: PatientPdfDocument,
+    records: MigraineLog[],
+  ): void {
+    pdf.addRecordSection('Migraine log', records, {
+      emptyMessage: 'No migraine log recorded',
+      title: (r) => r.occurredAt.toLocaleString(),
+      fields: (r) => [
+        ['Duration (minutes)', String(r.durationMinutes)],
+        ['Pain severity', r.painSeverity.toString()],
+        ['Aura present', r.auraPresent ? 'Yes' : 'No'],
+        ['Triggers', r.triggers ? formatToTitleCase(r.triggers) : 'None'],
+        ['Symptoms', r.symptoms ? formatToTitleCase(r.symptoms) : 'None'],
+        [
+          'Medication taken',
+          r.medicationTaken ? formatToTitleCase(r.medicationTaken) : 'None',
+        ],
         ['Recorded At', r.recordedAt?.toLocaleString() ?? 'N/A'],
       ],
     });
