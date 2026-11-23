@@ -1,0 +1,1 @@
+ALTER TABLE `patient` MODIFY COLUMN `notes` LONGTEXT NULL;

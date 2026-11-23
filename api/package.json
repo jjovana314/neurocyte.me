@@ -43,6 +43,7 @@
     "@types/passport-jwt": "^4.0.1",
     "aws-sdk": "^2.1693.0",
     "bcrypt": "^6.0.0",
+    "class-validator": "^0.14.4",
     "mysql2": "^3.18.2",
     "nestjs-pino": "^4.6.0",
     "passport": "^0.7.0",

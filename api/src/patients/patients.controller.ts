@@ -28,7 +28,7 @@ import {
   CreateMigraineLogDto,
   CreateSeizureLogDto,
   ImportCsvResponseDto,
-  UpdatePatientNotesDto,
+  UpdatePatientDto,
   CreateNcsStudyDto,
 } from './dtos';
 import { SearchPatientDto } from './dtos/search-patient.dto';
@@ -123,12 +123,12 @@ export class PatientsController {
    * Update patient notes, optionally recording a new EDSS assessment in the same request
    */
   @Put(':id')
-  async updatePatientNotes(
+  async updatePatient(
     @CurrentUser() user: JwtUser,
     @Param('id', ParseIntPipe) patientId: number,
-    @Body() body: UpdatePatientNotesDto,
+    @Body() body: UpdatePatientDto,
   ): Promise<Patient> {
-    return this.patientsService.updatePatientNotes(user.id, patientId, body);
+    return this.patientsService.updatePatient(user.id, patientId, body);
   }
 
   @Delete(':id')
