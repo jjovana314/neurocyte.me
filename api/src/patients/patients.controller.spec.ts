@@ -16,7 +16,7 @@ describe('PatientsController', () => {
     exportPatientDataCsv: jest.fn(),
     importCsvData: jest.fn(),
     getPatient: jest.fn(),
-    updatePatientNotes: jest.fn(),
+    updatePatient: jest.fn(),
     deletePatient: jest.fn(),
     addPatientHistory: jest.fn(),
     getPatientMedicalHistory: jest.fn(),
@@ -257,15 +257,15 @@ describe('PatientsController', () => {
     });
   });
 
-  describe('updatePatientNotes', () => {
-    it('should call patientsService.updatePatientNotes with user id, patient id and body', async () => {
+  describe('updatePatient', () => {
+    it('should call patientsService.updatePatient with user id, patient id and body', async () => {
       const body = { notes: 'Updated' };
       const mockPatient = { id: 5, notes: 'Updated' } as any;
-      mockPatientsService.updatePatientNotes.mockResolvedValue(mockPatient);
+      mockPatientsService.updatePatient.mockResolvedValue(mockPatient);
 
-      const result = await controller.updatePatientNotes(mockUser, 5, body);
+      const result = await controller.updatePatient(mockUser, 5, body);
 
-      expect(mockPatientsService.updatePatientNotes).toHaveBeenCalledWith(
+      expect(mockPatientsService.updatePatient).toHaveBeenCalledWith(
         1,
         5,
         body,
@@ -287,11 +287,11 @@ describe('PatientsController', () => {
         },
       };
       const mockPatient = { id: 5, notes: 'Updated' } as any;
-      mockPatientsService.updatePatientNotes.mockResolvedValue(mockPatient);
+      mockPatientsService.updatePatient.mockResolvedValue(mockPatient);
 
-      const result = await controller.updatePatientNotes(mockUser, 5, body);
+      const result = await controller.updatePatient(mockUser, 5, body);
 
-      expect(mockPatientsService.updatePatientNotes).toHaveBeenCalledWith(
+      expect(mockPatientsService.updatePatient).toHaveBeenCalledWith(
         1,
         5,
         body,
@@ -300,14 +300,14 @@ describe('PatientsController', () => {
     });
 
     it('should propagate BadRequestException thrown by the service for an invalid edss payload', async () => {
-      mockPatientsService.updatePatientNotes.mockRejectedValue(
+      mockPatientsService.updatePatient.mockRejectedValue(
         new BadRequestException(
           'pyramidalSystem must be an integer between 0 and 6',
         ),
       );
 
       await expect(
-        controller.updatePatientNotes(mockUser, 5, {
+        controller.updatePatient(mockUser, 5, {
           notes: 'Updated',
           edss: { pyramidalSystem: 99 },
         } as any),

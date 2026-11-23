@@ -392,7 +392,7 @@ describe('PatientsService', () => {
     });
   });
 
-  describe('updatePatientNotes', () => {
+  describe('updatePatient', () => {
     const doctorId = 1;
     const patientId = 5;
     const zeroEdss = {
@@ -418,7 +418,7 @@ describe('PatientsService', () => {
     });
 
     it('should update notes without creating an EDSS assessment when none is provided', async () => {
-      const result = await service.updatePatientNotes(doctorId, patientId, {
+      const result = await service.updatePatient(doctorId, patientId, {
         notes: 'Updated',
       });
 
@@ -431,7 +431,7 @@ describe('PatientsService', () => {
         of({ totalScore: 6.5 }),
       );
 
-      await service.updatePatientNotes(doctorId, patientId, {
+      await service.updatePatient(doctorId, patientId, {
         notes: 'Updated',
         edss: { ...zeroEdss, requiresBilateralAid: true },
       });
@@ -450,7 +450,7 @@ describe('PatientsService', () => {
       );
 
       await expect(
-        service.updatePatientNotes(doctorId, patientId, {
+        service.updatePatient(doctorId, patientId, {
           notes: 'Updated',
           edss: { ...zeroEdss, pyramidalSystem: 99 },
         }),
@@ -464,7 +464,7 @@ describe('PatientsService', () => {
       mockPatientRepository.findOne.mockResolvedValue(null);
 
       await expect(
-        service.updatePatientNotes(doctorId, patientId, { notes: 'x' }),
+        service.updatePatient(doctorId, patientId, { notes: 'x' }),
       ).rejects.toThrow(NotFoundException);
     });
 
@@ -475,7 +475,7 @@ describe('PatientsService', () => {
       });
 
       await expect(
-        service.updatePatientNotes(doctorId, patientId, { notes: 'x' }),
+        service.updatePatient(doctorId, patientId, { notes: 'x' }),
       ).rejects.toThrow(ForbiddenException);
     });
   });

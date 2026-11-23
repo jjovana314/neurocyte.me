@@ -26,7 +26,7 @@ import {
   CreateSeizureLogDto,
   CreateNcsStudyDto,
   ImportCsvResponseDto,
-  UpdatePatientNotesDto,
+  UpdatePatientDto,
 } from './dtos';
 import {
   CALCULATOR_SERVICE_NAME,
@@ -836,10 +836,10 @@ export class PatientsService implements OnModuleInit {
   }
 
   @errorHandler
-  async updatePatientNotes(
+  async updatePatient(
     doctorId: number,
     patientId: number,
-    updatePatientDto: UpdatePatientNotesDto,
+    updatePatientDto: UpdatePatientDto,
   ): Promise<Patient> {
     const patient = await this.patientRepository.findOne({
       where: { id: patientId },

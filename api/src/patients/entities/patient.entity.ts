@@ -43,7 +43,7 @@ export class Patient {
   @Column({ nullable: true })
   email: string;
 
-  @Column({ nullable: true })
+  @Column({ nullable: true, type: 'longtext' })
   notes: string;
 
   @CreateDateColumn()
