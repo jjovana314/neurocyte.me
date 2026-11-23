@@ -152,50 +152,54 @@ export default function AddPatientForm() {
             placeholder="Full name"
           />
         </div>
-        <div className="form-group">
-          <label htmlFor="patient-dob">Date of birth*</label>
-          <input
-            id="patient-dob"
-            type="date"
-            value={dateOfBirth}
-            max={todayDateString()}
-            required={true}
-            onChange={(e) => setDateOfBirth(e.target.value)}
-          />
+        <div className="form-row">
+          <div className="form-group">
+            <label htmlFor="patient-dob">Date of birth*</label>
+            <input
+              id="patient-dob"
+              type="date"
+              value={dateOfBirth}
+              max={todayDateString()}
+              required={true}
+              onChange={(e) => setDateOfBirth(e.target.value)}
+            />
+          </div>
+          <div className="form-group">
+            <label htmlFor="patient-gender">Gender*</label>
+            <select
+              id="patient-gender"
+              value={gender}
+              required={true}
+              onChange={(e) => setGender(e.target.value)}
+            >
+              <option value="">— Select —</option>
+              {GENDER_OPTIONS.map((g) => (
+                <option key={g} value={g}>{g}</option>
+              ))}
+            </select>
+          </div>
         </div>
-        <div className="form-group">
-          <label htmlFor="patient-gender">Gender*</label>
-          <select
-            id="patient-gender"
-            value={gender}
-            required={true}
-            onChange={(e) => setGender(e.target.value)}
-          >
-            <option value="">— Select —</option>
-            {GENDER_OPTIONS.map((g) => (
-              <option key={g} value={g}>{g}</option>
-            ))}
-          </select>
-        </div>
-        <div className="form-group">
-          <label htmlFor="patient-phone">Phone</label>
-          <input
-            id="patient-phone"
-            type="tel"
-            value={phone}
-            onChange={(e) => setPhone(e.target.value)}
-            placeholder="+1 555 000 0000"
-          />
-        </div>
-        <div className="form-group">
-          <label htmlFor="patient-email">Email</label>
-          <input
-            id="patient-email"
-            type="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            placeholder="patient@example.com"
-          />
+        <div className="form-row">
+          <div className="form-group">
+            <label htmlFor="patient-phone">Phone</label>
+            <input
+              id="patient-phone"
+              type="phone"
+              value={phone}
+              onChange={(e) => setPhone(e.target.value)}
+              placeholder="+1 555 000 0000"
+            />
+          </div>
+          <div className="form-group">
+            <label htmlFor="patient-email">Email</label>
+            <input
+              id="patient-email"
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="patient@example.com"
+            />
+          </div>
         </div>
         <div className="form-group">
           <label htmlFor="patient-notes">Notes</label>
