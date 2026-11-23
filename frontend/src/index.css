@@ -496,26 +496,28 @@ td {
 
 /* ── Forms ── */
 .form-container {
-  max-width: 560px;
+  max-width: 680px;
 }
 .form-container h3 {
-  font-size: 16px;
+  font-size: 18px;
   font-weight: 600;
-  margin-bottom: 20px;
+  margin-bottom: 18px;
+  letter-spacing: -0.2px;
 }
 .form-group {
-  margin-bottom: 14px;
+  margin-bottom: 16px;
 }
 .form-row {
   display: flex;
-  gap: 12px;
+  gap: 16px;
 }
 .form-row .form-group {
   flex: 1;
+  min-width: 0;
 }
 label {
   display: block;
-  margin-bottom: 5px;
+  margin-bottom: 6px;
   font-size: 13px;
   font-weight: 500;
   color: #444;
@@ -523,29 +525,56 @@ label {
 input[type="text"],
 input[type="email"],
 input[type="password"],
+input[type="phone"],
 input[type="date"],
+input[type="datetime-local"],
+input[type="number"],
 input[type="file"],
 select,
 textarea {
   width: 100%;
-  padding: 8px 10px;
-  border: 1px solid #d5d5d5;
-  border-radius: 5px;
-  font-size: 13px;
+  min-height: 42px;
+  padding: 9px 12px;
+  border: 1px solid #cfd5df;
+  border-radius: 7px;
+  font-size: 14px;
   font-family: inherit;
   background: #fff;
   color: #1a1a1a;
   outline: none;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
 }
 input:focus, select:focus, textarea:focus {
   border-color: #2563eb;
-  box-shadow: 0 0 0 2px rgba(37,99,235,0.1);
+  box-shadow: 0 0 0 3px rgba(37,99,235,0.12);
 }
-textarea { resize: vertical; }
+input::placeholder,
+textarea::placeholder {
+  color: #98a2b3;
+  opacity: 1;
+}
+textarea {
+  min-height: 96px;
+  resize: vertical;
+}
+input[type="file"] {
+  padding: 5px;
+  cursor: pointer;
+}
+input[type="file"]::file-selector-button {
+  margin-right: 10px;
+  padding: 7px 10px;
+  border: 1px solid #cfd5df;
+  border-radius: 5px;
+  background: #f8fafc;
+  color: #334155;
+  font: inherit;
+  cursor: pointer;
+}
 .hint {
   font-size: 12px;
   color: #888;
-  margin-bottom: 16px;
+  margin: 7px 0 16px;
   line-height: 1.5;
 }
 .form-error {
@@ -716,10 +745,14 @@ textarea { resize: vertical; }
 :root[data-theme='dark'] .inner-table,
 :root[data-theme='dark'] .profile-table,
 :root[data-theme='dark'] .login-forms,
+:root[data-theme='dark'] .form-group,
 :root[data-theme='dark'] input[type='text'],
 :root[data-theme='dark'] input[type='email'],
 :root[data-theme='dark'] input[type='password'],
+:root[data-theme='dark'] input[type='phone'],
 :root[data-theme='dark'] input[type='date'],
+:root[data-theme='dark'] input[type='datetime-local'],
+:root[data-theme='dark'] input[type='number'],
 :root[data-theme='dark'] input[type='file'],
 :root[data-theme='dark'] select,
 :root[data-theme='dark'] textarea {
@@ -805,3 +838,22 @@ textarea { resize: vertical; }
   border-color: var(--accent);
   color: #ffffff;
 }
+
+:root[data-theme='dark'] input::placeholder,
+:root[data-theme='dark'] textarea::placeholder {
+  color: var(--text-muted);
+}
+
+:root[data-theme='dark'] input[type='file']::file-selector-button {
+  border-color: var(--border);
+  background: var(--surface-alt);
+  color: var(--text);
+}
+
+@media (max-width: 620px) {
+  .form-row {
+    flex-direction: column;
+    gap: 0;
+  }
+}
+
