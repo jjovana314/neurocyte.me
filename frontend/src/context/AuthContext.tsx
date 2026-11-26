@@ -1,4 +1,5 @@
 import { createContext, useContext, useState, type ReactNode } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import type { JwtPayload } from '../api/types';
 
 interface AuthContextValue {
@@ -31,17 +32,21 @@ function loadFromStorage(): { token: string | null; user: JwtPayload | null } {
 const AuthContext = createContext<AuthContextValue | null>(null);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
+  const queryClient = useQueryClient();
   const initial = loadFromStorage();
   const [token, setToken] = useState<string | null>(initial.token);
   const [user, setUser] = useState<JwtPayload | null>(initial.user);
 
   function setAuth(newToken: string) {
+    const decoded = decodeJwt(newToken);
+    queryClient.clear();
     localStorage.setItem('accessToken', newToken);
     setToken(newToken);
-    setUser(decodeJwt(newToken));
+    setUser(decoded);
   }
 
   function logout() {
+    queryClient.clear();
     localStorage.removeItem('accessToken');
     setToken(null);
     setUser(null);
